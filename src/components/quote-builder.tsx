@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save } from "lucide-react";
-import { Client, Quote, QuoteItem, BusinessProfile } from "@/lib/types";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy } from "lucide-react";
+import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
+import { getCommonItems, getTemplates } from "@/lib/store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type QuoteBuilderProps = {
   initialClients: Client[];
@@ -45,6 +47,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
   const [notes, setNotes] = useState("");
   const [scopeDescription, setScopeDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
+  const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
+
+  useEffect(() => {
+    setCommonItems(getCommonItems());
+    setTemplates(getTemplates());
+  }, []);
 
   const calculateTotals = useCallback(() => {
     const itemsTotal = items.reduce((acc, item) => acc + item.total, 0);
@@ -74,6 +84,18 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
       }
       return item;
     }));
+  };
+
+  const selectCommonItem = (id: string, item: CommonItem) => {
+    updateItem(id, 'description', item.description);
+    updateItem(id, 'unitPrice', item.defaultUnitPrice);
+  };
+
+  const applyTemplate = (template: QuoteTemplate) => {
+    setServiceCategory(template.serviceCategory);
+    setScopeDescription(template.scopeDescription);
+    setItems(template.items.map(i => ({ ...i, id: uuidv4() })));
+    toast({ title: "Template Applied", description: `Loaded: ${template.name}` });
   };
 
   const handleGenerateScope = async () => {
@@ -129,8 +151,26 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm border-primary/10">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Quote Details</CardTitle>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Copy className="w-4 h-4" /> Load Template
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" align="end">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-muted-foreground px-2 py-1 uppercase">Available Templates</p>
+                    {templates.map(t => (
+                      <Button key={t.id} variant="ghost" className="w-full justify-start text-sm" onClick={() => applyTemplate(t)}>
+                        {t.name}
+                      </Button>
+                    ))}
+                    {templates.length === 0 && <p className="text-xs text-center py-4">No templates found.</p>}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -172,25 +212,56 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
               </Button>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-4">
+              <div className="space-y-2">
+                {/* Simplified Header Row */}
+                <div className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  <div>Item Description</div>
+                  <div>Qty</div>
+                  <div>Unit Price</div>
+                  <div className="text-right">Total</div>
+                  <div></div>
+                </div>
+
                 {items.map((item) => (
-                  <div key={item.id} className="flex gap-4 items-end border-b pb-4 last:border-0 last:pb-0">
-                    <div className="flex-1 space-y-2">
-                      <Label className="text-xs">Item Description</Label>
-                      <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="e.g. Parts, Materials, Service Fee" />
+                  <div key={item.id} className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 items-center group">
+                    <div className="relative">
+                      <Input 
+                        value={item.description} 
+                        onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
+                        placeholder="Description..." 
+                        className="pr-8"
+                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-8 w-8 text-muted-foreground hover:text-primary">
+                            <BookOpen className="w-4 h-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="start">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase">Common Items</p>
+                            {commonItems.map(ci => (
+                              <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1 h-auto" onClick={() => selectCommonItem(item.id, ci)}>
+                                <div className="text-left">
+                                  <div className="font-medium">{ci.description}</div>
+                                  <div className="text-[10px] opacity-70">${ci.defaultUnitPrice}</div>
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                    <div className="w-20 space-y-2">
-                      <Label className="text-xs">Qty</Label>
+                    <div>
                       <Input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
                     </div>
-                    <div className="w-32 space-y-2">
-                      <Label className="text-xs">Unit Price</Label>
+                    <div>
                       <Input type="number" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
                     </div>
-                    <div className="w-24 text-right pb-3 font-medium text-sm">
+                    <div className="text-right font-medium text-sm">
                       ${item.total.toLocaleString()}
                     </div>
-                    <Button variant="ghost" size="icon" className="text-destructive mb-1" onClick={() => removeItem(item.id)}>
+                    <Button variant="ghost" size="icon" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>

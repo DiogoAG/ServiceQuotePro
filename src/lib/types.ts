@@ -23,6 +23,20 @@ export type QuoteItem = {
   total: number;
 };
 
+export type CommonItem = {
+  id: string;
+  description: string;
+  defaultUnitPrice: number;
+};
+
+export type QuoteTemplate = {
+  id: string;
+  name: string;
+  serviceCategory: string;
+  items: Omit<QuoteItem, 'id'>[];
+  scopeDescription: string;
+};
+
 export type Quote = {
   id: string;
   clientId: string;

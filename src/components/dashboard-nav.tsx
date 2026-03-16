@@ -12,7 +12,8 @@ import {
   PlusCircle,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Copy
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "My Quotes", href: "/quotes", icon: FileText },
+  { name: "Templates", href: "/templates", icon: Copy },
   { name: "Clients", href: "/clients", icon: Users },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

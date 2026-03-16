@@ -1,9 +1,11 @@
 
-import { Client, Quote, BusinessProfile } from './types';
+import { Client, Quote, BusinessProfile, QuoteTemplate, CommonItem } from './types';
 
 const CLIENTS_KEY = 'service_quote_pro_clients';
 const QUOTES_KEY = 'service_quote_pro_quotes';
 const PROFILE_KEY = 'service_quote_pro_profile';
+const TEMPLATES_KEY = 'service_quote_pro_templates';
+const COMMON_ITEMS_KEY = 'service_quote_pro_common_items';
 
 export const getClients = (): Client[] => {
   if (typeof window === 'undefined') return [];
@@ -41,4 +43,37 @@ export const getBusinessProfile = (): BusinessProfile => {
 
 export const saveBusinessProfile = (profile: BusinessProfile) => {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+};
+
+export const getTemplates = (): QuoteTemplate[] => {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem(TEMPLATES_KEY);
+  return stored ? JSON.parse(stored) : [
+    {
+      id: 't1',
+      name: 'Standard Service Call',
+      serviceCategory: 'General Contracting',
+      items: [{ description: 'Basic Diagnostic / Service Fee', quantity: 1, unitPrice: 150, total: 150 }],
+      scopeDescription: 'Arrival on site, diagnostic assessment, and minor adjustments as needed.'
+    }
+  ];
+};
+
+export const saveTemplates = (templates: QuoteTemplate[]) => {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+};
+
+export const getCommonItems = (): CommonItem[] => {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem(COMMON_ITEMS_KEY);
+  return stored ? JSON.parse(stored) : [
+    { id: 'i1', description: 'Labor - Standard Rate', defaultUnitPrice: 75 },
+    { id: 'i2', description: 'Service Call Fee', defaultUnitPrice: 125 },
+    { id: 'i3', description: 'Standard Parts & Materials', defaultUnitPrice: 0 },
+    { id: 'i4', description: 'Emergency Service Surcharge', defaultUnitPrice: 150 }
+  ];
+};
+
+export const saveCommonItems = (items: CommonItem[]) => {
+  localStorage.setItem(COMMON_ITEMS_KEY, JSON.stringify(items));
 };
