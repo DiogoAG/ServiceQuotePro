@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -70,7 +71,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   // Auto-fill template based on category
   useEffect(() => {
-    // Only auto-fill if the quote is fresh/empty
     const isEmpty = items.length <= 1 && !items[0].description && !scopeDescription;
     if (isEmpty && !duplicateSource) {
       const matchingTemplate = templates.find(t => t.serviceCategory === serviceCategory);
@@ -397,9 +397,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           <Card className="shadow-sm border-primary/10">
             <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/20 py-4">
               <CardTitle className="text-xl">Work Scope & Line Items</CardTitle>
-              <Button size="sm" variant="outline" onClick={addItem} className="gap-2 border-primary/20 hover:bg-primary/5">
-                <Plus className="w-4 h-4" /> Add Item
-              </Button>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">

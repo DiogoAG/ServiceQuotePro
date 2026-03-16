@@ -2,32 +2,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { QuoteTemplate, QuoteItem } from "@/lib/types";
+import { QuoteTemplate } from "@/lib/types";
 import { getTemplates, saveTemplates, getCommonItems, saveCommonItems } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Save, LayoutTemplate, X } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Save, LayoutTemplate } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-
-const SERVICE_CATEGORIES = [
-  "General Contracting",
-  "Electrical",
-  "Plumbing",
-  "HVAC",
-  "Landscaping",
-  "Painting",
-  "Roofing",
-  "Carpentry",
-  "Cleaning",
-  "Other"
-];
+import Link from "next/link";
 
 type CommonItem = {
   id: string;
@@ -40,66 +24,10 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
 
-  // Template Creation State
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newTplName, setNewTplName] = useState("");
-  const [newTplCategory, setNewTplCategory] = useState("General Contracting");
-  const [newTplScope, setNewTplScope] = useState("");
-  const [newTplItems, setNewTplItems] = useState<{ description: string; unitPrice: number }[]>([
-    { description: "", unitPrice: 0 }
-  ]);
-
   useEffect(() => {
     setTemplates(getTemplates());
     setCommonItems(getCommonItems());
   }, []);
-
-  const handleAddTplItem = () => {
-    setNewTplItems([...newTplItems, { description: "", unitPrice: 0 }]);
-  };
-
-  const handleRemoveTplItem = (index: number) => {
-    setNewTplItems(newTplItems.filter((_, i) => i !== index));
-  };
-
-  const handleUpdateTplItem = (index: number, field: "description" | "unitPrice", value: string | number) => {
-    const updated = [...newTplItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setNewTplItems(updated);
-  };
-
-  const handleSaveNewTemplate = () => {
-    if (!newTplName.trim()) {
-      toast({ title: "Error", description: "Template name is required.", variant: "destructive" });
-      return;
-    }
-
-    const template: QuoteTemplate = {
-      id: uuidv4(),
-      name: newTplName,
-      serviceCategory: newTplCategory,
-      scopeDescription: newTplScope,
-      items: newTplItems.map(item => ({
-        ...item,
-        quantity: 1,
-        total: item.unitPrice
-      }))
-    };
-
-    const updated = [...templates, template];
-    setTemplates(updated);
-    saveTemplates(updated);
-    setIsCreateDialogOpen(false);
-    resetTemplateForm();
-    toast({ title: "Template Created", description: `"${template.name}" added to library.` });
-  };
-
-  const resetTemplateForm = () => {
-    setNewTplName("");
-    setNewTplCategory("General Contracting");
-    setNewTplScope("");
-    setNewTplItems([{ description: "", unitPrice: 0 }]);
-  };
 
   const handleAddCommonItem = () => {
     const newItem: CommonItem = { id: uuidv4(), description: "", defaultUnitPrice: 0 };
@@ -236,99 +164,13 @@ export default function TemplatesPage() {
               </Card>
             ))}
             
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Card className="border-dashed flex items-center justify-center p-12 text-center cursor-pointer hover:bg-muted/50 transition-colors">
-                  <div className="space-y-2">
-                    <Plus className="w-8 h-8 mx-auto text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">Add New Template</p>
-                  </div>
-                </Card>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Quote Template</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Template Name</Label>
-                      <Input 
-                        placeholder="e.g. Standard Lighting Install" 
-                        value={newTplName}
-                        onChange={(e) => setNewTplName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Service Category</Label>
-                      <Select value={newTplCategory} onValueChange={setNewTplCategory}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SERVICE_CATEGORIES.map(cat => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Default Work Scope</Label>
-                    <Textarea 
-                      placeholder="Describe the standard work for this template..."
-                      value={newTplScope}
-                      onChange={(e) => setNewTplScope(e.target.value)}
-                      className="min-h-[100px]"
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>Default Line Items</Label>
-                      <Button variant="outline" size="sm" onClick={handleAddTplItem} className="h-8 gap-1">
-                        <Plus className="w-3.5 h-3.5" /> Add Item
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {newTplItems.map((item, idx) => (
-                        <div key={idx} className="flex gap-2 items-center">
-                          <Input 
-                            placeholder="Item description..." 
-                            value={item.description}
-                            onChange={(e) => handleUpdateTplItem(idx, 'description', e.target.value)}
-                            className="flex-1 h-9 text-sm"
-                          />
-                          <Input 
-                            type="number" 
-                            placeholder="Price" 
-                            value={item.unitPrice}
-                            onChange={(e) => handleUpdateTplItem(idx, 'unitPrice', Number(e.target.value))}
-                            className="w-24 h-9 text-sm"
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-destructive" 
-                            onClick={() => handleRemoveTplItem(idx)}
-                            disabled={newTplItems.length === 1}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleSaveNewTemplate} className="gap-2">
-                    <Save className="w-4 h-4" /> Save Template
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Link href="/quotes/new" className="block">
+              <Card className="border-dashed flex flex-col items-center justify-center p-12 text-center cursor-pointer hover:bg-muted/50 transition-colors h-full">
+                <Plus className="w-8 h-8 mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium text-muted-foreground">Add New Template</p>
+                <p className="text-[10px] text-muted-foreground mt-1 opacity-60">Opens Quote Builder to design and save a template</p>
+              </Card>
+            </Link>
           </div>
         </TabsContent>
       </Tabs>
