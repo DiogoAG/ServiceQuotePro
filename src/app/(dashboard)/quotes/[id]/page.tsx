@@ -7,9 +7,10 @@ import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { getQuotes, getClients, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Download, Mail, ChevronLeft, Building2, User } from "lucide-react";
+import { Printer, Download, Mail, ChevronLeft, Building2, User, Wrench } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 export default function QuoteSummaryPage() {
   const { id } = useParams();
@@ -68,6 +69,9 @@ export default function QuoteSummaryPage() {
                 <p className="text-muted-foreground flex items-center gap-2 mt-1">
                    License: <span className="font-medium">{profile.licenseNumber}</span>
                 </p>
+                <Badge variant="secondary" className="mt-2">
+                  {quote.serviceCategory}
+                </Badge>
               </div>
             </div>
             <div className="text-right space-y-2">
@@ -88,7 +92,7 @@ export default function QuoteSummaryPage() {
               <div className="space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
                 <p>License: {profile.licenseNumber}</p>
-                <p>Labor Rate: ${profile.defaultLaborRate}/hr</p>
+                <p>Default Rate: ${profile.defaultLaborRate}/hr</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -106,33 +110,16 @@ export default function QuoteSummaryPage() {
 
           {/* Work Scope Section */}
           <div className="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-100">
-            <h3 className="font-bold uppercase text-xs tracking-widest text-primary">Proposed Scope of Work</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold uppercase text-xs tracking-widest text-primary">Proposed Scope of Work</h3>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                <Wrench className="w-3 h-3" /> {quote.serviceCategory}
+              </div>
+            </div>
             <div className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">
               {quote.scopeDescription}
             </div>
           </div>
-
-          {/* Paint Specs (If applicable) */}
-          {quote.paintSpecs && (
-            <div className="grid grid-cols-4 gap-4 p-4 border rounded-md text-sm">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase">Surface</p>
-                <p className="font-semibold">{quote.paintSpecs.surfaceType}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase">Area Size</p>
-                <p className="font-semibold">{quote.paintSpecs.areaSize} sq ft</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase">Coats</p>
-                <p className="font-semibold">{quote.paintSpecs.coats}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase">Finish</p>
-                <p className="font-semibold">{quote.paintSpecs.paintFinish}</p>
-              </div>
-            </div>
-          )}
 
           {/* Line Items Table */}
           <div className="space-y-4">
@@ -157,7 +144,7 @@ export default function QuoteSummaryPage() {
                 ))}
                 {quote.laborHours > 0 && (
                   <TableRow>
-                    <TableCell>Labor Cost ({quote.laborHours} hours)</TableCell>
+                    <TableCell>Labor Cost ({quote.laborHours} hours @ ${quote.laborRate}/hr)</TableCell>
                     <TableCell className="text-right">{quote.laborHours}</TableCell>
                     <TableCell className="text-right">${quote.laborRate}</TableCell>
                     <TableCell className="text-right font-medium">${(quote.laborHours * quote.laborRate).toLocaleString()}</TableCell>

@@ -28,6 +28,7 @@ export type Quote = {
   clientId: string;
   date: string;
   status: 'draft' | 'sent' | 'approved' | 'rejected';
+  serviceCategory: string;
   items: QuoteItem[];
   scopeDescription: string;
   laborHours: number;
@@ -38,10 +39,4 @@ export type Quote = {
   subtotal: number;
   grandTotal: number;
   notes: string;
-  paintSpecs?: {
-    surfaceType: string;
-    areaSize: string;
-    coats: number;
-    paintFinish: string;
-  };
 };

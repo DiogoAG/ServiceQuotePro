@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,23 @@ type QuoteBuilderProps = {
   onSave: (quote: Quote) => void;
 };
 
+const SERVICE_CATEGORIES = [
+  "General Contracting",
+  "Electrical",
+  "Plumbing",
+  "HVAC",
+  "Landscaping",
+  "Painting",
+  "Roofing",
+  "Carpentry",
+  "Cleaning",
+  "Other"
+];
+
 export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBuilderProps) {
   const { toast } = useToast();
   const [clientId, setClientId] = useState<string>("");
+  const [serviceCategory, setServiceCategory] = useState<string>("General Contracting");
   const [items, setItems] = useState<QuoteItem[]>([{ id: uuidv4(), description: "", quantity: 1, unitPrice: 0, total: 0 }]);
   const [laborHours, setLaborHours] = useState<number>(0);
   const [laborRate, setLaborRate] = useState<number>(initialProfile.defaultLaborRate);
@@ -31,15 +45,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
   const [notes, setNotes] = useState("");
   const [scopeDescription, setScopeDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  // Paint Job Specifics
-  const [isPaintJob, setIsPaintJob] = useState(false);
-  const [paintSpecs, setPaintSpecs] = useState({
-    surfaceType: "Drywall",
-    areaSize: "",
-    coats: 2,
-    paintFinish: "Eggshell"
-  });
 
   const calculateTotals = useCallback(() => {
     const itemsTotal = items.reduce((acc, item) => acc + item.total, 0);
@@ -80,7 +85,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
     try {
       const result = await generateScopeDescription({
         briefInput: scopeDescription,
-        serviceType: isPaintJob ? "Painting" : "General Contracting",
+        serviceType: serviceCategory,
         businessName: initialProfile.businessName
       });
       setScopeDescription(result.generatedDescription);
@@ -104,6 +109,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
       clientId,
       date: new Date().toISOString(),
       status: 'draft',
+      serviceCategory,
       items,
       scopeDescription,
       laborHours,
@@ -114,7 +120,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
       subtotal: totals.subtotal,
       grandTotal: totals.grandTotal,
       notes,
-      paintSpecs: isPaintJob ? paintSpecs : undefined
     };
     onSave(newQuote);
   };
@@ -125,70 +130,37 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm border-primary/10">
             <CardHeader>
-              <CardTitle>Client & Basic Info</CardTitle>
+              <CardTitle>Quote Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Select Client</Label>
-                <Select onValueChange={setClientId} value={clientId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a client..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {initialClients.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input 
-                  type="checkbox" 
-                  id="paintJob" 
-                  checked={isPaintJob} 
-                  onChange={(e) => setIsPaintJob(e.target.checked)}
-                  className="w-4 h-4 text-primary rounded"
-                />
-                <Label htmlFor="paintJob">This is a Painting Job</Label>
-              </div>
-              {isPaintJob && (
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t mt-4">
-                  <div className="space-y-2">
-                    <Label>Surface Type</Label>
-                    <Select value={paintSpecs.surfaceType} onValueChange={(v) => setPaintSpecs({...paintSpecs, surfaceType: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Drywall">Drywall</SelectItem>
-                        <SelectItem value="Stucco">Stucco</SelectItem>
-                        <SelectItem value="Wood">Wood</SelectItem>
-                        <SelectItem value="Brick">Brick</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Area Size (sq ft)</Label>
-                    <Input value={paintSpecs.areaSize} onChange={(e) => setPaintSpecs({...paintSpecs, areaSize: e.target.value})} placeholder="e.g. 1500" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Number of Coats</Label>
-                    <Input type="number" value={paintSpecs.coats} onChange={(e) => setPaintSpecs({...paintSpecs, coats: Number(e.target.value)})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Finish Type</Label>
-                    <Select value={paintSpecs.paintFinish} onValueChange={(v) => setPaintSpecs({...paintSpecs, paintFinish: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Flat">Flat</SelectItem>
-                        <SelectItem value="Matte">Matte</SelectItem>
-                        <SelectItem value="Eggshell">Eggshell</SelectItem>
-                        <SelectItem value="Satin">Satin</SelectItem>
-                        <SelectItem value="Semi-Gloss">Semi-Gloss</SelectItem>
-                        <SelectItem value="Gloss">Gloss</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Select Client</Label>
+                  <Select onValueChange={setClientId} value={clientId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a client..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {initialClients.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label>Service Category</Label>
+                  <Select onValueChange={setServiceCategory} value={serviceCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_CATEGORIES.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -201,11 +173,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                {items.map((item, index) => (
+                {items.map((item) => (
                   <div key={item.id} className="flex gap-4 items-end border-b pb-4 last:border-0 last:pb-0">
                     <div className="flex-1 space-y-2">
                       <Label className="text-xs">Item Description</Label>
-                      <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="e.g. Surface preparation" />
+                      <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="e.g. Parts, Materials, Service Fee" />
                     </div>
                     <div className="w-20 space-y-2">
                       <Label className="text-xs">Qty</Label>
@@ -236,7 +208,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
                 <Textarea 
                   value={scopeDescription} 
                   onChange={(e) => setScopeDescription(e.target.value)} 
-                  placeholder="List brief points of work, then click 'Generate Professional Scope'..."
+                  placeholder={`Describe the ${serviceCategory.toLowerCase()} work in brief points...`}
                   className="min-h-[150px]"
                 />
               </div>
@@ -260,7 +232,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave }: QuoteBu
                   <Input type="number" value={laborHours} onChange={(e) => setLaborHours(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Material Costs ($)</Label>
+                  <Label>Additional Material Costs ($)</Label>
                   <Input type="number" value={materialCosts} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
                 </div>
               </div>

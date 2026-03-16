@@ -2,7 +2,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, ShieldCheck, Zap, BarChart3, Users } from "lucide-react";
+import { FileText, ArrowRight, ShieldCheck, Zap, BarChart3, Users, Wrench } from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPage() {
@@ -36,10 +36,10 @@ export default function LandingPage() {
             Empowering Service Contractors
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-primary leading-tight">
-            Professional Quotes <br /> <span className="text-accent">in Minutes</span>
+            Professional Quotes <br /> <span className="text-accent">for Any Service</span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            The all-in-one tool for service contractors to generate professional client quotes, manage business profiles, and win more jobs.
+            The all-in-one tool for service contractors to generate professional client quotes, manage business profiles, and win more jobs across any industry.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/dashboard">
@@ -87,9 +87,9 @@ export default function LandingPage() {
               description="Keep all your client contact details organized in one secure place."
             />
             <CardFeature 
-              icon={<FileText className="w-8 h-8 text-accent" />}
-              title="Paint Job Specifics"
-              description="Specialized fields for area size, surface type, and coat counts for painters."
+              icon={<Wrench className="w-8 h-8 text-accent" />}
+              title="Multi-Service Support"
+              description="Tailor your quotes for Electrical, Plumbing, HVAC, Landscaping, and more."
             />
           </div>
         </div>
