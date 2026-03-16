@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-dashboard",
+      "description": "Professional contractor working on a site",
+      "imageUrl": "https://picsum.photos/seed/service1/1200/400",
+      "imageHint": "construction contractor"
+    },
+    {
+      "id": "logo-placeholder",
+      "description": "Generic professional business logo",
+      "imageUrl": "https://picsum.photos/seed/service2/200/200",
+      "imageHint": "business logo"
+    }
+  ]
+}
