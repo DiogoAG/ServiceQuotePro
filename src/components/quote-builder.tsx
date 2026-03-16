@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
 import { getCommonItems, getTemplates, saveClients, getClients } from "@/lib/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 type QuoteBuilderProps = {
   initialClients: Client[];
@@ -52,10 +52,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [scopeDescription, setScopeDescription] = useState(duplicateSource?.scopeDescription || "");
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Quick Client State
-  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
-  const [newClientName, setNewClientName] = useState("");
-  const [newClientEmail, setNewClientEmail] = useState("");
+  // Client Search/Select State
+  const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
 
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
@@ -64,6 +63,16 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setCommonItems(getCommonItems());
     setTemplates(getTemplates());
   }, []);
+
+  const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients;
+    return clients.filter(c => 
+      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+      c.email.toLowerCase().includes(clientSearch.toLowerCase())
+    );
+  }, [clients, clientSearch]);
 
   const calculateTotals = useCallback(() => {
     const itemsTotal = items.reduce((acc, item) => acc + item.total, 0);
@@ -117,11 +126,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const handleQuickAddClient = () => {
-    if (!newClientName || !newClientEmail) return;
+    if (!clientSearch) return;
     const newClient: Client = {
       id: uuidv4(),
-      name: newClientName,
-      email: newClientEmail,
+      name: clientSearch,
+      email: `${clientSearch.toLowerCase().replace(/\s/g, '.')}@example.com`,
       phone: "",
       address: ""
     };
@@ -129,10 +138,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     saveClients(updated);
     setClients(updated);
     setClientId(newClient.id);
-    setIsClientDialogOpen(false);
-    setNewClientName("");
-    setNewClientEmail("");
-    toast({ title: "Client Created", description: "Quick profile created. You can add more details later in Settings." });
+    setIsClientPopoverOpen(false);
+    setClientSearch("");
+    toast({ title: "Client Created", description: `Added ${newClient.name} to directory.` });
   };
 
   const handleGenerateScope = async () => {
@@ -188,81 +196,108 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm border-primary/10">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Quote Details</CardTitle>
-              <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Copy className="w-4 h-4" /> Load Template
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-2" align="end">
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
-                      {templates.map(t => (
-                        <Button key={t.id} variant="ghost" className="w-full justify-start text-sm" onClick={() => applyTemplate(t)}>
-                          {t.name}
-                        </Button>
-                      ))}
-                      {templates.length === 0 && <p className="text-xs text-center py-4">No templates found.</p>}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Select Client</Label>
-                    <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
-                      <DialogTrigger asChild>
-                         <Button variant="link" size="sm" className="h-auto p-0 text-xs gap-1">
-                            <UserPlus className="w-3 h-3" /> Quick Add
-                         </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Quick Add Client</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label>Full Name</Label>
-                            <Input value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="e.g. Alice Johnson" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} placeholder="e.g. alice@example.com" />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsClientDialogOpen(false)}>Cancel</Button>
-                          <Button onClick={handleQuickAddClient}>Create Client</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <CardTitle className="text-xl">Quote Configuration</CardTitle>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
+                    <Copy className="w-4 h-4" /> Load Template
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" align="end">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
+                    {templates.map(t => (
+                      <Button key={t.id} variant="ghost" className="w-full justify-start text-sm" onClick={() => applyTemplate(t)}>
+                        {t.name}
+                      </Button>
+                    ))}
+                    {templates.length === 0 && <p className="text-xs text-center py-4">No templates found.</p>}
                   </div>
-                  <Select onValueChange={setClientId} value={clientId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Search or select client..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(c => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex flex-col items-start">
-                            <span>{c.name}</span>
-                            <span className="text-[10px] opacity-50 font-mono">{c.email}</span>
+                </PopoverContent>
+              </Popover>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div className="space-y-2">
+                  <Label>Client Selection</Label>
+                  <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isClientPopoverOpen}
+                        className="w-full justify-between h-10 font-normal px-3"
+                      >
+                        {selectedClient ? (
+                          <div className="flex flex-col items-start truncate">
+                            <span className="text-sm font-medium">{selectedClient.name}</span>
+                            <span className="text-[10px] opacity-60 truncate">{selectedClient.email}</span>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ) : (
+                          <span className="text-muted-foreground">Search or select client...</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Type name or email..."
+                            className="pl-8 h-9 border-none shadow-none focus-visible:ring-0"
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {filteredClients.map((c) => (
+                          <Button
+                            key={c.id}
+                            variant="ghost"
+                            className="w-full justify-start rounded-none px-4 py-2.5 h-auto"
+                            onClick={() => {
+                              setClientId(c.id);
+                              setIsClientPopoverOpen(false);
+                              setClientSearch("");
+                            }}
+                          >
+                            <div className="flex flex-col items-start w-full">
+                              <div className="flex items-center justify-between w-full">
+                                <span className="font-medium text-sm">{c.name}</span>
+                                {clientId === c.id && <Check className="h-3.5 w-3.5 text-primary" />}
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">{c.email}</span>
+                            </div>
+                          </Button>
+                        ))}
+                        {filteredClients.length === 0 && clientSearch && (
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start text-primary rounded-none px-4 py-3 h-auto gap-2"
+                            onClick={handleQuickAddClient}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            <div className="flex flex-col items-start">
+                              <span className="text-sm font-semibold">Create "{clientSearch}"</span>
+                              <span className="text-[10px] opacity-70">Add this new client to directory</span>
+                            </div>
+                          </Button>
+                        )}
+                        {filteredClients.length === 0 && !clientSearch && (
+                          <p className="text-xs text-center py-6 text-muted-foreground">No clients found.</p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Service Category</Label>
                   <Select onValueChange={setServiceCategory} value={serviceCategory}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10">
                       <SelectValue placeholder="Select service type..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -277,15 +312,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           </Card>
 
           <Card className="shadow-sm border-primary/10">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Work Scope & Line Items</CardTitle>
-              <Button size="sm" variant="outline" onClick={addItem} className="gap-2">
+            <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/20 py-4">
+              <CardTitle className="text-xl">Work Scope & Line Items</CardTitle>
+              <Button size="sm" variant="outline" onClick={addItem} className="gap-2 border-primary/20 hover:bg-primary/5">
                 <Plus className="w-4 h-4" /> Add Item
               </Button>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-8 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                <div className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div>
                   <div>Qty</div>
                   <div>Price ($)</div>
@@ -293,56 +328,60 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <div></div>
                 </div>
 
-                {items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 items-center group">
-                    <div className="relative">
-                      <Input 
-                        value={item.description} 
-                        onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
-                        placeholder="Description..." 
-                        className="pr-8"
-                      />
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-8 w-8 text-muted-foreground hover:text-primary">
-                            <BookOpen className="w-4 h-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2" align="start">
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Library Items</p>
-                            {commonItems.map(ci => (
-                              <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1 h-auto" onClick={() => selectCommonItem(item.id, ci)}>
-                                <div className="text-left">
-                                  <div className="font-medium">{ci.description}</div>
-                                  <div className="text-[10px] opacity-70">${ci.defaultUnitPrice}</div>
-                                </div>
-                              </Button>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 items-center group">
+                      <div className="relative">
+                        <Input 
+                          value={item.description} 
+                          onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
+                          placeholder="Description..." 
+                          className="pr-8 h-9 text-sm"
+                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-primary">
+                              <BookOpen className="w-3.5 h-3.5" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-2" align="start">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Library Items</p>
+                              <div className="max-h-48 overflow-y-auto">
+                                {commonItems.map(ci => (
+                                  <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1.5 h-auto" onClick={() => selectCommonItem(item.id, ci)}>
+                                    <div className="text-left">
+                                      <div className="font-medium">{ci.description}</div>
+                                      <div className="text-[10px] opacity-70">${ci.defaultUnitPrice}</div>
+                                    </div>
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div>
+                        <Input type="number" className="h-9 text-sm" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
+                      </div>
+                      <div>
+                        <Input type="number" className="h-9 text-sm" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
+                      </div>
+                      <div className="text-right font-medium text-sm">
+                        ${item.total.toLocaleString()}
+                      </div>
+                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <div>
-                      <Input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
-                    </div>
-                    <div>
-                      <Input type="number" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
-                    </div>
-                    <div className="text-right font-medium text-sm">
-                      ${item.total.toLocaleString()}
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-3 pt-6 border-t">
                 <div className="flex items-center justify-between">
-                  <Label>Detailed Work Scope (AI Assisted)</Label>
-                  <Button variant="ghost" size="sm" className="text-primary gap-2 h-8" onClick={handleGenerateScope} disabled={isGenerating}>
+                  <Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label>
+                  <Button variant="ghost" size="sm" className="text-primary gap-2 h-8 px-2 hover:bg-primary/5" onClick={handleGenerateScope} disabled={isGenerating}>
                     {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />}
                     Generate Professional Scope
                   </Button>
@@ -350,8 +389,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Textarea 
                   value={scopeDescription} 
                   onChange={(e) => setScopeDescription(e.target.value)} 
-                  placeholder={`Describe the ${serviceCategory.toLowerCase()} work in brief points...`}
-                  className="min-h-[150px]"
+                  placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work to be performed...`}
+                  className="min-h-[150px] text-sm leading-relaxed"
                 />
               </div>
             </CardContent>
@@ -359,56 +398,56 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         </div>
 
         <div className="space-y-6">
-          <Card className="shadow-lg border-primary/20 sticky top-8">
-            <CardHeader className="bg-primary/5">
+          <Card className="shadow-lg border-primary/20 sticky top-8 overflow-hidden">
+            <CardHeader className="bg-primary/5 py-4">
               <CardTitle className="text-lg">Pricing & Totals</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Labor Rate ($/hr)</Label>
-                  <Input type="number" value={laborRate} onChange={(e) => setLaborRate(Number(e.target.value))} />
+                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label>
+                  <Input type="number" className="h-10" value={laborRate} onChange={(e) => setLaborRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Estimated Labor Hours</Label>
-                  <Input type="number" value={laborHours} onChange={(e) => setLaborHours(Number(e.target.value))} />
+                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label>
+                  <Input type="number" className="h-10" value={laborHours} onChange={(e) => setLaborHours(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Material/Equipment Costs ($)</Label>
-                  <Input type="number" value={materialCosts} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
+                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label>
+                  <Input type="number" className="h-10" value={materialCosts} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-dashed">
+              <div className="space-y-3 pt-6 border-t border-dashed">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Items Total</span>
-                  <span>${items.reduce((acc, item) => acc + item.total, 0).toLocaleString()}</span>
+                  <span className="font-medium">${items.reduce((acc, item) => acc + item.total, 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Labor ({laborHours} hrs)</span>
-                  <span>${(laborHours * laborRate).toLocaleString()}</span>
+                  <span className="font-medium">${(laborHours * laborRate).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Materials</span>
-                  <span>${materialCosts.toLocaleString()}</span>
+                  <span className="font-medium">${materialCosts.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">${totals.subtotal.toLocaleString()}</span>
+                <div className="flex justify-between text-sm pt-2">
+                  <span className="text-muted-foreground font-semibold">Subtotal</span>
+                  <span className="font-bold">${totals.subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax ({taxRate}%)</span>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Tax ({taxRate}%)</span>
                   <span>${totals.taxTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-lg font-bold uppercase tracking-tighter">Grand Total</span>
-                  <span className="text-2xl font-extrabold text-primary">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20">
+                  <span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span>
+                  <span className="text-3xl font-black text-primary">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
-              <Button className="w-full gap-2 shadow-md h-12" size="lg" onClick={handleSave}>
+              <Button className="w-full gap-2 shadow-xl h-14 text-lg font-bold" size="lg" onClick={handleSave}>
                 <Save className="w-5 h-5" />
-                Save & Preview Quote
+                Preview & Save
               </Button>
             </CardContent>
           </Card>
