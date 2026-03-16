@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -9,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
-import { getCommonItems, getTemplates, saveClients, getClients } from "@/lib/store";
+import { getCommonItems, getTemplates, saveClients, saveTemplates } from "@/lib/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 
 type QuoteBuilderProps = {
   initialClients: Client[];
@@ -52,6 +52,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [scopeDescription, setScopeDescription] = useState(duplicateSource?.scopeDescription || "");
   const [isGenerating, setIsGenerating] = useState(false);
   
+  // Template Creation State
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+
   // Client Search/Select State
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -63,6 +67,22 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setCommonItems(getCommonItems());
     setTemplates(getTemplates());
   }, []);
+
+  // Auto-fill template based on category
+  useEffect(() => {
+    // Only auto-fill if the quote is fresh/empty
+    const isEmpty = items.length <= 1 && !items[0].description && !scopeDescription;
+    if (isEmpty && !duplicateSource) {
+      const matchingTemplate = templates.find(t => t.serviceCategory === serviceCategory);
+      if (matchingTemplate) {
+        applyTemplate(matchingTemplate);
+        toast({ 
+          title: "Template Auto-Applied", 
+          description: `Loaded ${matchingTemplate.name} for ${serviceCategory} category.` 
+        });
+      }
+    }
+  }, [serviceCategory, templates]);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
@@ -88,7 +108,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const removeItem = (id: string) => {
-    setItems(items.filter(item => item.id !== id));
+    if (items.length === 1) {
+      setItems([{ id: uuidv4(), description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    } else {
+      setItems(items.filter(item => item.id !== id));
+    }
   };
 
   const updateItem = (id: string, field: keyof QuoteItem, value: string | number) => {
@@ -122,7 +146,26 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setServiceCategory(template.serviceCategory);
     setScopeDescription(template.scopeDescription);
     setItems(template.items.map(i => ({ ...i, id: uuidv4() })));
-    toast({ title: "Template Applied", description: `Loaded: ${template.name}` });
+  };
+
+  const handleSaveAsTemplate = () => {
+    if (!newTemplateName.trim()) {
+      toast({ title: "Name Required", description: "Please give your template a name.", variant: "destructive" });
+      return;
+    }
+    const newTemplate: QuoteTemplate = {
+      id: uuidv4(),
+      name: newTemplateName,
+      serviceCategory,
+      items: items.map(({ id, ...rest }) => rest),
+      scopeDescription
+    };
+    const updated = [...templates, newTemplate];
+    saveTemplates(updated);
+    setTemplates(updated);
+    setIsTemplateDialogOpen(false);
+    setNewTemplateName("");
+    toast({ title: "Template Saved", description: `"${newTemplate.name}" is now in your library.` });
   };
 
   const handleQuickAddClient = () => {
@@ -198,24 +241,64 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           <Card className="shadow-sm border-primary/10">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <CardTitle className="text-xl">Quote Configuration</CardTitle>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
-                    <Copy className="w-4 h-4" /> Load Template
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-2" align="end">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
-                    {templates.map(t => (
-                      <Button key={t.id} variant="ghost" className="w-full justify-start text-sm" onClick={() => applyTemplate(t)}>
-                        {t.name}
-                      </Button>
-                    ))}
-                    {templates.length === 0 && <p className="text-xs text-center py-4">No templates found.</p>}
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
+                      <LayoutTemplate className="w-4 h-4" /> Save as Template
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Save as Template</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label>Template Name</Label>
+                        <Input 
+                          placeholder="e.g. Standard 3-Room Interior Paint" 
+                          value={newTemplateName} 
+                          onChange={(e) => setNewTemplateName(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        This will save the current items, category, and scope description for reuse.
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveAsTemplate}>Save Template</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
+                      <Copy className="w-4 h-4" /> Load Template
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="end">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
+                      <div className="max-h-64 overflow-y-auto">
+                        {templates.map(t => (
+                          <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto" onClick={() => {
+                            applyTemplate(t);
+                            toast({ title: "Template Applied", description: t.name });
+                          }}>
+                            <div className="text-left">
+                              <div className="font-medium">{t.name}</div>
+                              <div className="text-[10px] opacity-60">{t.serviceCategory}</div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                      {templates.length === 0 && <p className="text-xs text-center py-4 text-muted-foreground">No templates found.</p>}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
@@ -230,7 +313,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         className="w-full justify-between h-10 font-normal px-3"
                       >
                         {selectedClient ? (
-                          <div className="flex flex-col items-start truncate">
+                          <div className="flex flex-col items-start truncate text-left">
                             <span className="text-sm font-medium">{selectedClient.name}</span>
                             <span className="text-[10px] opacity-60 truncate">{selectedClient.email}</span>
                           </div>
@@ -318,7 +401,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Plus className="w-4 h-4" /> Add Item
               </Button>
             </CardHeader>
-            <CardContent className="space-y-8 pt-6">
+            <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
                 <div className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div>
@@ -375,6 +458,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       </Button>
                     </div>
                   ))}
+                </div>
+                
+                <div className="pt-4 flex justify-start">
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2 hover:bg-primary/5">
+                    <Plus className="w-4 h-4" /> Add Another Item
+                  </Button>
                 </div>
               </div>
 
