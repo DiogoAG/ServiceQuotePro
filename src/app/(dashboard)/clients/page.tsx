@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Edit2, Search } from "lucide-react";
+import { Plus, Trash2, Edit2, Search, Eye, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 export default function ClientsPage() {
   const { toast } = useToast();
@@ -20,6 +22,7 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [lastDeleted, setLastDeleted] = useState<Client | null>(null);
   
   // Form State
   const [formName, setFormName] = useState("");
@@ -68,10 +71,31 @@ export default function ClientsPage() {
   };
 
   const handleDelete = (id: string) => {
+    const clientToDelete = clients.find(c => c.id === id);
+    if (!clientToDelete) return;
+
+    setLastDeleted(clientToDelete);
     const updated = clients.filter(c => c.id !== id);
     setClients(updated);
     saveClients(updated);
-    toast({ title: "Client Removed" });
+
+    toast({ 
+      title: "Client Removed", 
+      description: `${clientToDelete.name} has been deleted.`,
+      action: (
+        <Button variant="outline" size="sm" onClick={() => handleUndo(clientToDelete)}>
+          <Undo2 className="w-4 h-4 mr-2" /> Undo
+        </Button>
+      )
+    });
+  };
+
+  const handleUndo = (client: Client) => {
+    const updated = [...getClients(), client];
+    setClients(updated);
+    saveClients(updated);
+    setLastDeleted(null);
+    toast({ title: "Restored", description: `${client.name} has been restored.` });
   };
 
   const handleEdit = (client: Client) => {
@@ -93,7 +117,7 @@ export default function ClientsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-          <p className="text-muted-foreground">Manage your directory of clients.</p>
+          <p className="text-muted-foreground">Manage your directory and view project history.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -149,8 +173,7 @@ export default function ClientsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>Contact Info</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -159,23 +182,54 @@ export default function ClientsPage() {
               {filteredClients.length > 0 ? (
                 filteredClients.map((client) => (
                   <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>{client.email}</TableCell>
-                    <TableCell>{client.phone}</TableCell>
-                    <TableCell>{client.address}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <span>{client.name}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{client.id.slice(0, 8)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <p>{client.email}</p>
+                        <p className="text-muted-foreground">{client.phone}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate">{client.address}</TableCell>
                     <TableCell className="text-right space-x-2">
+                      <Link href={`/clients/${client.id}`}>
+                        <Button variant="ghost" size="icon" title="View Profile & History">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(client)}>
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(client.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove <strong>{client.name}</strong> from your directory. You can undo this action immediately after.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(client.id)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     No clients found matching your search.
                   </TableCell>
                 </TableRow>

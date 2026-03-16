@@ -12,7 +12,8 @@ export const getClients = (): Client[] => {
   const stored = localStorage.getItem(CLIENTS_KEY);
   return stored ? JSON.parse(stored) : [
     { id: '1', name: 'John Smith', email: 'john@example.com', phone: '555-0101', address: '123 Oak St, Springfield' },
-    { id: '2', name: 'Sarah Miller', email: 'sarah@example.com', phone: '555-0102', address: '456 Maple Ave, Riverside' }
+    { id: '2', name: 'Sarah Miller', email: 'sarah@example.com', phone: '555-0102', address: '456 Maple Ave, Riverside' },
+    { id: '3', name: 'John Smith', email: 'jsmith.construction@example.com', phone: '555-9999', address: '789 Industrial Way' }
   ];
 };
 
@@ -51,10 +52,23 @@ export const getTemplates = (): QuoteTemplate[] => {
   return stored ? JSON.parse(stored) : [
     {
       id: 't1',
-      name: 'Standard Service Call',
-      serviceCategory: 'General Contracting',
-      items: [{ description: 'Basic Diagnostic / Service Fee', quantity: 1, unitPrice: 150, total: 150 }],
-      scopeDescription: 'Arrival on site, diagnostic assessment, and minor adjustments as needed.'
+      name: 'Standard Electrical Inspection',
+      serviceCategory: 'Electrical',
+      items: [
+        { description: 'Panel Inspection & Testing', quantity: 1, unitPrice: 150, total: 150 },
+        { description: 'Circuit Breaker Evaluation', quantity: 1, unitPrice: 75, total: 75 }
+      ],
+      scopeDescription: 'Comprehensive safety inspection of the main electrical panel, grounding system, and branch circuits.'
+    },
+    {
+      id: 't2',
+      name: 'Residential Plumbing Repair',
+      serviceCategory: 'Plumbing',
+      items: [
+        { description: 'Faucet/Fixture Repair Kit', quantity: 1, unitPrice: 45, total: 45 },
+        { description: 'Drain Clearing Service', quantity: 1, unitPrice: 120, total: 120 }
+      ],
+      scopeDescription: 'Diagnosis and repair of standard residential plumbing fixtures and drainage issues.'
     }
   ];
 };
@@ -67,10 +81,12 @@ export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   return stored ? JSON.parse(stored) : [
-    { id: 'i1', description: 'Labor - Standard Rate', defaultUnitPrice: 75 },
-    { id: 'i2', description: 'Service Call Fee', defaultUnitPrice: 125 },
-    { id: 'i3', description: 'Standard Parts & Materials', defaultUnitPrice: 0 },
-    { id: 'i4', description: 'Emergency Service Surcharge', defaultUnitPrice: 150 }
+    { id: 'i1', description: 'Labor - Master Electrician', defaultUnitPrice: 95 },
+    { id: 'i2', description: 'Labor - Journeyman Plumber', defaultUnitPrice: 85 },
+    { id: 'i3', description: 'Standard Service Call Fee', defaultUnitPrice: 125 },
+    { id: 'i4', description: 'Emergency After-Hours Rate', defaultUnitPrice: 185 },
+    { id: 'i5', description: 'GFI Outlet Replacement', defaultUnitPrice: 65 },
+    { id: 'i6', description: 'LED Recessed Lighting (Unit)', defaultUnitPrice: 110 }
   ];
 };
 
