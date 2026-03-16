@@ -9,44 +9,50 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function QuotesListPage() {
   const { toast } = useToast();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
 
   useEffect(() => {
     setQuotes(getQuotes());
     setClients(getClients());
   }, []);
 
-  const handleDelete = (id: string) => {
-    const quoteToDelete = quotes.find(q => q.id === id);
+  const handleDelete = () => {
     if (!quoteToDelete) return;
-
-    const updated = quotes.filter(q => q.id !== id);
+    const qId = quoteToDelete.id;
+    const qName = quoteToDelete.serviceCategory;
+    const updated = quotes.filter(q => q.id !== qId);
+    
     setQuotes(updated);
     saveQuotes(updated);
 
     toast({
       title: "Quote Deleted",
-      description: "Quote has been removed.",
+      description: `${qName} quote has been removed.`,
       action: (
-        <Button variant="outline" size="sm" onClick={() => handleUndo(quoteToDelete)}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            const currentQuotes = getQuotes();
+            const restored = [...currentQuotes, quoteToDelete];
+            setQuotes(restored);
+            saveQuotes(restored);
+            toast({ title: "Restored", description: "The quote has been restored." });
+          }}
+        >
           <Undo2 className="w-4 h-4 mr-2" /> Undo
         </Button>
       )
     });
-  };
-
-  const handleUndo = (quote: Quote) => {
-    const updated = [...getQuotes(), quote];
-    setQuotes(updated);
-    saveQuotes(updated);
-    toast({ title: "Restored", description: "The quote has been restored." });
+    setQuoteToDelete(null);
   };
 
   return (
@@ -123,24 +129,11 @@ export default function QuotesListPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground">
-                               <AlertDialog>
-                                <AlertDialogTrigger className="flex items-center w-full">
-                                  <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete this quote?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will remove the quote from your history. You can undo this for a short time.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(quote.id)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                               </AlertDialog>
+                            <DropdownMenuItem 
+                              className="text-destructive cursor-pointer"
+                              onSelect={() => setQuoteToDelete(quote)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -165,6 +158,21 @@ export default function QuotesListPage() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong> from your history. You can undo this action immediately after.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

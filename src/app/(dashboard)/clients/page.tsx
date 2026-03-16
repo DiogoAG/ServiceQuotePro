@@ -22,7 +22,6 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [lastDeleted, setLastDeleted] = useState<Client | null>(null);
   
   // Form State
   const [formName, setFormName] = useState("");
@@ -74,7 +73,6 @@ export default function ClientsPage() {
     const clientToDelete = clients.find(c => c.id === id);
     if (!clientToDelete) return;
 
-    setLastDeleted(clientToDelete);
     const updated = clients.filter(c => c.id !== id);
     setClients(updated);
     saveClients(updated);
@@ -83,19 +81,21 @@ export default function ClientsPage() {
       title: "Client Removed", 
       description: `${clientToDelete.name} has been deleted.`,
       action: (
-        <Button variant="outline" size="sm" onClick={() => handleUndo(clientToDelete)}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            const currentClients = getClients();
+            const restored = [...currentClients, clientToDelete];
+            setClients(restored);
+            saveClients(restored);
+            toast({ title: "Restored", description: `${clientToDelete.name} has been restored.` });
+          }}
+        >
           <Undo2 className="w-4 h-4 mr-2" /> Undo
         </Button>
       )
     });
-  };
-
-  const handleUndo = (client: Client) => {
-    const updated = [...getClients(), client];
-    setClients(updated);
-    saveClients(updated);
-    setLastDeleted(null);
-    toast({ title: "Restored", description: `${client.name} has been restored.` });
   };
 
   const handleEdit = (client: Client) => {
