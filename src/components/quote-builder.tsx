@@ -684,7 +684,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     onClick={handleGenerateScope} 
                     disabled={isGenerating}
                   >
-                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />} 
+                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-primary" />} 
                     Generate Professional Scope
                   </Button>
                 </div>
