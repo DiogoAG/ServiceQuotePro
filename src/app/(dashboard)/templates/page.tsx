@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { QuoteTemplate, CommonItem } from "@/lib/types";
 import { getTemplates, saveTemplates, getCommonItems, saveCommonItems } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -41,6 +41,7 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [searchItem, setSearchItem] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(SERVICE_CATEGORIES);
   const isInitialMount = useRef(true);
   const undoStack = useRef<{ type: 'item' | 'template', data: any }[]>([]);
 
@@ -61,9 +62,8 @@ export default function TemplatesPage() {
       // Hardcoded items always stay
       if (item.isHardCoded) return true;
       
-      // A custom item must have at least a description to be saved
-      const hasDescription = item.description && item.description.trim().length > 0;
-      return hasDescription;
+      // A custom item must have a description to be saved
+      return item.description && item.description.trim().length > 0;
     });
 
     saveCommonItems(validItems);
@@ -134,7 +134,6 @@ export default function TemplatesPage() {
           variant="outline" 
           size="sm" 
           onClick={() => {
-            // Remove from stack to avoid double undo
             undoStack.current = undoStack.current.filter(a => a.type === 'item' && a.data.id !== id);
             setCommonItems(prev => [...prev, itemToRemove]);
             toast({ title: "Restored", description: "The item has been restored." });
@@ -178,14 +177,16 @@ export default function TemplatesPage() {
     });
   };
 
-  const filteredItems = commonItems.filter(i => {
-    const desc = (i.description || "").toLowerCase();
-    const cat = (i.category || "").toLowerCase();
-    const search = searchItem.toLowerCase();
-    return desc.includes(search) || cat.includes(search);
-  });
+  const filteredItems = useMemo(() => {
+    return commonItems.filter(i => {
+      const desc = (i.description || "").toLowerCase();
+      const cat = (i.category || "").toLowerCase();
+      const search = searchItem.toLowerCase();
+      return desc.includes(search) || cat.includes(search);
+    });
+  }, [commonItems, searchItem]);
 
-  const getItemsForCategory = (category: string) => {
+  const getItemsForCategory = useCallback((category: string) => {
     if (category === "Painting") {
       return PAINTING_SUBCATEGORIES.map(sub => ({
         subName: sub,
@@ -196,6 +197,14 @@ export default function TemplatesPage() {
       subName: null,
       items: filteredItems.filter(i => i.category === category)
     }];
+  }, [filteredItems]);
+
+  const toggleAllCategories = (expand: boolean) => {
+    if (expand) {
+      setExpandedCategories(SERVICE_CATEGORIES);
+    } else {
+      setExpandedCategories([]);
+    }
   };
 
   return (
@@ -203,8 +212,8 @@ export default function TemplatesPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Templates & Items</h1>
-          <p className="text-muted-foreground text-sm flex items-center gap-2">
-            Manage your professional library.
+          <p className="text-muted-foreground text-sm">
+            Manage your professional service library.
           </p>
         </div>
         <div className="flex gap-2">
@@ -229,22 +238,49 @@ export default function TemplatesPage() {
         <TabsContent value="common-items" className="space-y-6">
           <Card className="border-none shadow-sm">
             <CardHeader className="pb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search standard items..." 
-                  value={searchItem} 
-                  onChange={(e) => setSearchItem(e.target.value)} 
-                  className="pl-10 h-11 bg-muted/30 border-none shadow-none focus-visible:ring-1" 
-                />
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search standard items..." 
+                    value={searchItem} 
+                    onChange={(e) => setSearchItem(e.target.value)} 
+                    className="pl-10 h-11 bg-muted/30 border-none shadow-none focus-visible:ring-1" 
+                  />
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2 text-xs"
+                    onClick={() => toggleAllCategories(true)}
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" /> Expand All
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="gap-2 text-xs"
+                    onClick={() => toggleAllCategories(false)}
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" /> Collapse All
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Accordion type="multiple" defaultValue={SERVICE_CATEGORIES} className="space-y-4">
+              <Accordion 
+                type="multiple" 
+                value={expandedCategories} 
+                onValueChange={setExpandedCategories}
+                className="space-y-4"
+              >
                 {SERVICE_CATEGORIES.map(category => {
                   const groups = getItemsForCategory(category);
                   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0);
                   
+                  if (totalItems === 0 && searchItem.trim() !== "") return null;
+
                   return (
                     <AccordionItem key={category} value={category} className="border rounded-xl overflow-hidden px-4">
                       <AccordionTrigger className="hover:no-underline py-4">
