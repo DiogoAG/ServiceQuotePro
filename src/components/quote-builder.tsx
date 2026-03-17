@@ -43,7 +43,7 @@ const SERVICE_CATEGORIES = [
 // Helper for rounding to 2 decimals for final calculations
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
-// Helper to truncate string to 2 decimals as user types (cutting off, not rounding)
+// Helper to truncate string to 2 decimals as user types
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');
@@ -79,9 +79,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       clientId: preSelectedClientId || draft?.clientId || "",
       serviceCategory: draft?.serviceCategory || "General Contracting",
       items: draft?.items.map(i => ({ ...i, id: i.id || uuidv4() })) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }],
-      laborHours: draft?.laborHours || 0,
+      laborHours: draft?.laborHours ?? 0,
       laborRate: initialProfile.defaultLaborRate,
-      materialCosts: draft?.materialCosts || 0,
+      materialCosts: draft?.materialCosts ?? 0,
       taxRate: initialProfile.defaultTaxRate,
       notes: draft?.notes || "",
       scopeDescription: draft?.scopeDescription || ""
@@ -518,12 +518,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_100px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_80px_110px_130px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div>Qty</div><div>Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_100px_120px_100px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_110px_130px_100px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item..." className="pr-8 h-9 text-sm" />
                         <Popover>
