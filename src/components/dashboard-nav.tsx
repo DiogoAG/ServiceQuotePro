@@ -65,7 +65,7 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
               <FileText className="text-white w-6 h-6" />
             </div>
             {!isFolded && (
-              <span className="font-bold text-xl tracking-tight text-primary truncate">ServiceQuotePro</span>
+              <span className="font-bold text-xl tracking-tight text-primary whitespace-nowrap">ServiceQuotePro</span>
             )}
           </Link>
         </div>
