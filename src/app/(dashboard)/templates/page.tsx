@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { QuoteTemplate, CommonItem } from "@/lib/types";
 import { getTemplates, saveTemplates, getCommonItems, saveCommonItems } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ export default function TemplatesPage() {
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [searchItem, setSearchItem] = useState("");
   const isInitialMount = useRef(true);
+  const undoStack = useRef<{ type: 'item' | 'template', data: any }[]>([]);
 
   useEffect(() => {
     setTemplates(getTemplates());
@@ -55,17 +56,52 @@ export default function TemplatesPage() {
       return;
     }
     
-    // Filter out invalid items before saving to library
+    // Filter out completely empty rows before saving to library
     const validItems = commonItems.filter(item => {
-      // Hardcoded items stay
+      // Hardcoded items always stay
       if (item.isHardCoded) return true;
       
-      // User must provide at least an item description for it to be saved to the library
-      return item.description && item.description.trim().length > 0;
+      // A custom item must have at least a description to be saved
+      const hasDescription = item.description && item.description.trim().length > 0;
+      return hasDescription;
     });
 
     saveCommonItems(validItems);
   }, [commonItems]);
+
+  const undoLastAction = useCallback(() => {
+    const lastAction = undoStack.current.pop();
+    if (!lastAction) return;
+
+    if (lastAction.type === 'item') {
+      const item = lastAction.data as CommonItem;
+      setCommonItems(prev => [...prev, item]);
+      toast({ title: "Restored", description: `"${item.description || 'Custom Item'}" has been restored.` });
+    } else if (lastAction.type === 'template') {
+      const template = lastAction.data as QuoteTemplate;
+      setTemplates(prev => {
+        const updated = [...prev, template];
+        saveTemplates(updated);
+        return updated;
+      });
+      toast({ title: "Restored", description: `"${template.name}" has been restored.` });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        const activeElement = document.activeElement;
+        const isInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+        if (!isInput) {
+          e.preventDefault();
+          undoLastAction();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoLastAction]);
 
   const handleAddCommonItem = (category: string) => {
     const newItem: CommonItem = { 
@@ -88,6 +124,7 @@ export default function TemplatesPage() {
     if (!itemToRemove) return;
 
     setCommonItems(prev => prev.filter(i => i.id !== id));
+    undoStack.current.push({ type: 'item', data: itemToRemove });
     
     toast({ 
       title: "Item Removed", 
@@ -97,6 +134,8 @@ export default function TemplatesPage() {
           variant="outline" 
           size="sm" 
           onClick={() => {
+            // Remove from stack to avoid double undo
+            undoStack.current = undoStack.current.filter(a => a.type === 'item' && a.data.id !== id);
             setCommonItems(prev => [...prev, itemToRemove]);
             toast({ title: "Restored", description: "The item has been restored." });
           }}
@@ -114,6 +153,7 @@ export default function TemplatesPage() {
     const updated = templates.filter(t => t.id !== id);
     setTemplates(updated);
     saveTemplates(updated);
+    undoStack.current.push({ type: 'template', data: templateToRemove });
 
     toast({ 
       title: "Template Removed", 
@@ -123,10 +163,12 @@ export default function TemplatesPage() {
           variant="outline" 
           size="sm" 
           onClick={() => {
-            const currentTemplates = getTemplates();
-            const restored = [...currentTemplates, templateToRemove];
-            setTemplates(restored);
-            saveTemplates(restored);
+            undoStack.current = undoStack.current.filter(a => a.type === 'template' && a.data.id !== id);
+            setTemplates(prev => {
+              const restored = [...prev, templateToRemove];
+              saveTemplates(restored);
+              return restored;
+            });
             toast({ title: "Restored", description: "The template has been restored." });
           }}
         >

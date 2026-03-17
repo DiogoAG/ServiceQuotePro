@@ -43,6 +43,7 @@ const SERVICE_CATEGORIES = [
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
   const { toast } = useToast();
   const isInitialMount = useRef(true);
+  const deletedStack = useRef<QuoteItem[]>([]);
   
   // Initialization logic: Source (Reuse) > Draft > Default
   const getInitialState = useCallback(() => {
@@ -156,6 +157,44 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
   };
 
+  const restoreItem = useCallback((item: QuoteItem) => {
+    setItems(prev => {
+      // If the only item is a single empty placeholder, replace it
+      if (prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0)) {
+        return [item];
+      }
+      return [...prev, item];
+    });
+    // Remove it from the stack if it was there to prevent double undo
+    deletedStack.current = deletedStack.current.filter(i => i.id !== item.id);
+  }, []);
+
+  const undoLastDelete = useCallback(() => {
+    const lastItem = deletedStack.current.pop();
+    if (lastItem) {
+      restoreItem(lastItem);
+      toast({ 
+        title: "Restored", 
+        description: `"${lastItem.description || 'Service Item'}" has been restored.` 
+      });
+    }
+  }, [restoreItem, toast]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        const activeElement = document.activeElement;
+        const isInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+        if (!isInput) {
+          e.preventDefault();
+          undoLastDelete();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoLastDelete]);
+
   const removeItem = (id: string) => {
     const itemToRemove = items.find(item => item.id === id);
     if (!itemToRemove) return;
@@ -169,8 +208,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       setItems(items.filter(item => item.id !== id));
     }
 
-    // Only show undo for items that actually had content
+    // Only show undo and stack for items that actually had content
     if (!isEmpty) {
+      deletedStack.current.push(itemToRemove);
       toast({
         title: "Item Removed",
         description: `"${itemToRemove.description || 'Service Item'}" has been removed.`,
@@ -179,13 +219,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             variant="outline" 
             size="sm" 
             onClick={() => {
-              setItems(prev => {
-                // If the only item is a single empty placeholder, replace it
-                if (prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0)) {
-                  return [itemToRemove];
-                }
-                return [...prev, itemToRemove];
-              });
+              restoreItem(itemToRemove);
               toast({ title: "Restored", description: "The item has been restored." });
             }}
           >
@@ -312,7 +346,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         toast({ title: "Description Required", description: "All service items must have a description.", variant: "destructive" });
         return;
       }
-      // Only require price for custom (non-standard) items
+      // Custom items must have a price > 0
       if (!item.isHardCoded && (!item.unitPrice || item.unitPrice <= 0)) {
         toast({ title: "Price Required", description: `"${item.description}" requires a valid price.`, variant: "destructive" });
         return;
