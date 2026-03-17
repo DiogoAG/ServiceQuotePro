@@ -35,6 +35,9 @@ const PAINTING_SUBCATEGORIES = [
   "Additional Services"
 ];
 
+// Helper for rounding to 2 decimals
+const roundToCent = (val: number) => Math.round(val * 100) / 100;
+
 export default function TemplatesPage() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
@@ -115,7 +118,11 @@ export default function TemplatesPage() {
   };
 
   const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
-    setCommonItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    let finalValue = value;
+    if (field === 'defaultUnitPrice') {
+      finalValue = roundToCent(Number(value) || 0);
+    }
+    setCommonItems(prev => prev.map(item => item.id === id ? { ...item, [field]: finalValue } : item));
   };
 
   const handleRemoveCommonItem = (id: string) => {
@@ -278,7 +285,7 @@ export default function TemplatesPage() {
                   const groups = getItemsForCategory(category);
                   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0);
                   
-                  if (totalItems === 0 && searchItem.trim() !== "") return null;
+                  if (totalItems === 0) return null;
 
                   return (
                     <AccordionItem key={category} value={category} className="border rounded-xl overflow-hidden px-4">
@@ -336,7 +343,7 @@ export default function TemplatesPage() {
                                       type="number" 
                                       step="1.0"
                                       value={item.defaultUnitPrice || ""} 
-                                      onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', Number(e.target.value))} 
+                                      onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', e.target.value)} 
                                       className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
                                       placeholder="0.00"
                                     />

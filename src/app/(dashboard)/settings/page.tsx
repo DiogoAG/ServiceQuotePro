@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Save, Building } from "lucide-react";
 
+// Helper for rounding to 2 decimals
+const roundToCent = (val: number) => Math.round(val * 100) / 100;
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<BusinessProfile>({
@@ -82,7 +85,7 @@ export default function SettingsPage() {
                   type="number"
                   step="1.0"
                   value={profile.defaultTaxRate} 
-                  onChange={(e) => setProfile({...profile, defaultTaxRate: Number(e.target.value)})}
+                  onChange={(e) => setProfile({...profile, defaultTaxRate: roundToCent(Number(e.target.value))})}
                 />
               </div>
               <div className="space-y-2">
@@ -92,7 +95,7 @@ export default function SettingsPage() {
                   type="number"
                   step="1.0"
                   value={profile.defaultLaborRate} 
-                  onChange={(e) => setProfile({...profile, defaultLaborRate: Number(e.target.value)})}
+                  onChange={(e) => setProfile({...profile, defaultLaborRate: roundToCent(Number(e.target.value))})}
                 />
               </div>
             </div>
