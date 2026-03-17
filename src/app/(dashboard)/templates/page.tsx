@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -335,6 +334,7 @@ export default function TemplatesPage() {
                                     />
                                     <Input 
                                       type="number" 
+                                      step="1.0"
                                       value={item.defaultUnitPrice || ""} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', Number(e.target.value))} 
                                       className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 

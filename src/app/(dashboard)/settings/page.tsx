@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -80,7 +79,8 @@ export default function SettingsPage() {
                 <Label htmlFor="taxRate">Default Tax Rate (%)</Label>
                 <Input 
                   id="taxRate" 
-                  type="number" 
+                  type="number"
+                  step="1.0"
                   value={profile.defaultTaxRate} 
                   onChange={(e) => setProfile({...profile, defaultTaxRate: Number(e.target.value)})}
                 />
@@ -89,7 +89,8 @@ export default function SettingsPage() {
                 <Label htmlFor="laborRate">Default Labor Rate ($/hour)</Label>
                 <Input 
                   id="laborRate" 
-                  type="number" 
+                  type="number"
+                  step="1.0"
                   value={profile.defaultLaborRate} 
                   onChange={(e) => setProfile({...profile, defaultLaborRate: Number(e.target.value)})}
                 />
