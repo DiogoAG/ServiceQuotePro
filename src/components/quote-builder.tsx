@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -9,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate, ChevronRight, Undo2, X } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -45,11 +44,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const isInitialMount = useRef(true);
   const deletedStack = useRef<QuoteItem[]>([]);
   
-  // Initialization logic: Source (Reuse) > Draft > Default
   const getInitialState = useCallback(() => {
     const draft = getDraftQuote();
     
-    // If duplicating, that takes highest precedence
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
@@ -64,16 +61,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       };
     }
     
-    // If draft exists, use it
     if (draft) {
       return {
         ...draft,
-        clientId: preSelectedClientId || draft.clientId || "", // Respect preselected client even if in draft
+        clientId: preSelectedClientId || draft.clientId || "",
         items: draft.items.map(i => ({ ...i, id: i.id || uuidv4() }))
       };
     }
     
-    // Defaults
     return {
       clientId: preSelectedClientId || "",
       serviceCategory: "General Contracting",
@@ -108,7 +103,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
 
-  // New Client Dialog State
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
@@ -120,7 +114,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setTemplates(getTemplates());
   }, []);
 
-  // Draft Auto-Save logic
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -144,7 +137,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
   const filteredClients = useMemo(() => {
-    if (!clientSearch) return clients;
+    if (!clientSearch.trim()) return [];
     return clients.filter(c => 
       c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
       c.email.toLowerCase().includes(clientSearch.toLowerCase())
@@ -317,7 +310,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setIsNewClientDialogOpen(false);
     setClientSearch("");
     
-    // Reset form
     setNewClientName("");
     setNewClientEmail("");
     setNewClientPhone("");
@@ -409,11 +401,38 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return categories;
   }, [commonItems]);
 
+  const PAINTING_SUBCATEGORIES = [
+    "Painting - Interior Painting",
+    "Painting - Exterior Painting",
+    "Painting - Surface Preparation",
+    "Painting - Specialty Painting Services",
+    "Painting - Additional Services"
+  ];
+
+  const organizedCommonItems = useMemo(() => {
+    const mainCategories = SERVICE_CATEGORIES.filter(c => c !== "Painting");
+    const result: { category: string; items: CommonItem[] }[] = [];
+
+    mainCategories.forEach(cat => {
+      if (commonItemsByCategory[cat]) {
+        result.push({ category: cat, items: commonItemsByCategory[cat] });
+      }
+    });
+
+    PAINTING_SUBCATEGORIES.forEach(sub => {
+      if (commonItemsByCategory[sub]) {
+        result.push({ category: sub, items: commonItemsByCategory[sub] });
+      }
+    });
+
+    return result;
+  }, [commonItemsByCategory]);
+
   return (
     <div className="space-y-8 pb-12">
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-sm border-primary/10">
+          <Card className="shadow-sm border-primary/10 overflow-visible">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <CardTitle className="text-xl">Quote Configuration</CardTitle>
               <div className="flex gap-2">
@@ -470,36 +489,45 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end overflow-visible">
+                <div className="space-y-2 relative">
                   <Label>Client Search & Selection</Label>
                   <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <div className="relative group">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <Input
-                          placeholder="Search clients by name or email..."
-                          className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all"
-                          value={clientSearch}
-                          onChange={(e) => {
-                            setClientSearch(e.target.value);
+                    <div className="relative group">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none" />
+                      <Input
+                        placeholder="Search clients..."
+                        className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all"
+                        value={clientSearch}
+                        onChange={(e) => {
+                          setClientSearch(e.target.value);
+                          if (e.target.value.trim().length > 0) {
                             setIsClientPopoverOpen(true);
-                          }}
-                          onFocus={() => setIsClientPopoverOpen(true)}
-                        />
-                        {selectedClient && !clientSearch && (
-                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary">
-                            <span className="truncate max-w-[100px]">{selectedClient.name}</span>
-                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.stopPropagation(); setClientId(""); }} />
-                          </div>
-                        )}
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[340px] p-0" align="start">
-                      <div className="p-2 border-b bg-muted/30">
-                        <p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Search Results</p>
-                      </div>
-                      <ScrollArea className="h-[280px]">
+                          }
+                        }}
+                        onFocus={() => {
+                          if (clientSearch.trim().length > 0) {
+                            setIsClientPopoverOpen(true);
+                          }
+                        }}
+                      />
+                      {selectedClient && (
+                        <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary">
+                          <span className="truncate max-w-[120px]">{selectedClient.name}</span>
+                          <X className="w-3 h-3 cursor-pointer hover:text-primary/70" onClick={() => { setClientId(""); setClientSearch(""); }} />
+                        </div>
+                      )}
+                    </div>
+                    <PopoverTrigger className="hidden" />
+                    <PopoverContent 
+                      className="w-[var(--radix-popover-trigger-width)] p-0" 
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <ScrollArea className="max-h-[300px]">
+                        <div className="p-2 border-b bg-muted/30">
+                          <p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Results</p>
+                        </div>
                         {filteredClients.map((c) => (
                           <Button
                             key={c.id}
@@ -510,8 +538,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             )}
                             onClick={() => {
                               setClientId(c.id);
-                              setIsClientPopoverOpen(false);
                               setClientSearch("");
+                              setIsClientPopoverOpen(false);
                             }}
                           >
                             <div className="flex flex-col items-start w-full gap-0.5">
@@ -523,21 +551,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             </div>
                           </Button>
                         ))}
-                        {filteredClients.length === 0 && (
-                          <div className="p-4 text-center">
-                            <p className="text-sm text-muted-foreground mb-4">No clients found matching "{clientSearch}"</p>
-                            <Button variant="outline" size="sm" className="w-full gap-2 text-primary border-primary/20 hover:bg-primary/5" onClick={handleOpenNewClientDialog}>
-                              <UserPlus className="h-4 w-4" /> Create New Client
-                            </Button>
-                          </div>
-                        )}
-                        {filteredClients.length > 0 && clientSearch && (
-                          <div className="p-2 border-t mt-1">
-                            <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
-                              <UserPlus className="h-3.5 w-3.5" /> Not seeing them? Create new client
-                            </Button>
-                          </div>
-                        )}
+                        <div className="p-2">
+                          <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
+                            <UserPlus className="h-3.5 w-3.5" /> 
+                            {filteredClients.length === 0 ? "No results. Create new client" : "Not seeing them? Create new"}
+                          </Button>
+                        </div>
                       </ScrollArea>
                     </PopoverContent>
                   </Popover>
@@ -560,7 +579,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             </CardContent>
           </Card>
 
-          {/* New Client Dialog */}
           <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
@@ -568,11 +586,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-name">Full Name</Label>
+                  <Label htmlFor="new-name">Full Name *</Label>
                   <Input id="new-name" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="e.g. John Doe" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-email">Email Address</Label>
+                  <Label htmlFor="new-email">Email Address *</Label>
                   <Input id="new-email" type="email" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} placeholder="e.g. john@example.com" />
                 </div>
                 <div className="space-y-2">
@@ -625,7 +643,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           <PopoverContent className="w-80 p-2" align="start">
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
                             <ScrollArea className="h-72">
-                              {Object.entries(commonItemsByCategory).map(([category, libItems]) => (
+                              {organizedCommonItems.map(({ category, items: libItems }) => (
                                 <div key={category} className="mb-4 last:mb-0 px-1">
                                   <div className="flex items-center gap-1.5 mb-1">
                                     <ChevronRight className="w-2.5 h-2.5 text-primary/40" />
