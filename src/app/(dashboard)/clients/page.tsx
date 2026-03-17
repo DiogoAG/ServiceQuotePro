@@ -107,10 +107,15 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClients = clients.filter(c => {
+    const term = searchTerm.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(term) || 
+      c.email.toLowerCase().includes(term) ||
+      (c.phone && c.phone.toLowerCase().includes(term)) ||
+      (c.address && c.address.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="space-y-8">
@@ -161,7 +166,7 @@ export default function ClientsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search clients by name or email..." 
+              placeholder="Search by name, email, phone, or address..." 
               className="pl-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

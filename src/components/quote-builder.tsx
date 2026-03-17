@@ -141,9 +141,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return [];
+    const term = clientSearch.toLowerCase();
     return clients.filter(c => 
-      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-      c.email.toLowerCase().includes(clientSearch.toLowerCase())
+      c.name.toLowerCase().includes(term) ||
+      c.email.toLowerCase().includes(term) ||
+      (c.phone && c.phone.toLowerCase().includes(term)) ||
+      (c.address && c.address.toLowerCase().includes(term))
     );
   }, [clients, clientSearch]);
 
@@ -451,7 +454,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <PopoverTrigger asChild>
                       <div className="relative group w-full">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
-                        <Input placeholder="Search clients..." className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} onFocus={() => { if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} />
+                        <Input placeholder="Search by name, email, phone, or address..." className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} onFocus={() => { if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} />
                         {selectedClient && !clientSearch && (
                           <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
                             <span className="truncate max-w-[120px]">{selectedClient.name}</span>
