@@ -15,13 +15,14 @@ import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
-const PAINTING_SUBCATEGORIES = [
-  "Interior Painting",
-  "Exterior Painting",
-  "Surface Preparation",
-  "Specialty Painting Services",
-  "Additional Services"
-];
+const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
+  "General Contracting": ["Site Prep & Protection", "Management & Permits", "Cleanup & Disposal"],
+  "Electrical": ["Installation", "Repair & Maintenance", "Upgrades"],
+  "Plumbing": ["Fixtures & Fittings", "Piping & Leaks", "Water Heaters", "Drainage"],
+  "HVAC": ["Cooling", "Heating", "Air Quality & Maintenance"],
+  "Landscaping": ["Maintenance", "Hardscaping", "Softscaping & Planting"],
+  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"]
+};
 
 // Strict 2-decimal truncation helper (no rounding)
 const truncateToTwoDecimals = (value: string) => {
@@ -188,10 +189,10 @@ export default function TemplatesPage() {
   }, [commonItems, searchItem]);
 
   const getItemsForCategory = useCallback((category: string) => {
-    if (category === "Painting") {
-      return PAINTING_SUBCATEGORIES.map(sub => ({
+    if (SERVICE_SUBCATEGORIES[category]) {
+      return SERVICE_SUBCATEGORIES[category].map(sub => ({
         subName: sub,
-        items: filteredItems.filter(i => i.category === `Painting - ${sub}`)
+        items: filteredItems.filter(i => i.category === `${category} - ${sub}`)
       })).filter(g => g.items.length > 0);
     }
     const items = filteredItems.filter(i => i.category === category);
@@ -362,7 +363,7 @@ export default function TemplatesPage() {
                                 variant="ghost" 
                                 size="sm" 
                                 className="w-full border border-dashed text-muted-foreground h-10 hover:bg-muted/50 hover:text-primary transition-colors" 
-                                onClick={() => handleAddCommonItem(group.subName ? `Painting - ${group.subName}` : category)}
+                                onClick={() => handleAddCommonItem(group.subName ? `${category} - ${group.subName}` : category)}
                               >
                                 <Plus className="w-4 h-4 mr-2" /> Add Custom Item
                               </Button>

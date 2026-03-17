@@ -27,6 +27,15 @@ type QuoteBuilderProps = {
   duplicateSource?: Quote;
 };
 
+const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
+  "General Contracting": ["Site Prep & Protection", "Management & Permits", "Cleanup & Disposal"],
+  "Electrical": ["Installation", "Repair & Maintenance", "Upgrades"],
+  "Plumbing": ["Fixtures & Fittings", "Piping & Leaks", "Water Heaters", "Drainage"],
+  "HVAC": ["Cooling", "Heating", "Air Quality & Maintenance"],
+  "Landscaping": ["Maintenance", "Hardscaping", "Softscaping & Planting"],
+  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"]
+};
+
 // Helper for rounding to 2 decimals for final storage/totals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
@@ -360,11 +369,24 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(item);
     });
-    const mainCategories = SERVICE_CATEGORIES.filter(c => c !== "Painting");
-    const PAINTING_SUBCATEGORIES = ["Painting - Interior Painting", "Painting - Exterior Painting", "Painting - Surface Preparation", "Painting - Specialty Painting Services", "Painting - Additional Services"];
+
     const result: { category: string; items: CommonItem[] }[] = [];
-    mainCategories.forEach(cat => { if (categories[cat]) result.push({ category: cat, items: categories[cat] }); });
-    PAINTING_SUBCATEGORIES.forEach(sub => { if (categories[sub]) result.push({ category: sub, items: categories[sub] }); });
+    
+    SERVICE_CATEGORIES.forEach(mainCat => {
+      if (SERVICE_SUBCATEGORIES[mainCat]) {
+        SERVICE_SUBCATEGORIES[mainCat].forEach(sub => {
+          const fullCatName = `${mainCat} - ${sub}`;
+          if (categories[fullCatName]) {
+            result.push({ category: fullCatName, items: categories[fullCatName] });
+          }
+        });
+      } else {
+        if (categories[mainCat]) {
+          result.push({ category: mainCat, items: categories[mainCat] });
+        }
+      }
+    });
+
     return result;
   }, [commonItems]);
 
@@ -506,12 +528,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_70px_80px_100px_90px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_70px_80px_100px_90px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item description..." className="pr-8 h-9 text-sm" />
                         <Popover>
