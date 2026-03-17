@@ -41,13 +41,13 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
   return (
     <TooltipProvider delayDuration={0}>
       {/* Mobile Toggle */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b bg-card">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-            <FileText className="text-white w-5 h-5" />
+      <div className="md:hidden flex items-center justify-between p-4 border-b bg-card sticky top-0 z-50">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shrink-0">
+            <FileText className="text-white w-6 h-6" />
           </div>
-          <span className="font-bold text-lg tracking-tight">ServiceQuotePro</span>
-        </div>
+          <span className="font-bold text-xl tracking-tight text-primary whitespace-nowrap">ServiceQuotePro</span>
+        </Link>
         <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? <X /> : <Menu />}
         </Button>
