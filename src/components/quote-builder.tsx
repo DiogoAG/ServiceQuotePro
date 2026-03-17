@@ -111,6 +111,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [clientSearch, setClientSearch] = useState("");
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
+  const [templateSearch, setTemplateSearch] = useState("");
 
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -369,6 +370,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     onSave(newQuote);
   };
 
+  const filteredTemplates = useMemo(() => {
+    const search = templateSearch.toLowerCase();
+    return templates.filter(t => 
+      t.name.toLowerCase().includes(search) || 
+      t.serviceCategory.toLowerCase().includes(search)
+    );
+  }, [templates, templateSearch]);
+
   const organizedCommonItems = useMemo(() => {
     const categories: Record<string, CommonItem[]> = {};
     commonItems.forEach(item => {
@@ -445,26 +454,42 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Popover>
+                <Popover onOpenChange={(open) => !open && setTemplateSearch("")}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
                       <Copy className="w-4 h-4" /> Load Template
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-64 p-2" align="end">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Saved Templates</p>
+                  <PopoverContent className="w-72 p-0" align="end">
+                    <div className="flex flex-col">
+                      <div className="p-3 border-b bg-muted/20">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input 
+                            placeholder="Search templates..." 
+                            className="pl-8 h-8 text-xs bg-background" 
+                            value={templateSearch} 
+                            onChange={(e) => setTemplateSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
                       <ScrollArea className="h-64">
-                        {templates.map(t => (
-                          <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto" onClick={() => applyTemplate(t)}>
-                            <div className="text-left">
-                              <div className="font-medium">{t.name}</div>
-                              <div className="text-[10px] opacity-60">{t.serviceCategory}</div>
-                            </div>
-                          </Button>
-                        ))}
+                        <div className="p-2 space-y-1">
+                          {filteredTemplates.map(t => (
+                            <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto rounded-md" onClick={() => applyTemplate(t)}>
+                              <div className="text-left overflow-hidden">
+                                <div className="font-medium truncate">{t.name}</div>
+                                <div className="text-[10px] opacity-60 uppercase font-bold tracking-tight">{t.serviceCategory}</div>
+                              </div>
+                            </Button>
+                          ))}
+                          {filteredTemplates.length === 0 && (
+                            <p className="text-xs text-center py-8 text-muted-foreground">
+                              {templates.length === 0 ? "No templates saved." : "No matches found."}
+                            </p>
+                          )}
+                        </div>
                       </ScrollArea>
-                      {templates.length === 0 && <p className="text-xs text-center py-4 text-muted-foreground">No templates found.</p>}
                     </div>
                   </PopoverContent>
                 </Popover>

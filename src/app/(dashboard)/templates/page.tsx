@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -44,6 +44,7 @@ export default function TemplatesPage() {
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [searchItem, setSearchItem] = useState("");
+  const [searchTemplate, setSearchTemplate] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const isInitialMount = useRef(true);
   const undoStack = useRef<{ type: 'item' | 'template', data: any }[]>([]);
@@ -202,6 +203,14 @@ export default function TemplatesPage() {
     });
   }, [commonItems, searchItem]);
 
+  const filteredTemplates = useMemo(() => {
+    const search = searchTemplate.toLowerCase();
+    return templates.filter(t => 
+      t.name.toLowerCase().includes(search) || 
+      t.serviceCategory.toLowerCase().includes(search)
+    );
+  }, [templates, searchTemplate]);
+
   const getItemsForCategory = useCallback((category: string) => {
     if (SERVICE_SUBCATEGORIES[category]) {
       return SERVICE_SUBCATEGORIES[category].map(sub => ({
@@ -273,6 +282,16 @@ export default function TemplatesPage() {
                     onChange={(e) => setSearchItem(e.target.value)} 
                     className="pl-10 h-11 bg-muted/30 border-none shadow-none focus-visible:ring-1" 
                   />
+                  {searchItem && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-2 top-2 h-7 w-7 text-muted-foreground"
+                      onClick={() => setSearchItem("")}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                   <Button 
@@ -415,50 +434,79 @@ export default function TemplatesPage() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            {templates.map((template) => (
-              <Card key={template.id} className="relative group border-none shadow-sm hover:shadow-md transition-all">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg">{template.name}</h3>
-                      <p className="flex items-center gap-2 mt-1">
-                        <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase">{template.serviceCategory}</span>
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveTemplate(template.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    {template.items.slice(0, 3).map((item, idx) => (
-                      <div key={idx} className="text-xs flex justify-between bg-muted/40 p-2 rounded-md">
-                        <span className="truncate font-medium">{item.description}</span>
-                        <span className="text-muted-foreground shrink-0 ml-4">${item.unitPrice}/{item.unit || 'ea'}</span>
+          <div className="space-y-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search templates by name or category..." 
+                value={searchTemplate} 
+                onChange={(e) => setSearchTemplate(e.target.value)} 
+                className="pl-10 h-11 bg-card shadow-sm border-none focus-visible:ring-1" 
+              />
+              {searchTemplate && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute right-2 top-2 h-7 w-7 text-muted-foreground"
+                  onClick={() => setSearchTemplate("")}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {filteredTemplates.map((template) => (
+                <Card key={template.id} className="relative group border-none shadow-sm hover:shadow-md transition-all">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-bold text-lg">{template.name}</h3>
+                        <p className="flex items-center gap-2 mt-1">
+                          <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase">{template.serviceCategory}</span>
+                        </p>
                       </div>
-                    ))}
-                    {template.items.length > 3 && <p className="text-[10px] text-center text-muted-foreground pt-1">+{template.items.length - 3} more line items</p>}
+                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveTemplate(template.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      {template.items.slice(0, 3).map((item, idx) => (
+                        <div key={idx} className="text-xs flex justify-between bg-muted/40 p-2 rounded-md">
+                          <span className="truncate font-medium">{item.description}</span>
+                          <span className="text-muted-foreground shrink-0 ml-4">${item.unitPrice}/{item.unit || 'ea'}</span>
+                        </div>
+                      ))}
+                      {template.items.length > 3 && <p className="text-[10px] text-center text-muted-foreground pt-1">+{template.items.length - 3} more line items</p>}
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Link href={`/quotes/new?duplicateId=${template.id}`} className="flex-1">
+                        <Button className="w-full text-xs h-9 bg-primary/10 text-primary hover:bg-primary/20 border-none">Use Template</Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              <Link href="/quotes/new">
+                <Card className="border-2 border-dashed flex flex-col items-center justify-center p-12 text-center cursor-pointer hover:bg-muted/30 transition-all h-full min-h-[250px] group">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Plus className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <div className="flex gap-2 pt-2">
-                    <Link href={`/quotes/new?duplicateId=${template.id}`} className="flex-1">
-                      <Button className="w-full text-xs h-9 bg-primary/10 text-primary hover:bg-primary/20 border-none">Use Template</Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            
-            <Link href="/quotes/new">
-              <Card className="border-2 border-dashed flex flex-col items-center justify-center p-12 text-center cursor-pointer hover:bg-muted/30 transition-all h-full min-h-[250px] group">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Plus className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <h3 className="font-bold text-muted-foreground">Create New Template</h3>
-                <p className="text-[11px] text-muted-foreground/60 mt-1 max-w-[200px]">Design a reusable scope and items list in the Quote Builder</p>
-              </Card>
-            </Link>
+                  <h3 className="font-bold text-muted-foreground">Create New Template</h3>
+                  <p className="text-[11px] text-muted-foreground/60 mt-1 max-w-[200px]">Design a reusable scope and items list in the Quote Builder</p>
+                </Card>
+              </Link>
+            </div>
+
+            {filteredTemplates.length === 0 && searchTemplate && (
+              <div className="text-center py-20 bg-muted/20 rounded-xl">
+                <p className="text-muted-foreground">No templates found matching "{searchTemplate}"</p>
+                <Button variant="link" onClick={() => setSearchTemplate("")}>Clear search</Button>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
