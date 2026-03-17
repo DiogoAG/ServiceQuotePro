@@ -154,24 +154,28 @@ export default function DashboardPage() {
             <CardDescription>A list of your latest clients.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {clients.slice(0, 5).map((client) => (
-              <div key={client.id} className="flex items-center gap-4 border-b pb-3 last:border-0 last:pb-0">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-secondary-foreground">
-                  {client.name.charAt(0)}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium leading-none">{client.name}</p>
-                  <p className="text-xs text-muted-foreground">{client.email}</p>
-                </div>
-                <Link href={`/clients/${client.id}`}>
-                  <Button size="sm" variant="outline">Profile</Button>
+            <div className="space-y-1">
+              {clients.slice(0, 5).map((client) => (
+                <Link 
+                  key={client.id} 
+                  href={`/clients/${client.id}`}
+                  className="flex items-center gap-4 border-b pb-3 pt-3 first:pt-0 last:border-0 last:pb-0 group hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-secondary-foreground shrink-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    {client.name.charAt(0)}
+                  </div>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <p className="text-sm font-medium leading-none group-hover:text-primary transition-colors truncate">{client.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{client.email}</p>
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0 shrink-0" />
                 </Link>
-              </div>
-            ))}
-            {clients.length === 0 && (
-              <p className="text-center py-4 text-muted-foreground">No clients added yet.</p>
-            )}
-            <Link href="/clients" className="block w-full">
+              ))}
+              {clients.length === 0 && (
+                <p className="text-center py-4 text-muted-foreground">No clients added yet.</p>
+              )}
+            </div>
+            <Link href="/clients" className="block w-full pt-2">
               <Button variant="outline" className="w-full">Manage Clients</Button>
             </Link>
           </CardContent>
