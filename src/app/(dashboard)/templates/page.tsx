@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -36,7 +35,7 @@ const PAINTING_SUBCATEGORIES = [
   "Additional Services"
 ];
 
-// Helper to strictly truncate digits beyond 2 decimals as user types
+// Strict 2-decimal truncation helper (no rounding)
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');

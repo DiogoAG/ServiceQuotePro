@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -43,7 +42,7 @@ const SERVICE_CATEGORIES = [
 // Helper for rounding to 2 decimals for final storage/totals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
-// Helper to strictly truncate digits beyond 2 decimals as user types
+// Strict 2-decimal truncation helper (no rounding)
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');
