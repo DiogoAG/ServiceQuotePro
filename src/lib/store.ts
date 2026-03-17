@@ -1,11 +1,12 @@
 
-import { Client, Quote, BusinessProfile, QuoteTemplate, CommonItem } from './types';
+import { Client, Quote, QuoteItem, BusinessProfile, QuoteTemplate, CommonItem } from './types';
 
 const CLIENTS_KEY = 'service_quote_pro_clients';
 const QUOTES_KEY = 'service_quote_pro_quotes';
 const PROFILE_KEY = 'service_quote_pro_profile';
 const TEMPLATES_KEY = 'service_quote_pro_templates';
 const COMMON_ITEMS_KEY = 'service_quote_pro_common_items';
+const DRAFT_QUOTE_KEY = 'service_quote_pro_draft_quote';
 
 export const getClients = (): Client[] => {
   if (typeof window === 'undefined') return [];
@@ -193,14 +194,9 @@ export const getCommonItems = (): CommonItem[] => {
   if (!stored) return hardCodedItems;
   
   const storedItems: CommonItem[] = JSON.parse(stored);
-  
-  // Create a set of hardcoded IDs for reliable merging
   const hardCodedIds = new Set(hardCodedItems.map(i => i.id));
-  
-  // Filter out any duplicates from storage that clash with hardcoded IDs
   const userAddedItems = storedItems.filter(i => !hardCodedIds.has(i.id));
   
-  // Update hardcoded items with any stored price/unit overrides from storage
   const finalHardcoded = hardCodedItems.map(hc => {
     const match = storedItems.find(s => s.id === hc.id);
     if (match) {
@@ -214,4 +210,30 @@ export const getCommonItems = (): CommonItem[] => {
 
 export const saveCommonItems = (items: CommonItem[]) => {
   localStorage.setItem(COMMON_ITEMS_KEY, JSON.stringify(items));
+};
+
+export type QuoteDraft = {
+  clientId: string;
+  serviceCategory: string;
+  items: QuoteItem[];
+  laborHours: number;
+  laborRate: number;
+  materialCosts: number;
+  taxRate: number;
+  notes: string;
+  scopeDescription: string;
+};
+
+export const getDraftQuote = (): QuoteDraft | null => {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(DRAFT_QUOTE_KEY);
+  return stored ? JSON.parse(stored) : null;
+};
+
+export const saveDraftQuote = (draft: QuoteDraft) => {
+  localStorage.setItem(DRAFT_QUOTE_KEY, JSON.stringify(draft));
+};
+
+export const clearDraftQuote = () => {
+  localStorage.removeItem(DRAFT_QUOTE_KEY);
 };

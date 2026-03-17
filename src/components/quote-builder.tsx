@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
-import { getCommonItems, getTemplates, saveClients, saveTemplates } from "@/lib/store";
+import { getCommonItems, getTemplates, saveClients, saveTemplates, getDraftQuote, saveDraftQuote, clearDraftQuote, QuoteDraft } from "@/lib/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -42,18 +42,64 @@ const SERVICE_CATEGORIES = [
 
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
   const { toast } = useToast();
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [clientId, setClientId] = useState<string>(preSelectedClientId || duplicateSource?.clientId || "");
-  const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "General Contracting");
-  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
-  const [laborHours, setLaborHours] = useState<number>(duplicateSource?.laborHours || 0);
-  const [laborRate, setLaborRate] = useState<number>(duplicateSource?.laborRate || initialProfile.defaultLaborRate);
-  const [materialCosts, setMaterialCosts] = useState<number>(duplicateSource?.materialCosts || 0);
-  const [taxRate, setTaxRate] = useState<number>(duplicateSource?.taxRate || initialProfile.defaultTaxRate);
-  const [notes, setNotes] = useState(duplicateSource?.notes || "");
-  const [scopeDescription, setScopeDescription] = useState(duplicateSource?.scopeDescription || "");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const isInitialMount = useRef(true);
   
+  // Initialization logic: Source (Reuse) > Draft > Default
+  const getInitialState = useCallback(() => {
+    const draft = getDraftQuote();
+    
+    // If duplicating, that takes highest precedence
+    if (duplicateSource) {
+      return {
+        clientId: preSelectedClientId || duplicateSource.clientId || "",
+        serviceCategory: duplicateSource.serviceCategory || "General Contracting",
+        items: duplicateSource.items.map(i => ({ ...i, id: uuidv4() })),
+        laborHours: duplicateSource.laborHours || 0,
+        laborRate: duplicateSource.laborRate || initialProfile.defaultLaborRate,
+        materialCosts: duplicateSource.materialCosts || 0,
+        taxRate: duplicateSource.taxRate || initialProfile.defaultTaxRate,
+        notes: duplicateSource.notes || "",
+        scopeDescription: duplicateSource.scopeDescription || ""
+      };
+    }
+    
+    // If draft exists, use it
+    if (draft) {
+      return {
+        ...draft,
+        clientId: preSelectedClientId || draft.clientId || "", // Respect preselected client even if in draft
+        items: draft.items.map(i => ({ ...i, id: i.id || uuidv4() }))
+      };
+    }
+    
+    // Defaults
+    return {
+      clientId: preSelectedClientId || "",
+      serviceCategory: "General Contracting",
+      items: [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }],
+      laborHours: 0,
+      laborRate: initialProfile.defaultLaborRate,
+      materialCosts: 0,
+      taxRate: initialProfile.defaultTaxRate,
+      notes: "",
+      scopeDescription: ""
+    };
+  }, [duplicateSource, initialProfile, preSelectedClientId]);
+
+  const initialState = useMemo(() => getInitialState(), [getInitialState]);
+
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [clientId, setClientId] = useState<string>(initialState.clientId);
+  const [serviceCategory, setServiceCategory] = useState<string>(initialState.serviceCategory);
+  const [items, setItems] = useState<QuoteItem[]>(initialState.items);
+  const [laborHours, setLaborHours] = useState<number>(initialState.laborHours);
+  const [laborRate, setLaborRate] = useState<number>(initialState.laborRate);
+  const [materialCosts, setMaterialCosts] = useState<number>(initialState.materialCosts);
+  const [taxRate, setTaxRate] = useState<number>(initialState.taxRate);
+  const [notes, setNotes] = useState(initialState.notes);
+  const [scopeDescription, setScopeDescription] = useState(initialState.scopeDescription);
+  
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
@@ -65,6 +111,27 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setCommonItems(getCommonItems());
     setTemplates(getTemplates());
   }, []);
+
+  // Draft Auto-Save logic
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const draft: QuoteDraft = {
+      clientId,
+      serviceCategory,
+      items,
+      laborHours,
+      laborRate,
+      materialCosts,
+      taxRate,
+      notes,
+      scopeDescription
+    };
+    saveDraftQuote(draft);
+  }, [clientId, serviceCategory, items, laborHours, laborRate, materialCosts, taxRate, notes, scopeDescription]);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
@@ -201,43 +268,25 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return;
     }
 
-    // Filter out completely blank rows
     const filteredItems = items.filter(item => {
-      // Hardcoded items are never removed
       if (item.isHardCoded) return true;
-      
-      // A custom row is empty if all fields are blank or zero
       const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
       return !isEmpty;
     });
 
-    // Validation for remaining items
     for (const item of filteredItems) {
-      // At least item description is mandatory for all items being saved
       if (!item.description.trim()) {
-        toast({ 
-          title: "Description Required", 
-          description: "All service items must have a description.", 
-          variant: "destructive" 
-        });
+        toast({ title: "Description Required", description: "All service items must have a description.", variant: "destructive" });
         return;
       }
-
-      // If it's a custom service being added, we also require a valid price
-      if (!item.isHardCoded) {
-        if (!item.unitPrice || item.unitPrice <= 0) {
-          toast({ 
-            title: "Price Required", 
-            description: `"${item.description}" requires a valid price.`, 
-            variant: "destructive" 
-          });
-          return;
-        }
+      if (!item.isHardCoded && (!item.unitPrice || item.unitPrice <= 0)) {
+        toast({ title: "Price Required", description: `"${item.description}" requires a valid price.`, variant: "destructive" });
+        return;
       }
     }
 
     if (filteredItems.length === 0) {
-      toast({ title: "No Items", description: "Please add at least one valid service item to the quote.", variant: "destructive" });
+      toast({ title: "No Items", description: "Please add at least one valid service item.", variant: "destructive" });
       return;
     }
 
@@ -258,6 +307,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       grandTotal: totals.grandTotal,
       notes,
     };
+    
+    // Success: clear the draft
+    clearDraftQuote();
     onSave(newQuote);
   };
 
