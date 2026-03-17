@@ -314,7 +314,7 @@ export default function TemplatesPage() {
                                 </div>
                               )}
                               
-                              <div className="grid grid-cols-[1fr_70px_80px_100px_110px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                              <div className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
                                 <div>Service Description</div>
                                 <div>Unit</div>
                                 <div className="pl-2">Standard Price</div>
@@ -323,7 +323,7 @@ export default function TemplatesPage() {
                               
                               <div className="space-y-2">
                                 {group.items.map((item) => (
-                                  <div key={item.id} className="grid grid-cols-[1fr_70px_80px_100px_110px_40px] gap-4 items-center group">
+                                  <div key={item.id} className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 items-center group">
                                     <div className="relative">
                                       <Input 
                                         value={item.description} 
