@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Save, Building } from "lucide-react";
 
-// Helper for rounding to 2 decimals
+// Helper for rounding to 2 decimals for calculations
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
 // Helper to truncate string to 2 decimals as user types
