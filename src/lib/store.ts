@@ -192,11 +192,15 @@ export const getCommonItems = (): CommonItem[] => {
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   if (!stored) return hardCodedItems;
   
-  // Merge logic: Always prefer the hardcoded list for definitions, but allow stored overrides for price/unit
   const storedItems: CommonItem[] = JSON.parse(stored);
-  const userAddedItems = storedItems.filter(i => !i.isHardCoded);
   
-  // Update hardcoded items with any stored price/unit updates
+  // Create a set of hardcoded IDs for reliable merging
+  const hardCodedIds = new Set(hardCodedItems.map(i => i.id));
+  
+  // Filter out any duplicates from storage that clash with hardcoded IDs
+  const userAddedItems = storedItems.filter(i => !hardCodedIds.has(i.id));
+  
+  // Update hardcoded items with any stored price/unit overrides from storage
   const finalHardcoded = hardCodedItems.map(hc => {
     const match = storedItems.find(s => s.id === hc.id);
     if (match) {
