@@ -73,12 +73,10 @@ export default function ClientDetailsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <Link href="/clients">
-          <Button variant="ghost" className="gap-2">
-            <ChevronLeft className="w-4 h-4" />
-            Back to Clients
-          </Button>
-        </Link>
+        <Button variant="ghost" className="gap-2" onClick={() => router.back()}>
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </Button>
         <Link href={`/quotes/new?clientId=${client.id}`}>
           <Button className="gap-2">
             <Plus className="w-4 h-4" />
