@@ -30,6 +30,7 @@ export type CommonItem = {
   category: string;
   unit?: string;
   defaultUnitPrice: number;
+  isHardCoded?: boolean;
 };
 
 export type QuoteTemplate = {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Save, Search, ChevronRight } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Save, Search, ChevronRight, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
 
 const SERVICE_CATEGORIES = [
   "General Contracting",
@@ -49,9 +51,10 @@ export default function TemplatesPage() {
     const newItem: CommonItem = { 
       id: uuidv4(), 
       category, 
-      description: "", 
+      description: "New custom service...", 
       unit: "ea",
-      defaultUnitPrice: 0 
+      defaultUnitPrice: 0,
+      isHardCoded: false
     };
     setCommonItems([...commonItems, newItem]);
   };
@@ -83,15 +86,15 @@ export default function TemplatesPage() {
     return desc.includes(search) || cat.includes(search);
   });
 
-  const getGroupedItems = (category: string) => {
+  const getItemsForCategory = (category: string) => {
     if (category === "Painting") {
       return PAINTING_SUBCATEGORIES.map(sub => ({
-        name: sub,
+        subName: sub,
         items: filteredItems.filter(i => i.category === `Painting - ${sub}`)
       }));
     }
     return [{
-      name: category,
+      subName: null,
       items: filteredItems.filter(i => i.category === category)
     }];
   };
@@ -106,7 +109,7 @@ export default function TemplatesPage() {
         <div className="flex gap-2">
           <Link href="/quotes/new">
             <Button variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> New Template
+              <Plus className="w-4 h-4" /> New Quote / Template
             </Button>
           </Link>
           <Button onClick={handleSaveCommonItems} className="gap-2 shadow-md">
@@ -141,7 +144,7 @@ export default function TemplatesPage() {
             <CardContent>
               <Accordion type="multiple" defaultValue={SERVICE_CATEGORIES} className="space-y-4">
                 {SERVICE_CATEGORIES.map(category => {
-                  const groups = getGroupedItems(category);
+                  const groups = getItemsForCategory(category);
                   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0);
                   
                   return (
@@ -155,29 +158,41 @@ export default function TemplatesPage() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-6">
-                        <div className="space-y-6">
-                          {groups.map(group => (
-                            <div key={group.name} className="space-y-3">
-                              {category === "Painting" && (
+                        <div className="space-y-8">
+                          {groups.map((group, gIdx) => (
+                            <div key={group.subName || gIdx} className="space-y-4">
+                              {group.subName && (
                                 <div className="flex items-center gap-2 mb-2">
-                                  <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                                  <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">{group.name}</h4>
+                                  <ChevronRight className="w-3 h-3 text-primary" />
+                                  <h4 className="text-sm font-bold tracking-tight text-foreground">{group.subName}</h4>
                                 </div>
                               )}
+                              
                               <div className="grid grid-cols-[1fr_100px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
-                                <div>Description</div>
+                                <div>Service Description</div>
                                 <div>Unit</div>
-                                <div>Default Price</div>
+                                <div>Standard Price</div>
                                 <div></div>
                               </div>
+                              
                               <div className="space-y-2">
                                 {group.items.map((item) => (
                                   <div key={item.id} className="grid grid-cols-[1fr_100px_120px_40px] gap-4 items-center group">
-                                    <Input 
-                                      value={item.description} 
-                                      onChange={(e) => handleUpdateCommonItem(item.id, 'description', e.target.value)} 
-                                      className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
-                                    />
+                                    <div className="relative">
+                                      <Input 
+                                        value={item.description} 
+                                        onChange={(e) => handleUpdateCommonItem(item.id, 'description', e.target.value)} 
+                                        className={cn(
+                                          "h-9 text-sm bg-muted/20 border-none focus-visible:ring-1 pr-8",
+                                          item.isHardCoded && "opacity-80 font-medium"
+                                        )}
+                                        readOnly={item.isHardCoded}
+                                        placeholder="Description"
+                                      />
+                                      {item.isHardCoded && (
+                                        <Lock className="w-3 h-3 absolute right-3 top-3 text-muted-foreground/50" />
+                                      )}
+                                    </div>
                                     <Input 
                                       value={item.unit || ""} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'unit', e.target.value)} 
@@ -190,24 +205,31 @@ export default function TemplatesPage() {
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', Number(e.target.value))} 
                                       className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
                                     />
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
-                                      onClick={() => handleRemoveCommonItem(item.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex justify-center">
+                                      {!item.isHardCoded ? (
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                          onClick={() => handleRemoveCommonItem(item.id)}
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      ) : (
+                                        <div className="w-8 h-8" />
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
+                              
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="w-full border border-dashed text-muted-foreground h-10 hover:bg-muted/50" 
-                                onClick={() => handleAddCommonItem(category === "Painting" ? `Painting - ${group.name}` : category)}
+                                className="w-full border border-dashed text-muted-foreground h-10 hover:bg-muted/50 hover:text-primary transition-colors" 
+                                onClick={() => handleAddCommonItem(group.subName ? `Painting - ${group.subName}` : category)}
                               >
-                                <Plus className="w-4 h-4 mr-2" /> Add Item to {group.name}
+                                <Plus className="w-4 h-4 mr-2" /> Add Custom Item to {group.subName || category}
                               </Button>
                             </div>
                           ))}
