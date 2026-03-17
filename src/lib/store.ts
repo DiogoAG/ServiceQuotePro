@@ -105,40 +105,78 @@ export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   return stored ? JSON.parse(stored) : [
-    // Electrical
-    { id: 'e1', category: 'Electrical', description: 'Labor - Master Electrician', defaultUnitPrice: 95 },
-    { id: 'e2', category: 'Electrical', description: 'Circuit Breaker Replacement (Standard)', defaultUnitPrice: 45 },
-    { id: 'e3', category: 'Electrical', description: 'Electrical Panel Upgrade (200 Amp)', defaultUnitPrice: 2200 },
-    { id: 'e4', category: 'Electrical', description: 'GFCI Outlet Installation', defaultUnitPrice: 85 },
-    { id: 'e5', category: 'Electrical', description: 'Lighting Fixture Installation (Basic)', defaultUnitPrice: 125 },
-    
-    // Plumbing
-    { id: 'p1', category: 'Plumbing', description: 'Labor - Master Plumber', defaultUnitPrice: 95 },
-    { id: 'p2', category: 'Plumbing', description: 'Drain Clearing - Main Line', defaultUnitPrice: 195 },
-    { id: 'p3', category: 'Plumbing', description: 'Water Heater Replacement (50 Gal)', defaultUnitPrice: 1450 },
-    { id: 'p4', category: 'Plumbing', description: 'Faucet Repair/Installation', defaultUnitPrice: 150 },
-    { id: 'p5', category: 'Plumbing', description: 'Toilet Replacement (Standard)', defaultUnitPrice: 350 },
-    
-    // HVAC
-    { id: 'h1', category: 'HVAC', description: 'Labor - HVAC Technician', defaultUnitPrice: 85 },
-    { id: 'h2', category: 'HVAC', description: 'A/C Seasonal Tune-Up', defaultUnitPrice: 149 },
-    { id: 'h3', category: 'HVAC', description: 'Furnace Inspection & Service', defaultUnitPrice: 125 },
-    { id: 'h4', category: 'HVAC', description: 'Smart Thermostat Installation', defaultUnitPrice: 185 },
-    { id: 'h5', category: 'HVAC', description: 'Refrigerant Recharge (per lb)', defaultUnitPrice: 95 },
-    
-    // Painting
-    { id: 'pt1', category: 'Painting', description: 'Labor - Professional Painter', defaultUnitPrice: 55 },
-    { id: 'pt2', category: 'Painting', description: 'Premium Paint (Gallon)', defaultUnitPrice: 65 },
-    { id: 'pt3', category: 'Painting', description: 'Surface Prep & Drywall Patching', defaultUnitPrice: 120 },
-    { id: 'pt4', category: 'Painting', description: 'Trim & Baseboard Painting (per room)', defaultUnitPrice: 150 },
-    { id: 'pt5', category: 'Painting', description: 'Ceiling Painting (Standard Room)', defaultUnitPrice: 100 },
-    
     // General
     { id: 'g1', category: 'General', description: 'Service Call Fee / Diagnostic', defaultUnitPrice: 95 },
     { id: 'g2', category: 'General', description: 'Emergency / After-Hours Fee', defaultUnitPrice: 185 },
     { id: 'g3', category: 'General', description: 'Disposal & Material Handling', defaultUnitPrice: 45 },
     { id: 'g4', category: 'General', description: 'Labor - Apprentice/Helper', defaultUnitPrice: 45 },
-    { id: 'g5', category: 'General', description: 'Equipment Rental (Daily)', defaultUnitPrice: 150 }
+    { id: 'g5', category: 'General', description: 'Equipment Rental (Daily)', defaultUnitPrice: 150 },
+    { id: 'g6', category: 'General', description: 'Travel Surcharge (Out of area)', defaultUnitPrice: 50 },
+
+    // Electrical
+    { id: 'e1', category: 'Electrical', description: 'Labor - Master Electrician', defaultUnitPrice: 115 },
+    { id: 'e2', category: 'Electrical', description: 'Circuit Breaker Replacement (Standard)', defaultUnitPrice: 45 },
+    { id: 'e3', category: 'Electrical', description: 'Electrical Panel Upgrade (200 Amp)', defaultUnitPrice: 2400 },
+    { id: 'e4', category: 'Electrical', description: 'GFCI Outlet Installation', defaultUnitPrice: 95 },
+    { id: 'e5', category: 'Electrical', description: 'Lighting Fixture Installation (Basic)', defaultUnitPrice: 125 },
+    { id: 'e6', category: 'Electrical', description: 'Ceiling Fan Installation', defaultUnitPrice: 175 },
+    { id: 'e7', category: 'Electrical', description: 'EV Charger Circuit (NEMA 14-50)', defaultUnitPrice: 450 },
+    { id: 'e8', category: 'Electrical', description: 'Recessed Lighting (per fixture)', defaultUnitPrice: 110 },
+    
+    // Plumbing
+    { id: 'p1', category: 'Plumbing', description: 'Labor - Master Plumber', defaultUnitPrice: 125 },
+    { id: 'p2', category: 'Plumbing', description: 'Drain Clearing - Main Line', defaultUnitPrice: 225 },
+    { id: 'p3', category: 'Plumbing', description: 'Water Heater Replacement (50 Gal)', defaultUnitPrice: 1650 },
+    { id: 'p4', category: 'Plumbing', description: 'Faucet Repair/Installation', defaultUnitPrice: 185 },
+    { id: 'p5', category: 'Plumbing', description: 'Toilet Replacement (Standard)', defaultUnitPrice: 395 },
+    { id: 'p6', category: 'Plumbing', description: 'Garbage Disposal Installation', defaultUnitPrice: 225 },
+    { id: 'p7', category: 'Plumbing', description: 'Sump Pump Replacement', defaultUnitPrice: 450 },
+    { id: 'p8', category: 'Plumbing', description: 'Whole House Water Filter', defaultUnitPrice: 850 },
+    
+    // HVAC
+    { id: 'h1', category: 'HVAC', description: 'Labor - HVAC Technician', defaultUnitPrice: 110 },
+    { id: 'h2', category: 'HVAC', description: 'A/C Seasonal Tune-Up', defaultUnitPrice: 159 },
+    { id: 'h3', category: 'HVAC', description: 'Furnace Inspection & Service', defaultUnitPrice: 145 },
+    { id: 'h4', category: 'HVAC', description: 'Smart Thermostat Installation', defaultUnitPrice: 195 },
+    { id: 'h5', category: 'HVAC', description: 'Refrigerant Recharge (per lb)', defaultUnitPrice: 115 },
+    { id: 'h6', category: 'HVAC', description: 'Condenser Motor Replacement', defaultUnitPrice: 450 },
+    { id: 'h7', category: 'HVAC', description: 'Duct Cleaning (per vent)', defaultUnitPrice: 35 },
+    { id: 'h8', category: 'HVAC', description: 'Capacitor Replacement', defaultUnitPrice: 185 },
+    
+    // Painting
+    { id: 'pt1', category: 'Painting', description: 'Labor - Professional Painter', defaultUnitPrice: 65 },
+    { id: 'pt2', category: 'Painting', description: 'Premium Paint (Gallon)', defaultUnitPrice: 68 },
+    { id: 'pt3', category: 'Painting', description: 'Surface Prep & Drywall Patching', defaultUnitPrice: 145 },
+    { id: 'pt4', category: 'Painting', description: 'Trim & Baseboard Painting (per room)', defaultUnitPrice: 175 },
+    { id: 'pt5', category: 'Painting', description: 'Ceiling Painting (Standard Room)', defaultUnitPrice: 125 },
+    { id: 'pt6', category: 'Painting', description: 'Cabinet Refinishing (per door)', defaultUnitPrice: 85 },
+    { id: 'pt7', category: 'Painting', description: 'Wallpaper Removal (per hour)', defaultUnitPrice: 75 },
+    { id: 'pt8', category: 'Painting', description: 'Exterior Siding Stain (per sq ft)', defaultUnitPrice: 4.5 },
+
+    // Landscaping
+    { id: 'l1', category: 'Landscaping', description: 'Lawn Maintenance (Mow/Edge)', defaultUnitPrice: 65 },
+    { id: 'l2', category: 'Landscaping', description: 'Mulch Installation (per yard)', defaultUnitPrice: 85 },
+    { id: 'l3', category: 'Landscaping', description: 'Irrigation System Repair (per hour)', defaultUnitPrice: 95 },
+    { id: 'l4', category: 'Landscaping', description: 'Tree Trimming (Small/Medium)', defaultUnitPrice: 250 },
+    { id: 'l5', category: 'Landscaping', description: 'Fertilizer Application', defaultUnitPrice: 45 },
+    
+    // Roofing
+    { id: 'r1', category: 'Roofing', description: 'Roof Inspection & Certification', defaultUnitPrice: 250 },
+    { id: 'r2', category: 'Roofing', description: 'Shingle Repair (Minor)', defaultUnitPrice: 350 },
+    { id: 'r3', category: 'Roofing', description: 'Gutter Cleaning (Standard)', defaultUnitPrice: 145 },
+    { id: 'r4', category: 'Roofing', description: 'Flashing Repair', defaultUnitPrice: 185 },
+    
+    // Carpentry
+    { id: 'c1', category: 'Carpentry', description: 'Custom Shelving Installation', defaultUnitPrice: 450 },
+    { id: 'c2', category: 'Carpentry', description: 'Door Hanging & Hardware', defaultUnitPrice: 195 },
+    { id: 'c3', category: 'Carpentry', description: 'Deck Board Replacement (per board)', defaultUnitPrice: 45 },
+    { id: 'c4', category: 'Carpentry', description: 'Crown Molding (per linear ft)', defaultUnitPrice: 12 },
+    
+    // Cleaning
+    { id: 'cl1', category: 'Cleaning', description: 'Deep House Cleaning (Standard)', defaultUnitPrice: 250 },
+    { id: 'cl2', category: 'Cleaning', description: 'Move-In/Move-Out Cleaning', defaultUnitPrice: 450 },
+    { id: 'cl3', category: 'Cleaning', description: 'Window Cleaning (per window)', defaultUnitPrice: 15 },
+    { id: 'cl4', category: 'Cleaning', description: 'Carpet Steam Cleaning (per room)', defaultUnitPrice: 65 }
   ];
 };
 

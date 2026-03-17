@@ -8,12 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Save, LayoutTemplate, Search } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Save, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const CATEGORIES = [
   "General",
@@ -69,10 +68,11 @@ export default function TemplatesPage() {
     toast({ title: "Template Removed" });
   };
 
-  const filteredItems = commonItems.filter(i => 
-    i.description.toLowerCase().includes(searchItem.toLowerCase()) ||
-    i.category.toLowerCase().includes(searchItem.toLowerCase())
-  );
+  const filteredItems = commonItems.filter(i => {
+    const descMatch = (i.description || "").toLowerCase().includes(searchItem.toLowerCase());
+    const catMatch = (i.category || "").toLowerCase().includes(searchItem.toLowerCase());
+    return descMatch || catMatch;
+  });
 
   const groupedItems = CATEGORIES.reduce((acc, cat) => {
     acc[cat] = filteredItems.filter(i => i.category === cat);
@@ -106,7 +106,7 @@ export default function TemplatesPage() {
                   <CardTitle>Standard Item Library</CardTitle>
                   <CardDescription>Commonly used services and parts organized by category.</CardDescription>
                 </div>
-                <Button onClick={() => handleSaveCommonItems()} className="gap-2">
+                <Button onClick={handleSaveCommonItems} className="gap-2">
                   <Save className="w-4 h-4" /> Save Changes
                 </Button>
               </div>
