@@ -40,10 +40,10 @@ const SERVICE_CATEGORIES = [
   "Other"
 ];
 
-// Helper for rounding to 2 decimals for final calculations
+// Helper for rounding to 2 decimals for final storage/totals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
-// Helper to truncate string to 2 decimals as user types
+// Helper to strictly truncate digits beyond 2 decimals as user types
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');
@@ -60,8 +60,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   
   const getInitialState = useCallback(() => {
     const draft = getDraftQuote();
-    
-    // Always use latest profile rates for new quotes/drafts
     const currentTaxRate = initialProfile.defaultTaxRate;
     const currentLaborRate = initialProfile.defaultLaborRate;
 
@@ -129,7 +127,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       isInitialMount.current = false;
       return;
     }
-
     const draft: QuoteDraft = {
       clientId,
       serviceCategory,
@@ -161,7 +158,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const laborTotal = lh * lr;
     const mc = Number(materialCosts) || 0;
     
-    // Precise rounding to nearest cent
     const subtotal = roundToCent(itemsTotal + laborTotal + mc);
     const tr = Number(taxRate) || 0;
     const taxTotal = roundToCent(subtotal * (tr / 100));
@@ -253,7 +249,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (i.id === id) {
         const up = roundToCent(item.defaultUnitPrice || 0);
         const q = Number(i.quantity) || 1;
-        return { ...i, description: item.description, unit: item.unit || "", unitPrice: up, total: roundToCent(q * up), isHardCoded: true };
+        return { ...i, description: item.description, unit: item.unit || "", unitPrice: up, total: roundToCent(q * up) };
       }
       return i;
     }));
@@ -265,7 +261,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setItems(template.items.map(i => ({ 
       ...i, 
       id: uuidv4(), 
-      isHardCoded: false,
       total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
     })));
   };
@@ -275,14 +270,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       toast({ title: "Name Required", description: "Please give your template a name.", variant: "destructive" });
       return;
     }
-    
-    // Ensure template items are valid
     const validItems = items.filter(item => item.description.trim() !== "");
     if (validItems.length === 0) {
       toast({ title: "Template Required Items", description: "A template must have at least one line item with a description.", variant: "destructive" });
       return;
     }
-
     const newTemplate: QuoteTemplate = {
       id: uuidv4(),
       name: newTemplateName,
@@ -527,12 +519,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_110px_130px_130px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_75px_85px_105px_115px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_110px_130px_130px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_75px_85px_105px_115px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item..." className="pr-8 h-9 text-sm" />
                         <Popover>
