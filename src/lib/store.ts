@@ -70,7 +70,6 @@ export const saveTemplates = (templates: QuoteTemplate[]) => {
 
 export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   
   const hardCodedItems: CommonItem[] = [
     // General Contracting
@@ -122,7 +121,7 @@ export const getCommonItems = (): CommonItem[] => {
     { id: 'ip4', category: 'Painting - Interior Painting', description: 'Trim Painting', unit: 'linear ft', defaultUnitPrice: 1.5, isHardCoded: true },
     { id: 'ip5', category: 'Painting - Interior Painting', description: 'Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.25, isHardCoded: true },
     { id: 'ip6', category: 'Painting - Interior Painting', description: 'Crown Molding Painting', unit: 'linear ft', defaultUnitPrice: 1.75, isHardCoded: true },
-    { id: 'ip7', category: 'Painting - Interior Painting', description: 'Door Painting', unit: 'door', defaultUnitPrice: 125, isHardCoded: true },
+    { id: 'ip7', category: 'Painting - Interior Painting', description: 'Door Painting (Interior)', unit: 'door', defaultUnitPrice: 125, isHardCoded: true },
     { id: 'ip8', category: 'Painting - Interior Painting', description: 'Door Frame Painting', unit: 'frame', defaultUnitPrice: 75, isHardCoded: true },
     { id: 'ip9', category: 'Painting - Interior Painting', description: 'Window Frame Painting', unit: 'window', defaultUnitPrice: 85, isHardCoded: true },
     { id: 'ip10', category: 'Painting - Interior Painting', description: 'Closet Painting', unit: 'closet', defaultUnitPrice: 150, isHardCoded: true },
@@ -135,7 +134,7 @@ export const getCommonItems = (): CommonItem[] => {
     { id: 'ep4', category: 'Painting - Exterior Painting', description: 'Trim / Fascia Painting', unit: 'linear ft', defaultUnitPrice: 2.5, isHardCoded: true },
     { id: 'ep5', category: 'Painting - Exterior Painting', description: 'Garage Door Painting', unit: 'door', defaultUnitPrice: 450, isHardCoded: true },
     { id: 'ep6', category: 'Painting - Exterior Painting', description: 'Front Door Painting', unit: 'door', defaultUnitPrice: 250, isHardCoded: true },
-    { id: 'ep7', category: 'Painting - Exterior Painting', description: 'Window Frame Painting (Ext)', unit: 'window', defaultUnitPrice: 95, isHardCoded: true },
+    { id: 'ep7', category: 'Painting - Exterior Painting', description: 'Window Frame Painting (Exterior)', unit: 'window', defaultUnitPrice: 95, isHardCoded: true },
     { id: 'ep8', category: 'Painting - Exterior Painting', description: 'Shutter Painting', unit: 'shutter', defaultUnitPrice: 85, isHardCoded: true },
     { id: 'ep9', category: 'Painting - Exterior Painting', description: 'Deck Painting', unit: 'sq ft', defaultUnitPrice: 4.5, isHardCoded: true },
     { id: 'ep10', category: 'Painting - Exterior Painting', description: 'Fence Painting', unit: 'linear ft', defaultUnitPrice: 5.5, isHardCoded: true },
@@ -190,14 +189,23 @@ export const getCommonItems = (): CommonItem[] => {
     { id: 'ot2', category: 'Other', description: 'Furniture Assembly', unit: 'hr', defaultUnitPrice: 65, isHardCoded: true }
   ];
 
+  const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   if (!stored) return hardCodedItems;
   
-  const userItems: CommonItem[] = JSON.parse(stored);
-  const itemMap = new Map();
-  hardCodedItems.forEach(item => itemMap.set(item.id, item));
-  userItems.forEach(item => itemMap.set(item.id, item));
+  // Merge logic: Always prefer the hardcoded list for definitions, but allow stored overrides for price/unit
+  const storedItems: CommonItem[] = JSON.parse(stored);
+  const userAddedItems = storedItems.filter(i => !i.isHardCoded);
   
-  return Array.from(itemMap.values());
+  // Update hardcoded items with any stored price/unit updates
+  const finalHardcoded = hardCodedItems.map(hc => {
+    const match = storedItems.find(s => s.id === hc.id);
+    if (match) {
+      return { ...hc, defaultUnitPrice: match.defaultUnitPrice, unit: match.unit };
+    }
+    return hc;
+  });
+
+  return [...finalHardcoded, ...userAddedItems];
 };
 
 export const saveCommonItems = (items: CommonItem[]) => {

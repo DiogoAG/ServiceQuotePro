@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { QuoteTemplate, CommonItem } from "@/lib/types";
 import { getTemplates, saveTemplates, getCommonItems, saveCommonItems } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Save, Search, ChevronRight, Lock } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -41,12 +41,21 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [searchItem, setSearchItem] = useState("");
-  const [isDirty, setIsDirty] = useState(false);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     setTemplates(getTemplates());
     setCommonItems(getCommonItems());
   }, []);
+
+  // Auto-save logic for Common Items
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    saveCommonItems(commonItems);
+  }, [commonItems]);
 
   const handleAddCommonItem = (category: string) => {
     const newItem: CommonItem = { 
@@ -57,24 +66,17 @@ export default function TemplatesPage() {
       defaultUnitPrice: 0,
       isHardCoded: false
     };
-    setCommonItems([...commonItems, newItem]);
-    setIsDirty(true);
+    setCommonItems(prev => [...prev, newItem]);
+    toast({ title: "New Item Added", description: `Added to ${category}` });
   };
 
   const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
-    setCommonItems(commonItems.map(item => item.id === id ? { ...item, [field]: value } : item));
-    setIsDirty(true);
+    setCommonItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
   const handleRemoveCommonItem = (id: string) => {
-    setCommonItems(commonItems.filter(i => i.id !== id));
-    setIsDirty(true);
-  };
-
-  const handleSaveCommonItems = () => {
-    saveCommonItems(commonItems);
-    setIsDirty(false);
-    toast({ title: "Library Saved", description: "Your custom item library has been updated." });
+    setCommonItems(prev => prev.filter(i => i.id !== id));
+    toast({ title: "Item Removed" });
   };
 
   const handleRemoveTemplate = (id: string) => {
@@ -109,21 +111,16 @@ export default function TemplatesPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Templates & Items</h1>
-          <p className="text-muted-foreground">Manage your item library and standardized quote templates.</p>
+          <p className="text-muted-foreground text-sm flex items-center gap-2">
+            Manage your professional library. <span className="flex items-center gap-1 text-primary font-medium"><Check className="w-3.5 h-3.5" /> All changes auto-save</span>
+          </p>
         </div>
         <div className="flex gap-2">
           <Link href="/quotes/new">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 shadow-sm">
               <Plus className="w-4 h-4" /> New Quote / Template
             </Button>
           </Link>
-          <Button 
-            onClick={handleSaveCommonItems} 
-            className={cn("gap-2 shadow-md transition-all", isDirty ? "bg-accent text-accent-foreground animate-pulse" : "bg-primary")}
-          >
-            <Save className="w-4 h-4" /> 
-            {isDirty ? "Save Changes Now" : "All Changes Saved"}
-          </Button>
         </div>
       </div>
 
@@ -143,7 +140,7 @@ export default function TemplatesPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search your standardized library..." 
+                  placeholder="Search standard items..." 
                   value={searchItem} 
                   onChange={(e) => setSearchItem(e.target.value)} 
                   className="pl-10 h-11 bg-muted/30 border-none shadow-none focus-visible:ring-1" 
@@ -196,7 +193,7 @@ export default function TemplatesPage() {
                                           item.isHardCoded && "opacity-80 font-medium cursor-not-allowed"
                                         )}
                                         readOnly={item.isHardCoded}
-                                        placeholder="Description"
+                                        placeholder="New item description..."
                                       />
                                       {item.isHardCoded && (
                                         <Lock className="w-3 h-3 absolute right-3 top-3 text-muted-foreground/50" />
@@ -210,9 +207,10 @@ export default function TemplatesPage() {
                                     />
                                     <Input 
                                       type="number" 
-                                      value={item.defaultUnitPrice} 
+                                      value={item.defaultUnitPrice || ""} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', Number(e.target.value))} 
                                       className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
+                                      placeholder="0.00"
                                     />
                                     <div className="flex justify-center">
                                       {!item.isHardCoded ? (
@@ -238,7 +236,7 @@ export default function TemplatesPage() {
                                 className="w-full border border-dashed text-muted-foreground h-10 hover:bg-muted/50 hover:text-primary transition-colors" 
                                 onClick={() => handleAddCommonItem(group.subName ? `Painting - ${group.subName}` : category)}
                               >
-                                <Plus className="w-4 h-4 mr-2" /> Add Custom Item to {group.subName || category}
+                                <Plus className="w-4 h-4 mr-2" /> Add Custom Item
                               </Button>
                             </div>
                           ))}
@@ -259,10 +257,10 @@ export default function TemplatesPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-xl">{template.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-2 mt-1">
+                      <h3 className="font-bold text-lg">{template.name}</h3>
+                      <p className="flex items-center gap-2 mt-1">
                         <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase">{template.serviceCategory}</span>
-                      </CardDescription>
+                      </p>
                     </div>
                     <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleRemoveTemplate(template.id)}>
                       <Trash2 className="w-4 h-4" />

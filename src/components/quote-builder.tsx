@@ -66,16 +66,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setTemplates(getTemplates());
   }, []);
 
-  useEffect(() => {
-    const isEmpty = items.length <= 1 && !items[0].description && !scopeDescription;
-    if (isEmpty && !duplicateSource) {
-      const matchingTemplate = templates.find(t => t.serviceCategory === serviceCategory);
-      if (matchingTemplate) {
-        applyTemplate(matchingTemplate);
-      }
-    }
-  }, [serviceCategory, templates, duplicateSource]);
-
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
   const filteredClients = useMemo(() => {
@@ -87,10 +77,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [clients, clientSearch]);
 
   const calculateTotals = useCallback(() => {
-    const itemsTotal = items.reduce((acc, item) => acc + item.total, 0);
-    const laborTotal = laborHours * laborRate;
-    const subtotal = itemsTotal + laborTotal + materialCosts;
-    const taxTotal = (subtotal * taxRate) / 100;
+    const itemsTotal = items.reduce((acc, item) => acc + (item.total || 0), 0);
+    const laborTotal = (laborHours || 0) * (laborRate || 0);
+    const subtotal = itemsTotal + laborTotal + (materialCosts || 0);
+    const taxTotal = (subtotal * (taxRate || 0)) / 100;
     const grandTotal = subtotal + taxTotal;
     return { subtotal, taxTotal, grandTotal };
   }, [items, laborHours, laborRate, materialCosts, taxRate]);
@@ -107,12 +97,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     }
   };
 
-  const updateItem = (id: string, field: keyof QuoteItem, value: string | number) => {
+  const updateItem = (id: string, field: keyof QuoteItem, value: any) => {
     setItems(items.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
         if (field === 'quantity' || field === 'unitPrice') {
-          updated.total = Number(updated.quantity) * Number(updated.unitPrice);
+          updated.total = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
         }
         return updated;
       }
@@ -123,12 +113,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const selectCommonItem = (id: string, item: CommonItem) => {
     setItems(items.map(i => {
         if (i.id === id) {
+            const up = item.defaultUnitPrice || 0;
+            const q = i.quantity || 1;
             return {
                 ...i,
                 description: item.description,
                 unit: item.unit || "",
-                unitPrice: item.defaultUnitPrice,
-                total: i.quantity * item.defaultUnitPrice
+                unitPrice: up,
+                total: q * up
             };
         }
         return i;
@@ -215,10 +207,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       serviceCategory,
       items,
       scopeDescription,
-      laborHours,
-      laborRate,
-      materialCosts,
-      taxRate,
+      laborHours: laborHours || 0,
+      laborRate: laborRate || 0,
+      materialCosts: materialCosts || 0,
+      taxRate: taxRate || 0,
       taxTotal: totals.taxTotal,
       subtotal: totals.subtotal,
       grandTotal: totals.grandTotal,
@@ -402,9 +394,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <div key={item.id} className="grid grid-cols-[1fr_80px_80px_120px_100px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input 
-                          value={item.description} 
+                          value={item.description || ""} 
                           onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
-                          placeholder="Description..." 
+                          placeholder="New item..." 
                           className="pr-8 h-9 text-sm"
                         />
                         <Popover>
@@ -444,16 +436,16 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         </Popover>
                       </div>
                       <div>
-                        <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="sq ft" className="h-9 text-sm" />
+                        <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" />
                       </div>
                       <div>
-                        <Input type="number" className="h-9 text-sm" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
+                        <Input type="number" className="h-9 text-sm" value={item.quantity || ""} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
                       </div>
                       <div>
-                        <Input type="number" className="h-9 text-sm" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
+                        <Input type="number" className="h-9 text-sm" value={item.unitPrice || ""} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
                       </div>
                       <div className="text-right font-medium text-sm">
-                        ${item.total.toLocaleString()}
+                        ${(item.total || 0).toLocaleString()}
                       </div>
                       <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
@@ -480,7 +472,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Textarea 
                   value={scopeDescription} 
                   onChange={(e) => setScopeDescription(e.target.value)} 
-                  placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work to be performed...`}
+                  placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`}
                   className="min-h-[150px] text-sm leading-relaxed"
                 />
               </div>
@@ -497,17 +489,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label>
-                  <Input type="number" className="h-10" value={laborRate} onChange={(e) => setLaborRate(Number(e.target.value))} />
+                  <Input type="number" className="h-10" value={laborRate || ""} onChange={(e) => setLaborRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label>
-                  <Input type="number" className="h-10" value={laborHours} onChange={(e) => setOpen(true)} // Not needed, just keeping structure
-                  />
-                  <Input type="number" className="h-10" value={laborHours} onChange={(e) => setLaborHours(Number(e.target.value))} />
+                  <Input type="number" className="h-10" value={laborHours || ""} onChange={(e) => setLaborHours(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label>
-                  <Input type="number" className="h-10" value={materialCosts} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
+                  <Input type="number" className="h-10" value={materialCosts || ""} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
                 </div>
               </div>
 
