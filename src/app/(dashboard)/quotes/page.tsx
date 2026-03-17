@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,7 +6,7 @@ import { Quote, Client } from "@/lib/types";
 import { getQuotes, getClients, saveQuotes } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Undo2, Calendar, User, DollarSign } from "lucide-react";
+import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Undo2, Calendar, User, DollarSign, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -58,15 +59,15 @@ export default function QuotesListPage() {
   const sortedQuotes = [...quotes].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 sm:space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Quotes</h1>
           <p className="text-muted-foreground">Manage, track, and reuse your service quotes.</p>
         </div>
         <Link href="/quotes/new" className="w-full sm:w-auto">
-          <Button className="gap-2 w-full sm:w-auto">
-            <Plus className="w-4 h-4" />
+          <Button className="gap-2 w-full sm:w-auto h-12 sm:h-10 text-base sm:text-sm">
+            <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
             New Quote
           </Button>
         </Link>
@@ -78,54 +79,54 @@ export default function QuotesListPage() {
           sortedQuotes.map((quote) => {
             const client = clients.find(c => c.id === quote.clientId);
             return (
-              <Card key={quote.id} className="overflow-hidden border-primary/10 shadow-sm">
-                <CardContent className="p-4 space-y-4">
+              <Card key={quote.id} className="overflow-hidden border-primary/10 shadow-sm active:bg-accent/5 transition-colors">
+                <CardContent className="p-5 space-y-4">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
                         <Calendar className="w-3 h-3" />
                         {new Date(quote.date).toLocaleDateString()}
                       </div>
-                      <h3 className="font-bold text-lg leading-tight">{quote.serviceCategory}</h3>
+                      <h3 className="font-black text-lg leading-tight tracking-tight">{quote.serviceCategory}</h3>
                     </div>
-                    <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
+                    <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
                       {quote.status}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center gap-2 py-2 border-y border-dashed">
-                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-secondary-foreground text-xs shrink-0">
+                  <div className="flex items-center gap-3 py-3 border-y border-dashed">
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold text-secondary-foreground text-sm shrink-0">
                       {(client?.name || '?').charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{client?.name || 'Unknown Client'}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{client?.email}</p>
+                      <p className="text-sm font-bold truncate">{client?.name || 'Unknown Client'}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{client?.email}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs font-bold text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      <p className="text-sm font-black text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                   </div>
 
                   <div className="flex gap-2 pt-1">
                     <Link href={`/quotes/${quote.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full h-9 gap-2">
+                      <Button variant="default" size="sm" className="w-full h-10 gap-2 text-xs">
                         <Eye className="w-3.5 h-3.5" /> View
                       </Button>
                     </Link>
                     <Link href={`/quotes/new?duplicateId=${quote.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full h-9 gap-2">
+                      <Button variant="outline" size="sm" className="w-full h-10 gap-2 text-xs">
                         <Copy className="w-3.5 h-3.5" /> Reuse
                       </Button>
                     </Link>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0 border">
+                        <Button variant="ghost" size="sm" className="h-10 w-10 p-0 shrink-0 border">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem 
-                          className="text-destructive cursor-pointer"
+                          className="text-destructive cursor-pointer py-2.5"
                           onSelect={() => setQuoteToDelete(quote)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
@@ -138,24 +139,27 @@ export default function QuotesListPage() {
             );
           })
         ) : (
-          <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg">
-            <FileText className="w-12 h-12 opacity-20 mx-auto mb-2" />
-            <p>No quotes found.</p>
+          <div className="text-center py-20 bg-muted/20 rounded-xl">
+            <FileText className="w-12 h-12 opacity-20 mx-auto mb-3" />
+            <p className="font-bold text-muted-foreground">No quotes found.</p>
+            <Link href="/quotes/new" className="mt-4 block">
+              <Button variant="outline" size="sm">Create First Quote</Button>
+            </Link>
           </div>
         )}
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block rounded-md border bg-card">
+      <div className="hidden md:block rounded-xl border bg-card shadow-sm overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Service</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="w-40 text-right">Actions</TableHead>
+              <TableHead className="font-bold">Date</TableHead>
+              <TableHead className="font-bold">Client</TableHead>
+              <TableHead className="font-bold">Service</TableHead>
+              <TableHead className="font-bold">Status</TableHead>
+              <TableHead className="text-right font-bold">Total</TableHead>
+              <TableHead className="w-40 text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -163,18 +167,18 @@ export default function QuotesListPage() {
               sortedQuotes.map((quote) => {
                 const client = clients.find(c => c.id === quote.clientId);
                 return (
-                  <TableRow key={quote.id}>
-                    <TableCell className="text-xs">
+                  <TableRow key={quote.id} className="group cursor-pointer hover:bg-muted/50 transition-colors">
+                    <TableCell className="text-xs font-medium">
                       {new Date(quote.date).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{client?.name || 'Unknown Client'}</span>
+                      <Link href={`/quotes/${quote.id}`} className="flex flex-col">
+                        <span className="font-bold group-hover:text-primary transition-colors">{client?.name || 'Unknown Client'}</span>
                         <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{client?.email}</span>
-                      </div>
+                      </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-[10px] font-normal">
+                      <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter bg-muted/50">
                         {quote.serviceCategory}
                       </Badge>
                     </TableCell>
@@ -183,11 +187,11 @@ export default function QuotesListPage() {
                         {quote.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-right font-black text-primary">
                       ${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Link href={`/quotes/${quote.id}`}>
                           <Button variant="ghost" size="sm" className="h-8 px-2 gap-1.5 text-xs">
                             <Eye className="w-3.5 h-3.5" /> View
@@ -220,12 +224,12 @@ export default function QuotesListPage() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                  <div className="flex flex-col items-center gap-2">
-                    <FileText className="w-12 h-12 opacity-20" />
-                    <p>No quotes found. Create your first quote to get started!</p>
+                <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
+                  <div className="flex flex-col items-center gap-3">
+                    <FileText className="w-16 h-16 opacity-10" />
+                    <p className="text-lg font-medium">No quotes found.</p>
                     <Link href="/quotes/new">
-                      <Button variant="outline" size="sm" className="mt-2">New Quote</Button>
+                      <Button variant="outline" size="lg" className="mt-2">Create First Quote</Button>
                     </Link>
                   </div>
                 </TableCell>
@@ -236,16 +240,16 @@ export default function QuotesListPage() {
       </div>
 
       <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this quote?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl">Delete this quote?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong> from your history. You can undo this action immediately after.
+              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>. You can undo this action immediately after.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground rounded-xl">Delete Quote</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

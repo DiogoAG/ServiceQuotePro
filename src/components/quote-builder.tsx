@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -437,20 +438,20 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [initialProfile]);
 
   return (
-    <div className="space-y-8 pb-12">
-      <div className="grid gap-8 lg:grid-cols-3">
+    <div className="space-y-6 sm:space-y-8 pb-20">
+      <div className="grid gap-6 sm:gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm border-primary/10 overflow-visible">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 px-4 sm:px-6">
               <CardTitle className="text-xl">Quote Configuration</CardTitle>
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none">
+                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none h-10 sm:h-9">
                       <LayoutTemplate className="w-4 h-4" /> <span className="hidden xs:inline">Save Template</span><span className="xs:hidden">Save</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
                     <DialogHeader><DialogTitle>Save as Reusable Template</DialogTitle></DialogHeader>
                     <div className="py-4 space-y-4">
                       <div className="space-y-2">
@@ -466,7 +467,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </Dialog>
                 <Popover onOpenChange={(open) => !open && setTemplateSearch("")}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none">
+                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none h-10 sm:h-9">
                       <Copy className="w-4 h-4" /> <span className="hidden xs:inline">Load Template</span><span className="xs:hidden">Load</span>
                     </Button>
                   </PopoverTrigger>
@@ -505,7 +506,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </Popover>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 px-4 sm:px-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end overflow-visible">
                 <div className="space-y-2 relative">
                   <Label>Client Selection</Label>
@@ -598,7 +599,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           </Card>
 
           <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
               <DialogHeader><DialogTitle>Add New Client</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
@@ -626,7 +627,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           </Dialog>
 
           <Card className="shadow-sm border-primary/10 overflow-hidden">
-            <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
+            <CardHeader className="border-b bg-muted/20 py-4 px-4 sm:px-6"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
               <div className="space-y-4">
                 {/* Header for Tablet/Desktop */}
@@ -634,20 +635,20 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 
-                <div className="space-y-6 md:space-y-3">
+                <div className="space-y-4 md:space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_100px_100px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-lg md:border-none md:p-0">
+                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_100px_100px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none">
                       {/* Mobile Labels (Hidden on MD) */}
                       <div className="md:hidden flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Service Item</span>
+                        <span className="text-[10px] font-black text-primary/40 uppercase tracking-widest">Line Item</span>
                         <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
                       </div>
 
                       {/* Description Field */}
                       <div className="relative">
-                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-8 h-9 text-sm" />
+                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-10 h-10 md:h-9 text-sm rounded-lg" />
                         <Popover>
-                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
+                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-1 top-1.5 md:top-1 h-7 w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
                             <ScrollArea className="h-72">
@@ -673,22 +674,22 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       </div>
 
                       {/* Numeric Fields (Stacked on Mobile) */}
-                      <div className="grid grid-cols-2 md:contents gap-3">
-                        <div className="space-y-1 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Unit</Label>
-                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" />
+                      <div className="grid grid-cols-2 md:contents gap-4 md:gap-4">
+                        <div className="space-y-1.5 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Unit</Label>
+                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-10 md:h-9 text-sm rounded-lg" />
                         </div>
-                        <div className="space-y-1 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Qty</Label>
-                          <Input type="number" step="1.0" className="h-9 text-sm px-2" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
+                        <div className="space-y-1.5 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Qty</Label>
+                          <Input type="number" step="1.0" className="h-10 md:h-9 text-sm px-2 rounded-lg" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
                         </div>
-                        <div className="space-y-1 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Price ($)</Label>
-                          <Input type="number" step="1.0" className="h-9 text-sm px-2" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
+                        <div className="space-y-1.5 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Price ($)</Label>
+                          <Input type="number" step="1.0" className="h-10 md:h-9 text-sm px-2 rounded-lg" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
                         </div>
-                        <div className="flex flex-col md:block items-end justify-center">
-                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground mb-1">Total</Label>
-                          <div className="text-right font-bold md:font-medium text-sm overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div className="flex flex-col md:block items-end justify-center bg-primary/5 md:bg-transparent p-2 md:p-0 rounded-lg">
+                          <Label className="md:hidden text-[9px] uppercase font-bold text-primary mb-1">Total</Label>
+                          <div className="text-right font-black md:font-medium text-sm text-primary md:text-foreground overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>
                       </div>
 
@@ -697,17 +698,17 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   ))}
                 </div>
                 <div className="pt-4 flex justify-start border-t">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-10 px-4 font-bold hover:bg-primary/5 w-full md:w-auto"><Plus className="w-4 h-4" /> Add Another Item</Button>
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-12 sm:h-10 px-4 font-bold hover:bg-primary/5 w-full md:w-auto rounded-xl sm:rounded-md"><Plus className="w-5 h-5 sm:w-4 sm:h-4" /> Add Another Item</Button>
                 </div>
               </div>
 
               <div className="space-y-3 pt-6 border-t">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
+                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope (AI Assisted)</Label>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-primary gap-2 h-8 px-2 w-full sm:w-auto justify-center" 
+                    className="text-primary gap-2 h-10 sm:h-8 px-3 w-full sm:w-auto justify-center bg-primary/5 sm:bg-transparent rounded-xl sm:rounded-md" 
                     onClick={handleGenerateScope} 
                     disabled={isGenerating}
                   >
@@ -715,26 +716,26 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     Generate Professional Scope
                   </Button>
                 </div>
-                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work, or leave blank to generate from line items...`} className="min-h-[150px] text-sm leading-relaxed" />
+                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work, or leave blank to generate from line items...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4" />
               </div>
             </CardContent>
           </Card>
         </div>
         <div className="space-y-6">
-          <Card className="shadow-lg border-primary/20 sticky top-8">
-            <CardHeader className="bg-primary/5 py-4"><CardTitle className="text-lg">Pricing & Totals</CardTitle></CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-4">
-                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label><Input type="number" step="1.0" className="h-10 px-3" value={laborRate} onChange={(e) => setLaborRate(truncateToTwoDecimals(e.target.value))} /></div>
-                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label><Input type="number" step="1.0" className="h-10 px-3" value={laborHours} onChange={(e) => setLaborHours(truncateToTwoDecimals(e.target.value))} /></div>
-                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label><Input type="number" step="1.0" className="h-10 px-3" value={materialCosts} onChange={(e) => setMaterialCosts(truncateToTwoDecimals(e.target.value))} /></div>
-                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Applied Tax Rate (%)</Label><Input type="number" step="1.0" className="h-10 px-3" value={taxRate} onChange={(e) => setTaxRate(truncateToTwoDecimals(e.target.value))} /></div>
+          <Card className="shadow-lg border-primary/20 sticky top-4 sm:top-8 overflow-hidden rounded-2xl">
+            <CardHeader className="bg-primary/5 py-4 px-4 sm:px-6"><CardTitle className="text-lg flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Pricing & Totals</CardTitle></CardHeader>
+            <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate ($/hr)</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={laborRate} onChange={(e) => setLaborRate(truncateToTwoDecimals(e.target.value))} /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={laborHours} onChange={(e) => setLaborHours(truncateToTwoDecimals(e.target.value))} /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials ($)</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={materialCosts} onChange={(e) => setMaterialCosts(truncateToTwoDecimals(e.target.value))} /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={taxRate} onChange={(e) => setTaxRate(truncateToTwoDecimals(e.target.value))} /></div>
               </div>
               <div className="space-y-3 pt-6 border-t border-dashed">
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20"><span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span><span className="text-3xl font-black text-primary overflow-hidden text-ellipsis">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20"><span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span><span className="text-2xl sm:text-3xl font-black text-primary overflow-hidden text-ellipsis">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
               </div>
-              <Button className="w-full gap-2 shadow-xl h-14 text-lg font-bold" size="lg" onClick={handleSave}><Save className="w-5 h-5" /> Preview & Save Quote</Button>
+              <Button className="w-full gap-2 shadow-xl h-14 sm:h-12 text-lg sm:text-base font-black rounded-xl sm:rounded-lg" size="lg" onClick={handleSave}><Save className="w-5 h-5" /> Save Quote</Button>
             </CardContent>
           </Card>
         </div>
