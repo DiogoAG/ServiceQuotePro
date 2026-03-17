@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -44,7 +45,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [clientId, setClientId] = useState<string>(preSelectedClientId || duplicateSource?.clientId || "");
   const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "General Contracting");
-  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "ea", quantity: 1, unitPrice: 0, total: 0 }]);
+  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
   const [laborHours, setLaborHours] = useState<number>(duplicateSource?.laborHours || 0);
   const [laborRate, setLaborRate] = useState<number>(duplicateSource?.laborRate || initialProfile.defaultLaborRate);
   const [materialCosts, setMaterialCosts] = useState<number>(duplicateSource?.materialCosts || 0);
@@ -95,12 +96,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [items, laborHours, laborRate, materialCosts, taxRate]);
 
   const addItem = () => {
-    setItems([...items, { id: uuidv4(), description: "", unit: "ea", quantity: 1, unitPrice: 0, total: 0 }]);
+    setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
   };
 
   const removeItem = (id: string) => {
     if (items.length === 1) {
-      setItems([{ id: uuidv4(), description: "", unit: "ea", quantity: 1, unitPrice: 0, total: 0 }]);
+      setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
     } else {
       setItems(items.filter(item => item.id !== id));
     }
@@ -125,7 +126,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             return {
                 ...i,
                 description: item.description,
-                unit: item.unit || "ea",
+                unit: item.unit || "",
                 unitPrice: item.defaultUnitPrice,
                 total: i.quantity * item.defaultUnitPrice
             };
@@ -500,6 +501,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label>
+                  <Input type="number" className="h-10" value={laborHours} onChange={(e) => setOpen(true)} // Not needed, just keeping structure
+                  />
                   <Input type="number" className="h-10" value={laborHours} onChange={(e) => setLaborHours(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">

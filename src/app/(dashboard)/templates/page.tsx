@@ -41,6 +41,7 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [searchItem, setSearchItem] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     setTemplates(getTemplates());
@@ -51,24 +52,28 @@ export default function TemplatesPage() {
     const newItem: CommonItem = { 
       id: uuidv4(), 
       category, 
-      description: "New custom service...", 
-      unit: "ea",
+      description: "", 
+      unit: "",
       defaultUnitPrice: 0,
       isHardCoded: false
     };
     setCommonItems([...commonItems, newItem]);
+    setIsDirty(true);
   };
 
   const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
     setCommonItems(commonItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setIsDirty(true);
   };
 
   const handleRemoveCommonItem = (id: string) => {
     setCommonItems(commonItems.filter(i => i.id !== id));
+    setIsDirty(true);
   };
 
   const handleSaveCommonItems = () => {
     saveCommonItems(commonItems);
+    setIsDirty(false);
     toast({ title: "Library Saved", description: "Your custom item library has been updated." });
   };
 
@@ -100,8 +105,8 @@ export default function TemplatesPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="max-w-5xl mx-auto space-y-8 pb-20">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Templates & Items</h1>
           <p className="text-muted-foreground">Manage your item library and standardized quote templates.</p>
@@ -112,8 +117,12 @@ export default function TemplatesPage() {
               <Plus className="w-4 h-4" /> New Quote / Template
             </Button>
           </Link>
-          <Button onClick={handleSaveCommonItems} className="gap-2 shadow-md">
-            <Save className="w-4 h-4" /> Save All Changes
+          <Button 
+            onClick={handleSaveCommonItems} 
+            className={cn("gap-2 shadow-md transition-all", isDirty ? "bg-accent text-accent-foreground animate-pulse" : "bg-primary")}
+          >
+            <Save className="w-4 h-4" /> 
+            {isDirty ? "Save Changes Now" : "All Changes Saved"}
           </Button>
         </div>
       </div>
@@ -184,7 +193,7 @@ export default function TemplatesPage() {
                                         onChange={(e) => handleUpdateCommonItem(item.id, 'description', e.target.value)} 
                                         className={cn(
                                           "h-9 text-sm bg-muted/20 border-none focus-visible:ring-1 pr-8",
-                                          item.isHardCoded && "opacity-80 font-medium"
+                                          item.isHardCoded && "opacity-80 font-medium cursor-not-allowed"
                                         )}
                                         readOnly={item.isHardCoded}
                                         placeholder="Description"
