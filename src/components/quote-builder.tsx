@@ -48,7 +48,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const draft = getDraftQuote();
     
     // CASE 1: Explicit Duplication (Reuse)
-    // We preserve EVERYTHING from the source, including its specific rates.
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
@@ -63,32 +62,18 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       };
     }
     
-    // CASE 2: Loading a Draft
-    // We load content (items, scope) but favor the CURRENT profile defaults for rates
-    // unless the draft shows the user explicitly changed them.
-    if (draft) {
-      return {
-        ...draft,
-        clientId: preSelectedClientId || draft.clientId || "",
-        items: draft.items.map(i => ({ ...i, id: i.id || uuidv4() })),
-        // If the user hasn't explicitly saved a quote yet, always use latest settings
-        // This solves the issue of tax/labor rates not updating after settings change
-        taxRate: initialProfile.defaultTaxRate,
-        laborRate: initialProfile.defaultLaborRate
-      };
-    }
-    
-    // CASE 3: Fresh Start
+    // CASE 2: Loading a Draft or Fresh Start
+    // We favor current profile defaults for rates on new builds
     return {
-      clientId: preSelectedClientId || "",
-      serviceCategory: "General Contracting",
-      items: [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }],
-      laborHours: 0,
+      clientId: preSelectedClientId || draft?.clientId || "",
+      serviceCategory: draft?.serviceCategory || "General Contracting",
+      items: draft?.items.map(i => ({ ...i, id: i.id || uuidv4() })) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }],
+      laborHours: draft?.laborHours || 0,
       laborRate: initialProfile.defaultLaborRate,
-      materialCosts: 0,
+      materialCosts: draft?.materialCosts || 0,
       taxRate: initialProfile.defaultTaxRate,
-      notes: "",
-      scopeDescription: ""
+      notes: draft?.notes || "",
+      scopeDescription: draft?.scopeDescription || ""
     };
   }, [duplicateSource, initialProfile, preSelectedClientId]);
 
@@ -156,10 +141,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const calculateTotals = useCallback(() => {
     const itemsTotal = items.reduce((acc, item) => acc + (item.total || 0), 0);
-    const laborTotal = (laborHours || 0) * (laborRate || 0);
-    const subtotal = itemsTotal + laborTotal + (materialCosts || 0);
+    const laborTotal = Math.round((laborHours || 0) * (laborRate || 0) * 100) / 100;
+    const subtotal = Math.round((itemsTotal + laborTotal + (materialCosts || 0)) * 100) / 100;
     
-    // Round tax and grand total to nearest cent (2 decimal places)
     const taxTotal = Math.round(subtotal * (taxRate || 0)) / 100;
     const grandTotal = Math.round((subtotal + taxTotal) * 100) / 100;
     
@@ -245,7 +229,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (item.id === id) {
         const updated = { ...item, [field]: value };
         if (field === 'quantity' || field === 'unitPrice') {
-          updated.total = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
+          const q = Number(field === 'quantity' ? value : item.quantity) || 0;
+          const p = Number(field === 'unitPrice' ? value : item.unitPrice) || 0;
+          updated.total = Math.round(q * p * 100) / 100;
         }
         return updated;
       }
@@ -263,7 +249,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 description: item.description,
                 unit: item.unit || "",
                 unitPrice: up,
-                total: q * up,
+                total: Math.round(q * up * 100) / 100,
                 isHardCoded: true
             };
         }
@@ -274,7 +260,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const applyTemplate = (template: QuoteTemplate) => {
     setServiceCategory(template.serviceCategory);
     setScopeDescription(template.scopeDescription);
-    setItems(template.items.map(i => ({ ...i, id: uuidv4(), isHardCoded: false })));
+    setItems(template.items.map(i => ({ 
+      ...i, 
+      id: uuidv4(), 
+      isHardCoded: false,
+      total: Math.round((i.quantity || 1) * (i.unitPrice || 0) * 100) / 100
+    })));
   };
 
   const handleSaveAsTemplate = () => {
@@ -303,7 +294,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       id: uuidv4(),
       name: newTemplateName,
       serviceCategory,
-      items: validItems.map(({ id, ...rest }) => rest),
+      items: validItems.map(({ id, ...rest }) => ({
+        ...rest,
+        quantity: Math.round(Number(rest.quantity) * 100) / 100,
+        unitPrice: Math.round(Number(rest.unitPrice) * 100) / 100,
+        total: Math.round(Number(rest.quantity) * Number(rest.unitPrice) * 100) / 100
+      })),
       scopeDescription
     };
 
@@ -379,23 +375,24 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return;
     }
 
-    const filteredItems = items.filter(item => {
+    const finalItems = items.filter(item => {
       const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
       return !isEmpty;
-    });
+    }).map(item => ({
+      ...item,
+      quantity: Math.round(Number(item.quantity) * 100) / 100,
+      unitPrice: Math.round(Number(item.unitPrice) * 100) / 100,
+      total: Math.round(Number(item.quantity) * Number(item.unitPrice) * 100) / 100
+    }));
 
-    for (const item of filteredItems) {
+    for (const item of finalItems) {
       if (!item.description.trim()) {
         toast({ title: "Description Required", description: "All service items must have a description.", variant: "destructive" });
         return;
       }
-      if (!item.isHardCoded && (!item.unitPrice || item.unitPrice < 0)) {
-        toast({ title: "Price Error", description: `"${item.description}" requires a valid price.`, variant: "destructive" });
-        return;
-      }
     }
 
-    if (filteredItems.length === 0) {
+    if (finalItems.length === 0) {
       toast({ title: "No Items", description: "Please add at least one valid service item.", variant: "destructive" });
       return;
     }
@@ -406,11 +403,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       date: new Date().toISOString(),
       status: 'draft',
       serviceCategory,
-      items: filteredItems,
+      items: finalItems,
       scopeDescription,
-      laborHours: laborHours || 0,
-      laborRate: laborRate || 0,
-      materialCosts: materialCosts || 0,
+      laborHours: Math.round((laborHours || 0) * 100) / 100,
+      laborRate: Math.round((laborRate || 0) * 100) / 100,
+      materialCosts: Math.round((materialCosts || 0) * 100) / 100,
       taxRate: taxRate || 0,
       taxTotal: totals.taxTotal,
       subtotal: totals.subtotal,
@@ -422,42 +419,33 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     onSave(newQuote);
   };
 
-  const commonItemsByCategory = useMemo(() => {
+  const organizedCommonItems = useMemo(() => {
     const categories: Record<string, CommonItem[]> = {};
     commonItems.forEach(item => {
       const cat = item.category || "General";
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(item);
     });
-    return categories;
-  }, [commonItems]);
 
-  const PAINTING_SUBCATEGORIES = [
-    "Painting - Interior Painting",
-    "Painting - Exterior Painting",
-    "Painting - Surface Preparation",
-    "Painting - Specialty Painting Services",
-    "Painting - Additional Services"
-  ];
-
-  const organizedCommonItems = useMemo(() => {
     const mainCategories = SERVICE_CATEGORIES.filter(c => c !== "Painting");
+    const PAINTING_SUBCATEGORIES = [
+      "Painting - Interior Painting",
+      "Painting - Exterior Painting",
+      "Painting - Surface Preparation",
+      "Painting - Specialty Painting Services",
+      "Painting - Additional Services"
+    ];
+
     const result: { category: string; items: CommonItem[] }[] = [];
-
     mainCategories.forEach(cat => {
-      if (commonItemsByCategory[cat]) {
-        result.push({ category: cat, items: commonItemsByCategory[cat] });
-      }
+      if (categories[cat]) result.push({ category: cat, items: categories[cat] });
     });
-
     PAINTING_SUBCATEGORIES.forEach(sub => {
-      if (commonItemsByCategory[sub]) {
-        result.push({ category: sub, items: commonItemsByCategory[sub] });
-      }
+      if (categories[sub]) result.push({ category: sub, items: categories[sub] });
     });
 
     return result;
-  }, [commonItemsByCategory]);
+  }, [commonItems]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -702,7 +690,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                                       >
                                         <div className="text-left w-full flex justify-between items-center gap-2">
                                           <span className="font-medium truncate">{ci.description}</span>
-                                          <span className="text-[10px] font-mono shrink-0 opacity-60">${ci.defaultUnitPrice}</span>
+                                          <span className="text-[10px] font-mono shrink-0 opacity-60">${ci.defaultUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                         </div>
                                       </Button>
                                     ))}
@@ -717,13 +705,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" />
                       </div>
                       <div>
-                        <Input type="number" className="h-9 text-sm" value={item.quantity || ""} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
+                        <Input type="number" step="0.01" className="h-9 text-sm" value={item.quantity || ""} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
                       </div>
                       <div>
-                        <Input type="number" className="h-9 text-sm" value={item.unitPrice || ""} onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))} />
+                        <Input type="number" step="0.01" className="h-9 text-sm" value={item.unitPrice || ""} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
                       </div>
                       <div className="text-right font-medium text-sm">
-                        ${(item.total || 0).toLocaleString()}
+                        ${(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                       <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
@@ -767,30 +755,30 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label>
-                  <Input type="number" className="h-10" value={laborRate || ""} onChange={(e) => setLaborRate(Number(e.target.value))} />
+                  <Input type="number" step="0.01" className="h-10" value={laborRate || ""} onChange={(e) => setLaborRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label>
-                  <Input type="number" className="h-10" value={laborHours || ""} onChange={(e) => setLaborHours(Number(e.target.value))} />
+                  <Input type="number" step="0.01" className="h-10" value={laborHours || ""} onChange={(e) => setLaborHours(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label>
-                  <Input type="number" className="h-10" value={materialCosts || ""} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
+                  <Input type="number" step="0.01" className="h-10" value={materialCosts || ""} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
                 </div>
               </div>
 
               <div className="space-y-3 pt-6 border-t border-dashed">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Tax ({taxRate}%)</span>
-                  <span>${totals.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span>${totals.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20">
                   <span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span>
-                  <span className="text-3xl font-black text-primary">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="text-3xl font-black text-primary">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
