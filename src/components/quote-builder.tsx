@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, User } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -449,44 +449,71 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end overflow-visible">
                 <div className="space-y-2 relative">
-                  <Label>Client Search & Selection</Label>
-                  <Popover open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} onOpenChange={setIsClientPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <div className="relative group w-full">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
-                        <Input placeholder="Search by name, email, phone, or address..." className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} onFocus={() => { if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} />
-                        {selectedClient && !clientSearch && (
-                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
-                            <span className="truncate max-w-[120px]">{selectedClient.name}</span>
-                            <X className="w-3 h-3 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => { e.stopPropagation(); setClientId(""); }} />
-                          </div>
-                        )}
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="p-0 border shadow-xl bg-popover" align="start" sideOffset={4} style={{ width: 'var(--radix-popover-trigger-width)' }} onOpenAutoFocus={(e) => e.preventDefault()}>
-                      <ScrollArea className="max-h-[300px]">
-                        <div className="p-2 border-b bg-muted/30"><p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p></div>
-                        {filteredClients.length > 0 ? (
-                          filteredClients.map((c) => (
-                            <Button key={c.id} variant="ghost" className={cn("w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0", clientId === c.id && "bg-primary/5")} onClick={() => { setClientId(c.id); setClientSearch(""); setIsClientPopoverOpen(false); }}>
-                              <div className="flex flex-col items-start w-full gap-0.5">
-                                <div className="flex items-center justify-between w-full text-left">
-                                  <span className="font-semibold text-sm">{c.name}</span>
-                                  {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
-                              </div>
-                            </Button>
-                          ))
-                        ) : null}
-                        <div className="p-2">
-                          <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
-                            <UserPlus className="h-3.5 w-3.5" /> {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
-                          </Button>
+                  <Label>Client Selection</Label>
+                  {selectedClient ? (
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5 h-11">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                          {selectedClient.name.charAt(0)}
                         </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
+                        <div className="flex flex-col leading-none overflow-hidden">
+                          <span className="text-sm font-semibold truncate">{selectedClient.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</span>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive"
+                        onClick={() => setClientId("")}
+                      >
+                        <X className="w-3 h-3 mr-1" /> Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <Popover open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} onOpenChange={setIsClientPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <div className="relative group w-full">
+                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
+                          <Input 
+                            placeholder="Search by name, email, phone, or address..." 
+                            className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" 
+                            value={clientSearch} 
+                            onChange={(e) => { 
+                              setClientSearch(e.target.value); 
+                              if (!isClientPopoverOpen) setIsClientPopoverOpen(true); 
+                            }} 
+                            onFocus={() => { 
+                              if (!isClientPopoverOpen) setIsClientPopoverOpen(true); 
+                            }} 
+                          />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0 border shadow-xl bg-popover" align="start" sideOffset={4} style={{ width: 'var(--radix-popover-trigger-width)' }} onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <ScrollArea className="max-h-[300px]">
+                          <div className="p-2 border-b bg-muted/30"><p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p></div>
+                          {filteredClients.length > 0 ? (
+                            filteredClients.map((c) => (
+                              <Button key={c.id} variant="ghost" className={cn("w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0", clientId === c.id && "bg-primary/5")} onClick={() => { setClientId(c.id); setClientSearch(""); setIsClientPopoverOpen(false); }}>
+                                <div className="flex flex-col items-start w-full gap-0.5">
+                                  <div className="flex items-center justify-between w-full text-left">
+                                    <span className="font-semibold text-sm">{c.name}</span>
+                                    {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
+                                </div>
+                              </Button>
+                            ))
+                          ) : null}
+                          <div className="p-2">
+                            <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
+                              <UserPlus className="h-3.5 w-3.5" /> {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
+                            </Button>
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Service Category</Label>
