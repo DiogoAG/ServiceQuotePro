@@ -77,26 +77,43 @@ export const getCommonItems = (): CommonItem[] => {
     { id: 'gc1', category: 'General Contracting', description: 'Site Preparation & Protection', unit: 'sq ft', defaultUnitPrice: 1.5, isHardCoded: true },
     { id: 'gc2', category: 'General Contracting', description: 'Debris Removal & Disposal', unit: 'load', defaultUnitPrice: 350, isHardCoded: true },
     { id: 'gc3', category: 'General Contracting', description: 'Project Management Fee', unit: 'flat', defaultUnitPrice: 500, isHardCoded: true },
+    { id: 'gc4', category: 'General Contracting', description: 'Permit Coordination & Filing', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
+    { id: 'gc5', category: 'General Contracting', description: 'Temporary Fencing (Rental)', unit: 'linear ft', defaultUnitPrice: 12, isHardCoded: true },
+    { id: 'gc6', category: 'General Contracting', description: 'Final Site Cleanup & Polish', unit: 'sq ft', defaultUnitPrice: 0.85, isHardCoded: true },
     
     // Electrical
     { id: 'el1', category: 'Electrical', description: 'Outlet/Switch Installation', unit: 'ea', defaultUnitPrice: 125, isHardCoded: true },
     { id: 'el2', category: 'Electrical', description: 'Light Fixture Installation', unit: 'ea', defaultUnitPrice: 150, isHardCoded: true },
     { id: 'el3', category: 'Electrical', description: 'Electrical Panel Upgrade', unit: 'ea', defaultUnitPrice: 2500, isHardCoded: true },
+    { id: 'el4', category: 'Electrical', description: 'Recessed Lighting (6-Pack)', unit: 'set', defaultUnitPrice: 1200, isHardCoded: true },
+    { id: 'el5', category: 'Electrical', description: 'GFCI Outlet Installation', unit: 'ea', defaultUnitPrice: 175, isHardCoded: true },
+    { id: 'el6', category: 'Electrical', description: 'Whole House Surge Protector', unit: 'ea', defaultUnitPrice: 450, isHardCoded: true },
+    { id: 'el7', category: 'Electrical', description: 'EV Charger Installation', unit: 'ea', defaultUnitPrice: 850, isHardCoded: true },
     
     // Plumbing
     { id: 'pl1', category: 'Plumbing', description: 'Leak Repair & Pipe Inspection', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
     { id: 'pl2', category: 'Plumbing', description: 'Faucet/Fixture Installation', unit: 'ea', defaultUnitPrice: 175, isHardCoded: true },
     { id: 'pl3', category: 'Plumbing', description: 'Toilet Replacement', unit: 'ea', defaultUnitPrice: 350, isHardCoded: true },
+    { id: 'pl4', category: 'Plumbing', description: 'Water Heater Installation', unit: 'ea', defaultUnitPrice: 1800, isHardCoded: true },
+    { id: 'pl5', category: 'Plumbing', description: 'Garbage Disposal Install', unit: 'ea', defaultUnitPrice: 225, isHardCoded: true },
+    { id: 'pl6', category: 'Plumbing', description: 'Sump Pump Replacement', unit: 'ea', defaultUnitPrice: 550, isHardCoded: true },
+    { id: 'pl7', category: 'Plumbing', description: 'Drain Cleaning (Main Line)', unit: 'ea', defaultUnitPrice: 450, isHardCoded: true },
     
     // HVAC
     { id: 'hv1', category: 'HVAC', description: 'AC System Tune-Up', unit: 'ea', defaultUnitPrice: 185, isHardCoded: true },
     { id: 'hv2', category: 'HVAC', description: 'Filter Replacement', unit: 'ea', defaultUnitPrice: 45, isHardCoded: true },
     { id: 'hv3', category: 'HVAC', description: 'Thermostat Installation', unit: 'ea', defaultUnitPrice: 150, isHardCoded: true },
+    { id: 'hv4', category: 'HVAC', description: 'Duct Cleaning Service', unit: 'ea', defaultUnitPrice: 650, isHardCoded: true },
+    { id: 'hv5', category: 'HVAC', description: 'Furnace Inspection & Safety Check', unit: 'ea', defaultUnitPrice: 165, isHardCoded: true },
+    { id: 'hv6', category: 'HVAC', description: 'Condenser Fan Motor Replace', unit: 'ea', defaultUnitPrice: 450, isHardCoded: true },
     
     // Landscaping
     { id: 'ls1', category: 'Landscaping', description: 'Lawn Mowing & Edging', unit: 'visit', defaultUnitPrice: 85, isHardCoded: true },
     { id: 'ls2', category: 'Landscaping', description: 'Mulch Installation', unit: 'cu yd', defaultUnitPrice: 120, isHardCoded: true },
     { id: 'ls3', category: 'Landscaping', description: 'Tree/Shrub Planting', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
+    { id: 'ls4', category: 'Landscaping', description: 'Sod Installation', unit: 'sq ft', defaultUnitPrice: 2.25, isHardCoded: true },
+    { id: 'ls5', category: 'Landscaping', description: 'Paver Patio Installation', unit: 'sq ft', defaultUnitPrice: 25, isHardCoded: true },
+    { id: 'ls6', category: 'Landscaping', description: 'Sprinkler System Repair', unit: 'ea', defaultUnitPrice: 150, isHardCoded: true },
     
     // Painting - Interior
     { id: 'ip1', category: 'Painting - Interior Painting', description: 'Interior Wall Painting', unit: 'sq ft', defaultUnitPrice: 2.5, isHardCoded: true },
@@ -151,17 +168,26 @@ export const getCommonItems = (): CommonItem[] => {
     // Roofing
     { id: 'rf1', category: 'Roofing', description: 'Roof Inspection & Assessment', unit: 'ea', defaultUnitPrice: 150, isHardCoded: true },
     { id: 'rf2', category: 'Roofing', description: 'Gutter Cleaning & Inspection', unit: 'linear ft', defaultUnitPrice: 2.5, isHardCoded: true },
+    { id: 'rf3', category: 'Roofing', description: 'Shingle Repair (Minor)', unit: 'patch', defaultUnitPrice: 450, isHardCoded: true },
+    { id: 'rf4', category: 'Roofing', description: 'Full Roof Replacement (Arch)', unit: 'sq', defaultUnitPrice: 650, isHardCoded: true },
+    { id: 'rf5', category: 'Roofing', description: 'Skylight Replacement', unit: 'ea', defaultUnitPrice: 1200, isHardCoded: true },
     
     // Carpentry
     { id: 'cp1', category: 'Carpentry', description: 'Custom Trim Installation', unit: 'linear ft', defaultUnitPrice: 8.5, isHardCoded: true },
     { id: 'cp2', category: 'Carpentry', description: 'Door Hanging & Hardware', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
+    { id: 'cp3', category: 'Carpentry', description: 'Crown Molding Installation', unit: 'linear ft', defaultUnitPrice: 12, isHardCoded: true },
+    { id: 'cp4', category: 'Carpentry', description: 'Cabinet Hardware Install', unit: 'ea', defaultUnitPrice: 25, isHardCoded: true },
+    { id: 'cp5', category: 'Carpentry', description: 'Wainscoting Installation', unit: 'sq ft', defaultUnitPrice: 18, isHardCoded: true },
     
     // Cleaning
     { id: 'cl1', category: 'Cleaning', description: 'Deep House Cleaning', unit: 'hr', defaultUnitPrice: 65, isHardCoded: true },
     { id: 'cl2', category: 'Cleaning', description: 'Post-Construction Cleanup', unit: 'sq ft', defaultUnitPrice: 0.75, isHardCoded: true },
+    { id: 'cl3', category: 'Cleaning', description: 'Window Cleaning (Ext)', unit: 'window', defaultUnitPrice: 15, isHardCoded: true },
+    { id: 'cl4', category: 'Cleaning', description: 'Carpet Steam Cleaning', unit: 'room', defaultUnitPrice: 75, isHardCoded: true },
     
     // Other
-    { id: 'ot1', category: 'Other', description: 'General Handyman Labor', unit: 'hr', defaultUnitPrice: 75, isHardCoded: true }
+    { id: 'ot1', category: 'Other', description: 'General Handyman Labor', unit: 'hr', defaultUnitPrice: 75, isHardCoded: true },
+    { id: 'ot2', category: 'Other', description: 'Furniture Assembly', unit: 'hr', defaultUnitPrice: 65, isHardCoded: true }
   ];
 
   if (!stored) return hardCodedItems;
