@@ -47,7 +47,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const getInitialState = useCallback(() => {
     const draft = getDraftQuote();
     
-    // CASE 1: Explicit Duplication (Reuse)
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
@@ -62,8 +61,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       };
     }
     
-    // CASE 2: Loading a Draft or Fresh Start
-    // We favor current profile defaults for rates on new builds
     return {
       clientId: preSelectedClientId || draft?.clientId || "",
       serviceCategory: draft?.serviceCategory || "General Contracting",
@@ -275,19 +272,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     }
 
     const validItems = items.filter(item => {
-      return item.description.trim() !== "" || (item.unit && item.unit.trim() !== "") || (item.unitPrice !== 0 && item.unitPrice !== null);
+      return item.description.trim() !== "";
     });
 
     if (validItems.length === 0) {
       toast({ title: "No Items", description: "Please add at least one valid service item to your template.", variant: "destructive" });
       return;
-    }
-
-    for (const item of validItems) {
-      if (!item.description.trim()) {
-        toast({ title: "Description Required", description: "All template items must have a description.", variant: "destructive" });
-        return;
-      }
     }
 
     const newTemplate: QuoteTemplate = {
@@ -532,9 +522,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           }}
                         />
                         {selectedClient && !clientSearch && (
-                          <div className="absolute right-3 top-2 flex items-center gap-2 bg-primary/10 px-2.5 py-1.5 rounded border border-primary/20 shadow-sm z-10">
-                            <span className="truncate max-w-[150px] text-primary font-bold text-sm">{selectedClient.name}</span>
-                            <X className="w-4 h-4 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
+                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
+                            <span className="truncate max-w-[120px]">{selectedClient.name}</span>
+                            <X className="w-3 h-3 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
                               e.stopPropagation();
                               setClientId("");
                             }} />
@@ -705,10 +695,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" />
                       </div>
                       <div>
-                        <Input type="number" step="0.01" className="h-9 text-sm" value={item.quantity || ""} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
+                        <Input type="number" step="1.0" className="h-9 text-sm" value={item.quantity || ""} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
                       </div>
                       <div>
-                        <Input type="number" step="0.01" className="h-9 text-sm" value={item.unitPrice || ""} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
+                        <Input type="number" step="1.0" className="h-9 text-sm" value={item.unitPrice || ""} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
                       </div>
                       <div className="text-right font-medium text-sm">
                         ${(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -755,15 +745,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label>
-                  <Input type="number" step="0.01" className="h-10" value={laborRate || ""} onChange={(e) => setLaborRate(Number(e.target.value))} />
+                  <Input type="number" step="1.0" className="h-10" value={laborRate || ""} onChange={(e) => setLaborRate(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label>
-                  <Input type="number" step="0.01" className="h-10" value={laborHours || ""} onChange={(e) => setLaborHours(Number(e.target.value))} />
+                  <Input type="number" step="1.0" className="h-10" value={laborHours || ""} onChange={(e) => setLaborHours(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label>
-                  <Input type="number" step="0.01" className="h-10" value={materialCosts || ""} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
+                  <Input type="number" step="1.0" className="h-10" value={materialCosts || ""} onChange={(e) => setMaterialCosts(Number(e.target.value))} />
                 </div>
               </div>
 
