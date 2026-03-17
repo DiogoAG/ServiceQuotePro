@@ -348,7 +348,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     }
 
     const filteredItems = items.filter(item => {
-      if (item.isHardCoded) return true;
       const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
       return !isEmpty;
     });
@@ -490,37 +489,43 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end overflow-visible">
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <Label>Client Search & Selection</Label>
-                  <Popover open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} onOpenChange={setIsClientPopoverOpen}>
-                    <div className="relative group">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
-                      <Input
-                        placeholder="Search clients..."
-                        className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all"
-                        value={clientSearch}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setClientSearch(val);
-                          setIsClientPopoverOpen(true);
-                        }}
-                        onFocus={() => {
-                          setIsClientPopoverOpen(true);
-                        }}
-                      />
-                      {selectedClient && !clientSearch && (
-                        <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary">
-                          <span className="truncate max-w-[120px]">{selectedClient.name}</span>
-                          <X className="w-3 h-3 cursor-pointer hover:text-primary/70" onClick={() => setClientId("")} />
-                        </div>
-                      )}
-                    </div>
+                  <Popover 
+                    open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} 
+                    onOpenChange={setIsClientPopoverOpen}
+                  >
                     <PopoverTrigger asChild>
-                      <div className="hidden" />
+                      <div className="relative group w-full">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
+                        <Input
+                          placeholder="Search clients..."
+                          className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all"
+                          value={clientSearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setClientSearch(val);
+                            if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
+                          }}
+                          onFocus={() => {
+                            if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
+                          }}
+                        />
+                        {selectedClient && !clientSearch && (
+                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
+                            <span className="truncate max-w-[120px]">{selectedClient.name}</span>
+                            <X className="w-3 h-3 cursor-pointer hover:text-primary/70" onClick={(e) => {
+                              e.stopPropagation();
+                              setClientId("");
+                            }} />
+                          </div>
+                        )}
+                      </div>
                     </PopoverTrigger>
                     <PopoverContent 
                       className="p-0 border shadow-xl bg-popover" 
                       align="start"
+                      sideOffset={4}
                       style={{ width: 'var(--radix-popover-trigger-width)' }}
                       onOpenAutoFocus={(e) => e.preventDefault()}
                     >
@@ -528,31 +533,37 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <div className="p-2 border-b bg-muted/30">
                           <p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p>
                         </div>
-                        {filteredClients.map((c) => (
-                          <Button
-                            key={c.id}
-                            variant="ghost"
-                            className={cn(
-                              "w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0",
-                              clientId === c.id && "bg-primary/5"
-                            )}
-                            onClick={() => {
-                              setClientId(c.id);
-                              setClientSearch("");
-                              setIsClientPopoverOpen(false);
-                            }}
-                          >
-                            <div className="flex flex-col items-start w-full gap-0.5">
-                              <div className="flex items-center justify-between w-full text-left">
-                                <span className="font-semibold text-sm">{c.name}</span>
-                                {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
+                        {filteredClients.length > 0 ? (
+                          filteredClients.map((c) => (
+                            <Button
+                              key={c.id}
+                              variant="ghost"
+                              className={cn(
+                                "w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0",
+                                clientId === c.id && "bg-primary/5"
+                              )}
+                              onClick={() => {
+                                setClientId(c.id);
+                                setClientSearch("");
+                                setIsClientPopoverOpen(false);
+                              }}
+                            >
+                              <div className="flex flex-col items-start w-full gap-0.5">
+                                <div className="flex items-center justify-between w-full text-left">
+                                  <span className="font-semibold text-sm">{c.name}</span>
+                                  {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
                               </div>
-                              <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
-                            </div>
-                          </Button>
-                        ))}
+                            </Button>
+                          ))
+                        ) : null}
                         <div className="p-2">
-                          <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
+                          <Button 
+                            variant="ghost" 
+                            className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" 
+                            onClick={handleOpenNewClientDialog}
+                          >
                             <UserPlus className="h-3.5 w-3.5" /> 
                             {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
                           </Button>
