@@ -441,13 +441,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-sm border-primary/10 overflow-visible">
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
               <CardTitle className="text-xl">Quote Configuration</CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
-                      <LayoutTemplate className="w-4 h-4" /> Save Template
+                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none">
+                      <LayoutTemplate className="w-4 h-4" /> <span className="hidden xs:inline">Save Template</span><span className="xs:hidden">Save</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -466,8 +466,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </Dialog>
                 <Popover onOpenChange={(open) => !open && setTemplateSearch("")}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
-                      <Copy className="w-4 h-4" /> Load Template
+                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none">
+                      <Copy className="w-4 h-4" /> <span className="hidden xs:inline">Load Template</span><span className="xs:hidden">Load</span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-72 p-0" align="end">
@@ -510,12 +510,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="space-y-2 relative">
                   <Label>Client Selection</Label>
                   {selectedClient ? (
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5 h-11">
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5 min-h-[44px]">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                           {selectedClient.name.charAt(0)}
                         </div>
-                        <div className="flex flex-col leading-none overflow-hidden">
+                        <div className="flex flex-col leading-tight overflow-hidden">
                           <span className="text-sm font-semibold truncate">{selectedClient.name}</span>
                           <span className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</span>
                         </div>
@@ -523,7 +523,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive"
+                        className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive shrink-0 ml-2"
                         onClick={() => setClientId("")}
                       >
                         <X className="w-3 h-3 mr-1" /> Change
@@ -535,7 +535,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <div className="relative group w-full">
                           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
                           <Input 
-                            placeholder="Search by name, email, phone, or address..." 
+                            placeholder="Search by name, email..." 
                             className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" 
                             value={clientSearch} 
                             onChange={(e) => { 
@@ -625,18 +625,27 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             </DialogContent>
           </Dialog>
 
-          <Card className="shadow-sm border-primary/10">
+          <Card className="shadow-sm border-primary/10 overflow-hidden">
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+            <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
+              <div className="space-y-4">
+                {/* Header for Tablet/Desktop */}
+                <div className="hidden md:grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
-                <div className="space-y-3">
+                
+                <div className="space-y-6 md:space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_100px_100px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-lg md:border-none md:p-0">
+                      {/* Mobile Labels (Hidden on MD) */}
+                      <div className="md:hidden flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Service Item</span>
+                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+
+                      {/* Description Field */}
                       <div className="relative">
-                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item description..." className="pr-8 h-9 text-sm" />
+                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-8 h-9 text-sm" />
                         <Popover>
                           <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
@@ -662,25 +671,43 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <div><Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" /></div>
-                      <div><Input type="number" step="1.0" className="h-9 text-sm px-2" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} /></div>
-                      <div><Input type="number" step="1.0" className="h-9 text-sm px-2" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} /></div>
-                      <div className="text-right font-medium text-sm overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
+
+                      {/* Numeric Fields (Stacked on Mobile) */}
+                      <div className="grid grid-cols-2 md:contents gap-3">
+                        <div className="space-y-1 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Unit</Label>
+                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" />
+                        </div>
+                        <div className="space-y-1 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Qty</Label>
+                          <Input type="number" step="1.0" className="h-9 text-sm px-2" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
+                        </div>
+                        <div className="space-y-1 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Price ($)</Label>
+                          <Input type="number" step="1.0" className="h-9 text-sm px-2" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
+                        </div>
+                        <div className="flex flex-col md:block items-end justify-center">
+                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground mb-1">Total</Label>
+                          <div className="text-right font-bold md:font-medium text-sm overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                      </div>
+
+                      <Button variant="ghost" size="icon" className="hidden md:flex text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
                 </div>
                 <div className="pt-4 flex justify-start border-t">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2 font-bold hover:bg-primary/5"><Plus className="w-4 h-4" /> Add Another Item</Button>
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-10 px-4 font-bold hover:bg-primary/5 w-full md:w-auto"><Plus className="w-4 h-4" /> Add Another Item</Button>
                 </div>
               </div>
+
               <div className="space-y-3 pt-6 border-t">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-primary gap-2 h-8 px-2" 
+                    className="text-primary gap-2 h-8 px-2 w-full sm:w-auto justify-center" 
                     onClick={handleGenerateScope} 
                     disabled={isGenerating}
                   >
