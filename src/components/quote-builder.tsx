@@ -28,12 +28,15 @@ type QuoteBuilderProps = {
 };
 
 const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
-  "General Contracting": ["Site Prep & Protection", "Management & Permits", "Cleanup & Disposal"],
-  "Electrical": ["Installation", "Repair & Maintenance", "Upgrades"],
-  "Plumbing": ["Fixtures & Fittings", "Piping & Leaks", "Water Heaters", "Drainage"],
-  "HVAC": ["Cooling", "Heating", "Air Quality & Maintenance"],
-  "Landscaping": ["Maintenance", "Hardscaping", "Softscaping & Planting"],
-  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"]
+  "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
+  "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
+  "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
+  "HVAC": ["Heating Systems", "Cooling Systems", "Air Distribution", "Controls", "Refrigeration", "Indoor Air Quality", "Maintenance & Service"],
+  "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
+  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
+  "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance", "Inspection"],
+  "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Structural & Specialty", "Exterior Carpentry", "Custom Work", "Repair"],
+  "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
 };
 
 // Helper for rounding to 2 decimals for final storage/totals
@@ -558,12 +561,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_100px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_100px_90px_110px_120px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item description..." className="pr-8 h-9 text-sm" />
                         <Popover>
