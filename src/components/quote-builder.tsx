@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate, ChevronRight } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate, ChevronRight, Undo2 } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -157,10 +157,42 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const removeItem = (id: string) => {
+    const itemToRemove = items.find(item => item.id === id);
+    if (!itemToRemove) return;
+
+    // Check if the item is completely empty (no info at all)
+    const isEmpty = !itemToRemove.description.trim() && !itemToRemove.unit?.trim() && (!itemToRemove.unitPrice || itemToRemove.unitPrice === 0);
+
     if (items.length === 1) {
       setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
     } else {
       setItems(items.filter(item => item.id !== id));
+    }
+
+    // Only show undo for items that actually had content
+    if (!isEmpty) {
+      toast({
+        title: "Item Removed",
+        description: `"${itemToRemove.description || 'Service Item'}" has been removed.`,
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              setItems(prev => {
+                // If the only item is a single empty placeholder, replace it
+                if (prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0)) {
+                  return [itemToRemove];
+                }
+                return [...prev, itemToRemove];
+              });
+              toast({ title: "Restored", description: "The item has been restored." });
+            }}
+          >
+            <Undo2 className="w-4 h-4 mr-2" /> Undo
+          </Button>
+        )
+      });
     }
   };
 
@@ -268,6 +300,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return;
     }
 
+    // Filter out completely empty rows
     const filteredItems = items.filter(item => {
       if (item.isHardCoded) return true;
       const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
@@ -279,6 +312,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         toast({ title: "Description Required", description: "All service items must have a description.", variant: "destructive" });
         return;
       }
+      // Only require price for custom (non-standard) items
       if (!item.isHardCoded && (!item.unitPrice || item.unitPrice <= 0)) {
         toast({ title: "Price Required", description: `"${item.description}" requires a valid price.`, variant: "destructive" });
         return;
