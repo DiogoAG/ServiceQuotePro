@@ -13,7 +13,7 @@ export const getClients = (): Client[] => {
   return stored ? JSON.parse(stored) : [
     { id: '1', name: 'John Smith', email: 'john.smith@gmail.com', phone: '555-0101', address: '123 Oak St, Springfield' },
     { id: '2', name: 'Sarah Miller', email: 's.miller88@outlook.com', phone: '555-0102', address: '456 Maple Ave, Riverside' },
-    { id: '3', name: 'John Smith', email: 'jsmith.construction@biz.com', phone: '555-9999', address: '789 Industrial Way, Metro City' }
+    { id: '3', name: 'David Wilson', email: 'dwilson@biz.com', phone: '555-9999', address: '789 Industrial Way, Metro City' }
   ];
 };
 
@@ -105,14 +105,40 @@ export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   return stored ? JSON.parse(stored) : [
-    { id: 'i1', description: 'Labor - Master Technician', defaultUnitPrice: 95 },
-    { id: 'i2', description: 'Labor - Assistant/Apprentice', defaultUnitPrice: 55 },
-    { id: 'i3', description: 'Standard Service Call Fee', defaultUnitPrice: 125 },
-    { id: 'i4', description: 'Emergency Call-Out Premium', defaultUnitPrice: 185 },
-    { id: 'i5', description: 'Disposal & Environmental Fee', defaultUnitPrice: 45 },
-    { id: 'i6', description: 'Basic Hardware/Fasteners Kit', defaultUnitPrice: 25 },
-    { id: 'i7', description: 'Wall Prep & Patching', defaultUnitPrice: 85 },
-    { id: 'i8', description: 'Safety Inspection Cert', defaultUnitPrice: 150 }
+    // Electrical
+    { id: 'e1', category: 'Electrical', description: 'Labor - Master Electrician', defaultUnitPrice: 95 },
+    { id: 'e2', category: 'Electrical', description: 'Circuit Breaker Replacement (Standard)', defaultUnitPrice: 45 },
+    { id: 'e3', category: 'Electrical', description: 'Electrical Panel Upgrade (200 Amp)', defaultUnitPrice: 2200 },
+    { id: 'e4', category: 'Electrical', description: 'GFCI Outlet Installation', defaultUnitPrice: 85 },
+    { id: 'e5', category: 'Electrical', description: 'Lighting Fixture Installation (Basic)', defaultUnitPrice: 125 },
+    
+    // Plumbing
+    { id: 'p1', category: 'Plumbing', description: 'Labor - Master Plumber', defaultUnitPrice: 95 },
+    { id: 'p2', category: 'Plumbing', description: 'Drain Clearing - Main Line', defaultUnitPrice: 195 },
+    { id: 'p3', category: 'Plumbing', description: 'Water Heater Replacement (50 Gal)', defaultUnitPrice: 1450 },
+    { id: 'p4', category: 'Plumbing', description: 'Faucet Repair/Installation', defaultUnitPrice: 150 },
+    { id: 'p5', category: 'Plumbing', description: 'Toilet Replacement (Standard)', defaultUnitPrice: 350 },
+    
+    // HVAC
+    { id: 'h1', category: 'HVAC', description: 'Labor - HVAC Technician', defaultUnitPrice: 85 },
+    { id: 'h2', category: 'HVAC', description: 'A/C Seasonal Tune-Up', defaultUnitPrice: 149 },
+    { id: 'h3', category: 'HVAC', description: 'Furnace Inspection & Service', defaultUnitPrice: 125 },
+    { id: 'h4', category: 'HVAC', description: 'Smart Thermostat Installation', defaultUnitPrice: 185 },
+    { id: 'h5', category: 'HVAC', description: 'Refrigerant Recharge (per lb)', defaultUnitPrice: 95 },
+    
+    // Painting
+    { id: 'pt1', category: 'Painting', description: 'Labor - Professional Painter', defaultUnitPrice: 55 },
+    { id: 'pt2', category: 'Painting', description: 'Premium Paint (Gallon)', defaultUnitPrice: 65 },
+    { id: 'pt3', category: 'Painting', description: 'Surface Prep & Drywall Patching', defaultUnitPrice: 120 },
+    { id: 'pt4', category: 'Painting', description: 'Trim & Baseboard Painting (per room)', defaultUnitPrice: 150 },
+    { id: 'pt5', category: 'Painting', description: 'Ceiling Painting (Standard Room)', defaultUnitPrice: 100 },
+    
+    // General
+    { id: 'g1', category: 'General', description: 'Service Call Fee / Diagnostic', defaultUnitPrice: 95 },
+    { id: 'g2', category: 'General', description: 'Emergency / After-Hours Fee', defaultUnitPrice: 185 },
+    { id: 'g3', category: 'General', description: 'Disposal & Material Handling', defaultUnitPrice: 45 },
+    { id: 'g4', category: 'General', description: 'Labor - Apprentice/Helper', defaultUnitPrice: 45 },
+    { id: 'g5', category: 'General', description: 'Equipment Rental (Daily)', defaultUnitPrice: 150 }
   ];
 };
 

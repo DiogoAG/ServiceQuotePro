@@ -17,6 +17,7 @@ import { getCommonItems, getTemplates, saveClients, saveTemplates } from "@/lib/
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type QuoteBuilderProps = {
   initialClients: Client[];
@@ -234,6 +235,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     onSave(newQuote);
   };
 
+  const commonItemsByCategory = useMemo(() => {
+    return commonItems.reduce((acc, item) => {
+      if (!acc[item.category]) acc[item.category] = [];
+      acc[item.category].push(item);
+      return acc;
+    }, {} as Record<string, CommonItem[]>);
+  }, [commonItems]);
+
   return (
     <div className="space-y-8 pb-12">
       <div className="grid gap-8 lg:grid-cols-3">
@@ -281,7 +290,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <PopoverContent className="w-64 p-2" align="end">
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
-                      <div className="max-h-64 overflow-y-auto">
+                      <ScrollArea className="h-64">
                         {templates.map(t => (
                           <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto" onClick={() => {
                             applyTemplate(t);
@@ -293,7 +302,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             </div>
                           </Button>
                         ))}
-                      </div>
+                      </ScrollArea>
                       {templates.length === 0 && <p className="text-xs text-center py-4 text-muted-foreground">No templates found.</p>}
                     </div>
                   </PopoverContent>
@@ -335,7 +344,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           />
                         </div>
                       </div>
-                      <div className="max-h-[300px] overflow-y-auto">
+                      <ScrollArea className="h-[300px]">
                         {filteredClients.map((c) => (
                           <Button
                             key={c.id}
@@ -372,7 +381,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         {filteredClients.length === 0 && !clientSearch && (
                           <p className="text-xs text-center py-6 text-muted-foreground">No clients found.</p>
                         )}
-                      </div>
+                      </ScrollArea>
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -424,19 +433,31 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                               <BookOpen className="w-3.5 h-3.5" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-64 p-2" align="start">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Library Items</p>
-                              <div className="max-h-48 overflow-y-auto">
-                                {commonItems.map(ci => (
-                                  <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1.5 h-auto" onClick={() => selectCommonItem(item.id, ci)}>
-                                    <div className="text-left">
-                                      <div className="font-medium">{ci.description}</div>
-                                      <div className="text-[10px] opacity-70">${ci.defaultUnitPrice}</div>
+                          <PopoverContent className="w-72 p-2" align="start">
+                            <div className="space-y-2">
+                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Standard Item Library</p>
+                              <ScrollArea className="h-64">
+                                {Object.entries(commonItemsByCategory).map(([category, items]) => (
+                                  <div key={category} className="mb-4 last:mb-0">
+                                    <p className="text-[9px] font-black uppercase text-primary/50 px-2 mb-1 tracking-widest">{category}</p>
+                                    <div className="space-y-0.5">
+                                      {items.map(ci => (
+                                        <Button 
+                                          key={ci.id} 
+                                          variant="ghost" 
+                                          className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-primary/5" 
+                                          onClick={() => selectCommonItem(item.id, ci)}
+                                        >
+                                          <div className="text-left w-full flex justify-between items-center gap-2">
+                                            <span className="font-medium truncate">{ci.description}</span>
+                                            <span className="text-[10px] font-mono shrink-0">${ci.defaultUnitPrice}</span>
+                                          </div>
+                                        </Button>
+                                      ))}
                                     </div>
-                                  </Button>
+                                  </div>
                                 ))}
-                              </div>
+                              </ScrollArea>
                             </div>
                           </PopoverContent>
                         </Popover>

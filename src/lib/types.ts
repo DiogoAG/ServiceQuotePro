@@ -26,6 +26,7 @@ export type QuoteItem = {
 export type CommonItem = {
   id: string;
   description: string;
+  category: string;
   defaultUnitPrice: number;
 };
 
