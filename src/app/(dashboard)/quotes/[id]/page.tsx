@@ -7,7 +7,7 @@ import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { getQuotes, getClients, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Mail, ChevronLeft, Building2, User, Wrench } from "lucide-react";
+import { Printer, Mail, ChevronLeft, Building2, User } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -38,12 +38,10 @@ export default function QuoteSummaryPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-8 print:p-0">
       <div className="flex items-center justify-between no-print">
-        <Link href="/quotes">
-          <Button variant="ghost" className="gap-2">
-            <ChevronLeft className="w-4 h-4" />
-            Back to Quotes
-          </Button>
-        </Link>
+        <Button variant="ghost" className="gap-2" onClick={() => router.back()}>
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </Button>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2" onClick={() => window.print()}>
             <Printer className="w-4 h-4" />
