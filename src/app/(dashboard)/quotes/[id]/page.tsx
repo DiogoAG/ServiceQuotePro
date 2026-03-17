@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -37,35 +36,43 @@ export default function QuoteSummaryPage() {
   if (!quote || !profile || !client) return null;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 print:p-0 pb-20 sm:pb-8">
+    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 pb-24 sm:pb-8">
       {/* Navigation & Actions */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
-        <Button variant="ghost" className="gap-2 self-start sm:self-center" onClick={() => router.back()}>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 no-print px-1">
+        <Button variant="ghost" className="gap-2 self-start sm:self-center h-9" onClick={() => router.back()}>
           <ChevronLeft className="w-4 h-4" />
           Back
         </Button>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" className="gap-2 flex-1 sm:flex-none" onClick={() => window.print()}>
+          <Button variant="outline" className="gap-2 flex-1 sm:flex-none h-11 sm:h-9" onClick={() => window.print()}>
             <Printer className="w-4 h-4" />
             <span className="hidden xs:inline">Print / PDF</span>
             <span className="xs:hidden">PDF</span>
           </Button>
-          <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90 flex-1 sm:flex-none">
+          <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90 flex-1 sm:flex-none h-11 sm:h-9">
             <Mail className="w-4 h-4" />
             Send to Client
           </Button>
         </div>
       </div>
 
-      <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border-none overflow-hidden">
-        <CardContent className="p-6 sm:p-12 space-y-8 sm:space-y-12">
+      <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border-none overflow-hidden mx-1 sm:mx-0">
+        <CardContent className="p-4 sm:p-12 space-y-8 sm:space-y-12">
           {/* Header Section */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-8 border-b pb-8">
-            <div className="space-y-4">
-              <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-3xl">
-                {profile.businessName.charAt(0)}
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 sm:gap-8 border-b pb-6 sm:pb-8">
+            <div className="space-y-4 w-full sm:w-auto">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0">
+                  {profile.businessName.charAt(0)}
+                </div>
+                <div className="sm:hidden">
+                  <h1 className="text-xl font-bold uppercase tracking-tight">{profile.businessName}</h1>
+                  <Badge variant="secondary" className="mt-1 text-[9px] h-4">
+                    {quote.serviceCategory}
+                  </Badge>
+                </div>
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <h1 className="text-2xl sm:text-3xl font-bold uppercase tracking-wider">{profile.businessName}</h1>
                 <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                    License: <span className="font-medium">{profile.licenseNumber}</span>
@@ -76,40 +83,41 @@ export default function QuoteSummaryPage() {
               </div>
             </div>
             <div className="text-left sm:text-right space-y-2 w-full sm:w-auto">
-              <h2 className="text-4xl sm:text-5xl font-extrabold text-primary/10">QUOTE</h2>
-              <div className="space-y-1 text-sm sm:text-base">
-                <p><span className="font-semibold">Date:</span> {new Date(quote.date).toLocaleDateString()}</p>
-                <p><span className="font-semibold">Quote #:</span> {quote.id.slice(0, 8).toUpperCase()}</p>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-primary/10 tracking-tighter">QUOTE</h2>
+              <div className="space-y-1 text-xs sm:text-base">
+                <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Date:</span> {new Date(quote.date).toLocaleDateString()}</p>
+                <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Quote #:</span> {quote.id.slice(0, 8).toUpperCase()}</p>
+                <p className="sm:hidden text-muted-foreground pt-1">License: {profile.licenseNumber}</p>
               </div>
             </div>
           </div>
 
           {/* Billing Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary font-bold uppercase text-[10px] sm:text-xs tracking-widest">
-                <Building2 className="w-4 h-4" /> Contractor Details
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-2 text-primary font-bold uppercase text-[10px] sm:text-xs tracking-widest border-b sm:border-none pb-1 sm:pb-0">
+                <Building2 className="w-3.5 h-3.5" /> Contractor Details
               </div>
-              <div className="space-y-1 text-sm text-gray-600">
+              <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
-                <p>License: {profile.licenseNumber}</p>
+                <p className="text-xs sm:text-sm">License: {profile.licenseNumber}</p>
               </div>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-primary font-bold uppercase text-[10px] sm:text-xs tracking-widest">
-                <User className="w-4 h-4" /> Prepared For
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-2 text-primary font-bold uppercase text-[10px] sm:text-xs tracking-widest border-b sm:border-none pb-1 sm:pb-0">
+                <User className="w-3.5 h-3.5" /> Prepared For
               </div>
-              <div className="space-y-1 text-sm text-gray-600">
+              <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{client.name}</p>
-                <p>{client.address}</p>
-                {client.phone && <p>{client.phone}</p>}
-                <p>{client.email}</p>
+                <p className="text-xs sm:text-sm">{client.address}</p>
+                {client.phone && <p className="text-xs sm:text-sm">{client.phone}</p>}
+                <p className="text-xs sm:text-sm">{client.email}</p>
               </div>
             </div>
           </div>
 
           {/* Work Scope Section */}
-          <div className="space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
+          <div className="space-y-3 sm:space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Proposed Scope of Work</h3>
             <div className="text-sm sm:text-base leading-relaxed text-gray-700 whitespace-pre-wrap italic sm:not-italic">
               {quote.scopeDescription || "No scope description provided."}
@@ -117,45 +125,45 @@ export default function QuoteSummaryPage() {
           </div>
 
           {/* Line Items Table */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Service Items</h3>
             <div className="rounded-md border overflow-hidden">
-              <ScrollArea className="w-full overflow-auto">
+              <ScrollArea className="w-full">
                 <Table>
                   <TableHeader className="bg-gray-50">
                     <TableRow>
-                      <TableHead className="min-w-[200px] sm:w-full">Description</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="min-w-[180px] sm:w-full">Description</TableHead>
+                      <TableHead className="min-w-[60px]">Unit</TableHead>
+                      <TableHead className="text-right min-w-[60px]">Qty</TableHead>
+                      <TableHead className="text-right min-w-[100px]">Price</TableHead>
+                      <TableHead className="text-right min-w-[100px]">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {quote.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="text-sm">{item.description}</TableCell>
+                        <TableCell className="text-sm py-3">{item.description}</TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">{item.unit || '-'}</TableCell>
                         <TableCell className="text-right text-sm">{item.quantity}</TableCell>
-                        <TableCell className="text-right text-sm">${item.unitPrice.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-medium text-sm">${item.total.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-sm">${Number(item.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">${Number(item.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))}
                     {quote.laborHours > 0 && (
                       <TableRow>
-                        <TableCell className="text-sm">Labor Hours</TableCell>
+                        <TableCell className="text-sm py-3">Labor Hours</TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">hr</TableCell>
                         <TableCell className="text-right text-sm">{quote.laborHours}</TableCell>
-                        <TableCell className="text-right text-sm">${quote.laborRate}</TableCell>
-                        <TableCell className="text-right font-medium text-sm">${(quote.laborHours * quote.laborRate).toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-sm">${Number(quote.laborRate).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">${(Number(quote.laborHours) * Number(quote.laborRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     )}
                     {quote.materialCosts > 0 && (
                       <TableRow>
-                        <TableCell colSpan={2} className="text-sm">Materials & Equipment</TableCell>
+                        <TableCell colSpan={2} className="text-sm py-3">Materials & Equipment</TableCell>
                         <TableCell className="text-right text-sm">1</TableCell>
-                        <TableCell className="text-right text-sm">${quote.materialCosts.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-medium text-sm">${quote.materialCosts.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-sm">${Number(quote.materialCosts).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">${Number(quote.materialCosts).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -167,18 +175,18 @@ export default function QuoteSummaryPage() {
 
           {/* Totals Section */}
           <div className="flex justify-end pt-4 sm:pt-8">
-            <div className="w-full sm:w-72 space-y-3">
+            <div className="w-full sm:w-80 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>${quote.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="font-medium">${quote.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tax ({quote.taxRate}%)</span>
-                <span>${quote.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="font-medium">${quote.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between items-center border-t pt-4">
-                <span className="text-lg sm:text-xl font-bold uppercase tracking-tighter">Total Amount</span>
-                <span className="text-2xl sm:text-3xl font-extrabold text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-base sm:text-xl font-bold uppercase tracking-tighter">Total Amount</span>
+                <span className="text-xl sm:text-3xl font-extrabold text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
@@ -186,8 +194,8 @@ export default function QuoteSummaryPage() {
           {/* Footer Info */}
           <div className="border-t pt-8 sm:pt-12 text-center">
             <p className="text-sm font-medium">Thank you for considering {profile.businessName}!</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-4 italic">
-              Valid for 30 days. Payment is due upon completion.
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-4 italic max-w-xs mx-auto">
+              Valid for 30 days. Payment is due upon completion unless otherwise specified.
             </p>
           </div>
         </CardContent>
