@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, User, Star } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, Star } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -62,11 +62,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const draft = getDraftQuote();
     const currentTaxRate = initialProfile.defaultTaxRate;
     const currentLaborRate = initialProfile.defaultLaborRate;
+    const defaultCategory = initialProfile.offeredServices?.[0] || "General Contracting";
 
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
-        serviceCategory: duplicateSource.serviceCategory || "General Contracting",
+        serviceCategory: duplicateSource.serviceCategory || defaultCategory,
         items: duplicateSource.items.map(i => ({ ...i, id: uuidv4() })),
         laborHours: duplicateSource.laborHours || 0,
         laborRate: currentLaborRate,
@@ -79,7 +80,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     
     return {
       clientId: preSelectedClientId || draft?.clientId || "",
-      serviceCategory: draft?.serviceCategory || "General Contracting",
+      serviceCategory: draft?.serviceCategory || defaultCategory,
       items: draft?.items.map(i => ({ ...i, id: i.id || uuidv4() })) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }],
       laborHours: draft?.laborHours ?? 0,
       laborRate: currentLaborRate,
@@ -179,7 +180,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (isEmptyDefault) return [item];
       return [...prev, item];
     });
-    deletedStack.current = deletedStack.current.filter(i => i.id !== item.id);
   }, []);
 
   const undoLastDelete = useCallback(() => {
@@ -378,8 +378,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     });
 
     const result: { category: string; items: CommonItem[]; isOffered: boolean }[] = [];
-    
-    // Sort SERVICE_CATEGORIES so offered services are at the top
     const offered = initialProfile?.offeredServices || [];
     const sortedCategories = [...SERVICE_CATEGORIES].sort((a, b) => {
       const aIsOffered = offered.includes(a);
@@ -407,6 +405,17 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
     return result;
   }, [commonItems, initialProfile]);
+
+  const sortedCategories = useMemo(() => {
+    const offered = initialProfile?.offeredServices || [];
+    return [...SERVICE_CATEGORIES].sort((a, b) => {
+      const aIsOffered = offered.includes(a);
+      const bIsOffered = offered.includes(b);
+      if (aIsOffered && !bIsOffered) return -1;
+      if (!aIsOffered && bIsOffered) return 1;
+      return 0;
+    });
+  }, [initialProfile]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -534,7 +543,19 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <Label>Service Category</Label>
                   <Select onValueChange={setServiceCategory} value={serviceCategory}>
                     <SelectTrigger className="h-11 border-primary/20"><SelectValue placeholder="Select service type..." /></SelectTrigger>
-                    <SelectContent>{SERVICE_CATEGORIES.map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent>
+                    <SelectContent>
+                      {sortedCategories.map(cat => {
+                        const isOffered = initialProfile?.offeredServices?.includes(cat);
+                        return (
+                          <SelectItem key={cat} value={cat}>
+                            <div className="flex items-center gap-2">
+                              {cat}
+                              {isOffered && <Star className="w-3 h-3 fill-primary text-primary" />}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>
@@ -573,12 +594,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item description..." className="pr-8 h-9 text-sm" />
                         <Popover>
