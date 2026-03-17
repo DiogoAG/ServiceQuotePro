@@ -43,6 +43,16 @@ const SERVICE_CATEGORIES = [
 // Helper for rounding to 2 decimals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
+// Helper to truncate string to 2 decimals as user types
+const truncateToTwoDecimals = (value: string) => {
+  if (!value) return "";
+  const parts = value.split('.');
+  if (parts.length > 1 && parts[1].length > 2) {
+    return `${parts[0]}.${parts[1].slice(0, 2)}`;
+  }
+  return value;
+};
+
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
   const { toast } = useToast();
   const isInitialMount = useRef(true);
@@ -227,10 +237,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const updateItem = (id: string, field: keyof QuoteItem, value: any) => {
     setItems(items.map(item => {
       if (item.id === id) {
-        const updated = { ...item, [field]: value };
+        let finalValue = value;
         if (field === 'quantity' || field === 'unitPrice') {
-          const q = Number(field === 'quantity' ? value : item.quantity) || 0;
-          const p = Number(field === 'unitPrice' ? value : item.unitPrice) || 0;
+          finalValue = truncateToTwoDecimals(value.toString());
+        }
+        
+        const updated = { ...item, [field]: finalValue };
+        if (field === 'quantity' || field === 'unitPrice') {
+          const q = Number(field === 'quantity' ? finalValue : item.quantity) || 0;
+          const p = Number(field === 'unitPrice' ? finalValue : item.unitPrice) || 0;
           updated.total = roundToCent(q * p);
         }
         return updated;
@@ -704,7 +719,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           className="h-9 text-sm" 
                           value={item.quantity} 
                           onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                          onBlur={(e) => updateItem(item.id, 'quantity', roundToCent(e.target.value))}
                         />
                       </div>
                       <div>
@@ -714,7 +728,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           className="h-9 text-sm" 
                           value={item.unitPrice} 
                           onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
-                          onBlur={(e) => updateItem(item.id, 'unitPrice', roundToCent(e.target.value))}
                         />
                       </div>
                       <div className="text-right font-medium text-sm">
@@ -767,8 +780,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     step="1.0" 
                     className="h-10" 
                     value={laborRate} 
-                    onChange={(e) => setLaborRate(e.target.value)}
-                    onBlur={(e) => setLaborRate(roundToCent(e.target.value))}
+                    onChange={(e) => setLaborRate(truncateToTwoDecimals(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -778,8 +790,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     step="1.0" 
                     className="h-10" 
                     value={laborHours} 
-                    onChange={(e) => setLaborHours(e.target.value)}
-                    onBlur={(e) => setLaborHours(roundToCent(e.target.value))}
+                    onChange={(e) => setLaborHours(truncateToTwoDecimals(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -789,8 +800,17 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     step="1.0" 
                     className="h-10" 
                     value={materialCosts} 
-                    onChange={(e) => setMaterialCosts(e.target.value)}
-                    onBlur={(e) => setMaterialCosts(roundToCent(e.target.value))}
+                    onChange={(e) => setMaterialCosts(truncateToTwoDecimals(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Applied Tax Rate (%)</Label>
+                  <Input 
+                    type="number" 
+                    step="1.0" 
+                    className="h-10" 
+                    value={taxRate} 
+                    onChange={(e) => setTaxRate(truncateToTwoDecimals(e.target.value))}
                   />
                 </div>
               </div>

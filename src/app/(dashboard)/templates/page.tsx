@@ -39,6 +39,16 @@ const PAINTING_SUBCATEGORIES = [
 // Helper for rounding to 2 decimals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
+// Helper to truncate string to 2 decimals as user types
+const truncateToTwoDecimals = (value: string) => {
+  if (!value) return "";
+  const parts = value.split('.');
+  if (parts.length > 1 && parts[1].length > 2) {
+    return `${parts[0]}.${parts[1].slice(0, 2)}`;
+  }
+  return value;
+};
+
 export default function TemplatesPage() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
@@ -119,7 +129,16 @@ export default function TemplatesPage() {
   };
 
   const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
-    setCommonItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setCommonItems(prev => prev.map(item => {
+      if (item.id === id) {
+        let finalValue = value;
+        if (field === 'defaultUnitPrice') {
+          finalValue = truncateToTwoDecimals(value.toString());
+        }
+        return { ...item, [field]: finalValue };
+      }
+      return item;
+    }));
   };
 
   const handleRemoveCommonItem = (id: string) => {
@@ -341,7 +360,6 @@ export default function TemplatesPage() {
                                       step="1.0"
                                       value={item.defaultUnitPrice} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', e.target.value)}
-                                      onBlur={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', roundToCent(e.target.value))}
                                       className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
                                       placeholder="0.00"
                                     />

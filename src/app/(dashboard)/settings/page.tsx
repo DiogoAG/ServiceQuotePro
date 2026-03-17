@@ -14,6 +14,16 @@ import { Save, Building } from "lucide-react";
 // Helper for rounding to 2 decimals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
+// Helper to truncate string to 2 decimals as user types
+const truncateToTwoDecimals = (value: string) => {
+  if (!value) return "";
+  const parts = value.split('.');
+  if (parts.length > 1 && parts[1].length > 2) {
+    return `${parts[0]}.${parts[1].slice(0, 2)}`;
+  }
+  return value;
+};
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<BusinessProfile>({
@@ -28,7 +38,14 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = () => {
-    saveBusinessProfile(profile);
+    // Normalizing values on save
+    const normalizedProfile = {
+      ...profile,
+      defaultTaxRate: roundToCent(profile.defaultTaxRate),
+      defaultLaborRate: roundToCent(profile.defaultLaborRate)
+    };
+    saveBusinessProfile(normalizedProfile);
+    setProfile(normalizedProfile);
     toast({ title: "Profile Saved", description: "Your business settings have been updated." });
   };
 
@@ -86,8 +103,7 @@ export default function SettingsPage() {
                   type="number"
                   step="1.0"
                   value={profile.defaultTaxRate} 
-                  onChange={(e) => setProfile({...profile, defaultTaxRate: e.target.value as any})}
-                  onBlur={(e) => setProfile({...profile, defaultTaxRate: roundToCent(e.target.value)})}
+                  onChange={(e) => setProfile({...profile, defaultTaxRate: truncateToTwoDecimals(e.target.value) as any})}
                 />
               </div>
               <div className="space-y-2">
@@ -97,8 +113,7 @@ export default function SettingsPage() {
                   type="number"
                   step="1.0"
                   value={profile.defaultLaborRate} 
-                  onChange={(e) => setProfile({...profile, defaultLaborRate: e.target.value as any})}
-                  onBlur={(e) => setProfile({...profile, defaultLaborRate: roundToCent(e.target.value)})}
+                  onChange={(e) => setProfile({...profile, defaultLaborRate: truncateToTwoDecimals(e.target.value) as any})}
                 />
               </div>
             </div>
