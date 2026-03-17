@@ -54,7 +54,15 @@ export default function TemplatesPage() {
       isInitialMount.current = false;
       return;
     }
-    saveCommonItems(commonItems);
+    
+    // Filter out completely empty custom items before saving
+    const validItems = commonItems.filter(item => {
+      if (item.isHardCoded) return true;
+      const isEmpty = !item.description?.trim() && !item.unit?.trim() && (!item.defaultUnitPrice || item.defaultUnitPrice === 0);
+      return !isEmpty;
+    });
+
+    saveCommonItems(validItems);
   }, [commonItems]);
 
   const handleAddCommonItem = (category: string) => {
@@ -67,7 +75,6 @@ export default function TemplatesPage() {
       isHardCoded: false
     };
     setCommonItems(prev => [...prev, newItem]);
-    toast({ title: "New Item Added", description: `Added to ${category}` });
   };
 
   const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
@@ -112,7 +119,7 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Templates & Items</h1>
           <p className="text-muted-foreground text-sm flex items-center gap-2">
-            Manage your professional library. <span className="flex items-center gap-1 text-primary font-medium"><Check className="w-3.5 h-3.5" /> All changes auto-save</span>
+            Manage your professional library.
           </p>
         </div>
         <div className="flex gap-2">

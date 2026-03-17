@@ -120,7 +120,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 description: item.description,
                 unit: item.unit || "",
                 unitPrice: up,
-                total: q * up
+                total: q * up,
+                isHardCoded: true
             };
         }
         return i;
@@ -130,7 +131,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const applyTemplate = (template: QuoteTemplate) => {
     setServiceCategory(template.serviceCategory);
     setScopeDescription(template.scopeDescription);
-    setItems(template.items.map(i => ({ ...i, id: uuidv4() })));
+    setItems(template.items.map(i => ({ ...i, id: uuidv4(), isHardCoded: false })));
   };
 
   const handleSaveAsTemplate = () => {
@@ -199,13 +200,43 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       toast({ title: "Client Required", description: "Please select a client for this quote.", variant: "destructive" });
       return;
     }
+
+    // Filter and Validate Items
+    const filteredItems = items.filter(item => {
+      // Hardcoded items are never removed
+      if (item.isHardCoded) return true;
+      
+      // A custom row is empty if all fields are blank or zero
+      const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
+      return !isEmpty;
+    });
+
+    // Partial Row Validation
+    for (const item of filteredItems) {
+      if (!item.isHardCoded) {
+        if (!item.description.trim() || !item.unitPrice || item.unitPrice <= 0) {
+          toast({ 
+            title: "Validation Error", 
+            description: "Custom services require both a description and a valid price (> 0).", 
+            variant: "destructive" 
+          });
+          return;
+        }
+      }
+    }
+
+    if (filteredItems.length === 0) {
+      toast({ title: "No Items", description: "Please add at least one valid service item to the quote.", variant: "destructive" });
+      return;
+    }
+
     const newQuote: Quote = {
       id: uuidv4(),
       clientId,
       date: new Date().toISOString(),
       status: 'draft',
       serviceCategory,
-      items,
+      items: filteredItems,
       scopeDescription,
       laborHours: laborHours || 0,
       laborRate: laborRate || 0,

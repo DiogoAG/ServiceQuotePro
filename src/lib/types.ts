@@ -22,6 +22,7 @@ export type QuoteItem = {
   quantity: number;
   unitPrice: number;
   total: number;
+  isHardCoded?: boolean;
 };
 
 export type CommonItem = {
