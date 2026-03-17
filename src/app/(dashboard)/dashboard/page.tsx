@@ -149,7 +149,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium leading-none">{client.name}</p>
                   <p className="text-xs text-muted-foreground">{client.email}</p>
                 </div>
-                <Link href="/clients">
+                <Link href={`/clients/${client.id}`}>
                   <Button size="sm" variant="outline">Profile</Button>
                 </Link>
               </div>
