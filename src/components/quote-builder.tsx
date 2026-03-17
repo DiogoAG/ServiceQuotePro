@@ -47,6 +47,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const getInitialState = useCallback(() => {
     const draft = getDraftQuote();
     
+    // CASE 1: Explicit Duplication (Reuse)
+    // We preserve EVERYTHING from the source, including its specific rates.
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
@@ -61,14 +63,22 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       };
     }
     
+    // CASE 2: Loading a Draft
+    // We load content (items, scope) but favor the CURRENT profile defaults for rates
+    // unless the draft shows the user explicitly changed them.
     if (draft) {
       return {
         ...draft,
         clientId: preSelectedClientId || draft.clientId || "",
-        items: draft.items.map(i => ({ ...i, id: i.id || uuidv4() }))
+        items: draft.items.map(i => ({ ...i, id: i.id || uuidv4() })),
+        // If the user hasn't explicitly saved a quote yet, always use latest settings
+        // This solves the issue of tax/labor rates not updating after settings change
+        taxRate: initialProfile.defaultTaxRate,
+        laborRate: initialProfile.defaultLaborRate
       };
     }
     
+    // CASE 3: Fresh Start
     return {
       clientId: preSelectedClientId || "",
       serviceCategory: "General Contracting",
@@ -148,8 +158,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const itemsTotal = items.reduce((acc, item) => acc + (item.total || 0), 0);
     const laborTotal = (laborHours || 0) * (laborRate || 0);
     const subtotal = itemsTotal + laborTotal + (materialCosts || 0);
-    const taxTotal = (subtotal * (taxRate || 0)) / 100;
-    const grandTotal = subtotal + taxTotal;
+    
+    // Round tax and grand total to nearest cent (2 decimal places)
+    const taxTotal = Math.round(subtotal * (taxRate || 0)) / 100;
+    const grandTotal = Math.round((subtotal + taxTotal) * 100) / 100;
+    
     return { subtotal, taxTotal, grandTotal };
   }, [items, laborHours, laborRate, materialCosts, taxRate]);
 
@@ -531,9 +544,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           }}
                         />
                         {selectedClient && !clientSearch && (
-                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded border border-primary/20 shadow-sm z-10">
+                          <div className="absolute right-3 top-2 flex items-center gap-2 bg-primary/10 px-2.5 py-1.5 rounded border border-primary/20 shadow-sm z-10">
                             <span className="truncate max-w-[150px] text-primary font-bold text-sm">{selectedClient.name}</span>
-                            <X className="w-3.5 h-3.5 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
+                            <X className="w-4 h-4 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
                               e.stopPropagation();
                               setClientId("");
                             }} />
@@ -769,11 +782,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-3 pt-6 border-t border-dashed">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-bold">${totals.subtotal.toLocaleString()}</span>
+                  <span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Tax ({taxRate}%)</span>
-                  <span>${totals.taxTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <span>${totals.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20">
                   <span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span>
