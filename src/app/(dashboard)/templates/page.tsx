@@ -314,7 +314,7 @@ export default function TemplatesPage() {
                                 </div>
                               )}
                               
-                              <div className="grid grid-cols-[1fr_100px_130px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                              <div className="grid grid-cols-[1fr_100px_150px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
                                 <div>Service Description</div>
                                 <div>Unit</div>
                                 <div>Standard Price</div>
@@ -323,7 +323,7 @@ export default function TemplatesPage() {
                               
                               <div className="space-y-2">
                                 {group.items.map((item) => (
-                                  <div key={item.id} className="grid grid-cols-[1fr_100px_130px_40px] gap-4 items-center group">
+                                  <div key={item.id} className="grid grid-cols-[1fr_100px_150px_40px] gap-4 items-center group">
                                     <div className="relative">
                                       <Input 
                                         value={item.description} 
@@ -350,7 +350,7 @@ export default function TemplatesPage() {
                                       step="1.0"
                                       value={item.defaultUnitPrice} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', e.target.value)}
-                                      className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
+                                      className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1 px-2" 
                                       placeholder="0.00"
                                     />
                                     <div className="flex justify-center">

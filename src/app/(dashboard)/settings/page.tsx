@@ -103,6 +103,7 @@ export default function SettingsPage() {
                   step="1.0"
                   value={profile.defaultTaxRate} 
                   onChange={(e) => setProfile({...profile, defaultTaxRate: truncateToTwoDecimals(e.target.value) as any})}
+                  className="px-3"
                 />
               </div>
               <div className="space-y-2">
@@ -113,6 +114,7 @@ export default function SettingsPage() {
                   step="1.0"
                   value={profile.defaultLaborRate} 
                   onChange={(e) => setProfile({...profile, defaultLaborRate: truncateToTwoDecimals(e.target.value) as any})}
+                  className="px-3"
                 />
               </div>
             </div>
