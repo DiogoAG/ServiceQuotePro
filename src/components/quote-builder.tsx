@@ -67,9 +67,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         serviceCategory: duplicateSource.serviceCategory || "General Contracting",
         items: duplicateSource.items.map(i => ({ ...i, id: uuidv4() })),
         laborHours: duplicateSource.laborHours || 0,
-        laborRate: initialProfile.defaultLaborRate, // Use profile default
+        laborRate: initialProfile.defaultLaborRate,
         materialCosts: duplicateSource.materialCosts || 0,
-        taxRate: initialProfile.defaultTaxRate, // Use profile default
+        taxRate: initialProfile.defaultTaxRate,
         notes: duplicateSource.notes || "",
         scopeDescription: duplicateSource.scopeDescription || ""
       };
@@ -819,10 +819,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Tax ({taxRate}%)</span>
-                  <span>${totals.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20">
                   <span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span>

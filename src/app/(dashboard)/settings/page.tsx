@@ -38,7 +38,6 @@ export default function SettingsPage() {
   }, []);
 
   const handleSave = () => {
-    // Normalizing values on save
     const normalizedProfile = {
       ...profile,
       defaultTaxRate: roundToCent(profile.defaultTaxRate),

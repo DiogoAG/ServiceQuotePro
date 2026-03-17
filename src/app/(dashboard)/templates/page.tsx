@@ -60,19 +60,14 @@ export default function TemplatesPage() {
     setCommonItems(getCommonItems());
   }, []);
 
-  // Auto-save logic for Common Items
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
     
-    // Filter out completely empty rows before saving to library
     const validItems = commonItems.filter(item => {
-      // Hardcoded items always stay
       if (item.isHardCoded) return true;
-      
-      // A custom item must have a description to be saved
       return item.description && item.description.trim().length > 0;
     });
 
@@ -210,12 +205,10 @@ export default function TemplatesPage() {
       return PAINTING_SUBCATEGORIES.map(sub => ({
         subName: sub,
         items: filteredItems.filter(i => i.category === `Painting - ${sub}`)
-      }));
+      })).filter(g => g.items.length > 0);
     }
-    return [{
-      subName: null,
-      items: filteredItems.filter(i => i.category === category)
-    }];
+    const items = filteredItems.filter(i => i.category === category);
+    return items.length > 0 ? [{ subName: null, items }] : [];
   }, [filteredItems]);
 
   const toggleAllCategories = (expand: boolean) => {
