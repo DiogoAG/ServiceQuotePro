@@ -70,61 +70,83 @@ export const saveTemplates = (templates: QuoteTemplate[]) => {
 export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
-  return stored ? JSON.parse(stored) : [
-    // Interior Painting
-    { id: 'ip1', category: 'Interior Painting', description: 'Interior Wall Painting', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'ip2', category: 'Interior Painting', description: 'Ceiling Painting', unit: 'sq ft', defaultUnitPrice: 2.0 },
-    { id: 'ip3', category: 'Interior Painting', description: 'Accent Wall Painting', unit: 'wall', defaultUnitPrice: 350 },
-    { id: 'ip4', category: 'Interior Painting', description: 'Trim Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
-    { id: 'ip5', category: 'Interior Painting', description: 'Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
-    { id: 'ip6', category: 'Interior Painting', description: 'Crown Molding Painting', unit: 'linear ft', defaultUnitPrice: 1.75 },
-    { id: 'ip7', category: 'Interior Painting', description: 'Door Painting', unit: 'door', defaultUnitPrice: 125 },
-    { id: 'ip8', category: 'Interior Painting', description: 'Door Frame Painting', unit: 'frame', defaultUnitPrice: 50 },
-    { id: 'ip9', category: 'Interior Painting', description: 'Window Frame Painting', unit: 'window', defaultUnitPrice: 75 },
-    { id: 'ip10', category: 'Interior Painting', description: 'Closet Painting', unit: 'closet', defaultUnitPrice: 150 },
-    { id: 'ip11', category: 'Interior Painting', description: 'Staircase / Railing Painting', unit: 'set', defaultUnitPrice: 1500 },
+  
+  const hardCodedItems: CommonItem[] = [
+    // General Contracting
+    { id: 'gc1', category: 'General Contracting', description: 'Site Preparation & Protection', unit: 'sq ft', defaultUnitPrice: 1.5 },
+    { id: 'gc2', category: 'General Contracting', description: 'Debris Removal & Disposal', unit: 'load', defaultUnitPrice: 350 },
+    { id: 'gc3', category: 'General Contracting', description: 'Project Management Fee', unit: 'flat', defaultUnitPrice: 500 },
+    
+    // Electrical
+    { id: 'el1', category: 'Electrical', description: 'Outlet/Switch Installation', unit: 'ea', defaultUnitPrice: 125 },
+    { id: 'el2', category: 'Electrical', description: 'Light Fixture Installation', unit: 'ea', defaultUnitPrice: 150 },
+    { id: 'el3', category: 'Electrical', description: 'Electrical Panel Upgrade', unit: 'ea', defaultUnitPrice: 2500 },
+    
+    // Plumbing
+    { id: 'pl1', category: 'Plumbing', description: 'Leak Repair & Pipe Inspection', unit: 'ea', defaultUnitPrice: 250 },
+    { id: 'pl2', category: 'Plumbing', description: 'Faucet/Fixture Installation', unit: 'ea', defaultUnitPrice: 175 },
+    { id: 'pl3', category: 'Plumbing', description: 'Toilet Replacement', unit: 'ea', defaultUnitPrice: 350 },
+    
+    // HVAC
+    { id: 'hv1', category: 'HVAC', description: 'AC System Tune-Up', unit: 'ea', defaultUnitPrice: 185 },
+    { id: 'hv2', category: 'HVAC', description: 'Filter Replacement', unit: 'ea', defaultUnitPrice: 45 },
+    { id: 'hv3', category: 'HVAC', description: 'Thermostat Installation', unit: 'ea', defaultUnitPrice: 150 },
+    
+    // Landscaping
+    { id: 'ls1', category: 'Landscaping', description: 'Lawn Mowing & Edging', unit: 'visit', defaultUnitPrice: 85 },
+    { id: 'ls2', category: 'Landscaping', description: 'Mulch Installation', unit: 'cu yd', defaultUnitPrice: 120 },
+    { id: 'ls3', category: 'Landscaping', description: 'Tree/Shrub Planting', unit: 'ea', defaultUnitPrice: 250 },
+    
+    // Painting - Interior
+    { id: 'ip1', category: 'Painting - Interior Painting', description: 'Interior Wall Painting', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'ip2', category: 'Painting - Interior Painting', description: 'Ceiling Painting', unit: 'sq ft', defaultUnitPrice: 2.0 },
+    { id: 'ip3', category: 'Painting - Interior Painting', description: 'Accent Wall Painting', unit: 'wall', defaultUnitPrice: 350 },
+    { id: 'ip4', category: 'Painting - Interior Painting', description: 'Trim/Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
+    { id: 'ip7', category: 'Painting - Interior Painting', description: 'Door & Frame Painting', unit: 'set', defaultUnitPrice: 175 },
 
-    // Exterior Painting
-    { id: 'ep1', category: 'Exterior Painting', description: 'Exterior Wall Painting', unit: 'sq ft', defaultUnitPrice: 3.0 },
-    { id: 'ep2', category: 'Exterior Painting', description: 'Stucco Painting', unit: 'sq ft', defaultUnitPrice: 3.5 },
-    { id: 'ep3', category: 'Exterior Painting', description: 'Brick Painting', unit: 'sq ft', defaultUnitPrice: 3.5 },
-    { id: 'ep4', category: 'Exterior Painting', description: 'Trim / Fascia Painting', unit: 'linear ft', defaultUnitPrice: 2.0 },
-    { id: 'ep5', category: 'Exterior Painting', description: 'Garage Door Painting', unit: 'door', defaultUnitPrice: 400 },
-    { id: 'ep6', category: 'Exterior Painting', description: 'Front Door Painting', unit: 'door', defaultUnitPrice: 250 },
-    { id: 'ep7', category: 'Exterior Painting', description: 'Window Frame Painting (Exterior)', unit: 'window', defaultUnitPrice: 95 },
-    { id: 'ep8', category: 'Exterior Painting', description: 'Shutter Painting', unit: 'shutter', defaultUnitPrice: 45 },
-    { id: 'ep9', category: 'Exterior Painting', description: 'Deck Painting', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'ep10', category: 'Exterior Painting', description: 'Fence Painting', unit: 'linear ft', defaultUnitPrice: 2.0 },
+    // Painting - Exterior
+    { id: 'ep1', category: 'Painting - Exterior Painting', description: 'Exterior Wall Painting', unit: 'sq ft', defaultUnitPrice: 3.5 },
+    { id: 'ep4', category: 'Painting - Exterior Painting', description: 'Trim / Fascia Painting', unit: 'linear ft', defaultUnitPrice: 2.5 },
+    { id: 'ep5', category: 'Painting - Exterior Painting', description: 'Garage Door Painting', unit: 'door', defaultUnitPrice: 450 },
 
-    // Surface Preparation
-    { id: 'sp1', category: 'Surface Preparation', description: 'Pressure Washing', unit: 'sq ft', defaultUnitPrice: 0.25 },
-    { id: 'sp2', category: 'Surface Preparation', description: 'Paint Scraping', unit: 'sq ft', defaultUnitPrice: 1.5 },
-    { id: 'sp3', category: 'Surface Preparation', description: 'Sanding', unit: 'sq ft', defaultUnitPrice: 1.0 },
-    { id: 'sp4', category: 'Surface Preparation', description: 'Caulking / Sealing', unit: 'linear ft', defaultUnitPrice: 0.75 },
-    { id: 'sp5', category: 'Surface Preparation', description: 'Crack / Hole Patching', unit: 'patch', defaultUnitPrice: 25 },
-    { id: 'sp6', category: 'Surface Preparation', description: 'Drywall Repair', unit: 'repair', defaultUnitPrice: 150 },
-    { id: 'sp7', category: 'Surface Preparation', description: 'Priming Surfaces', unit: 'sq ft', defaultUnitPrice: 1.0 },
+    // Painting - Surface Prep
+    { id: 'sp1', category: 'Painting - Surface Preparation', description: 'Pressure Washing', unit: 'sq ft', defaultUnitPrice: 0.35 },
+    { id: 'sp4', category: 'Painting - Surface Preparation', description: 'Caulking & Sealing', unit: 'linear ft', defaultUnitPrice: 0.85 },
+    { id: 'sp6', category: 'Painting - Surface Preparation', description: 'Drywall Patching & Repair', unit: 'patch', defaultUnitPrice: 75 },
 
-    // Specialty Painting Services
-    { id: 'sps1', category: 'Specialty Painting Services', description: 'Cabinet Painting', unit: 'cabinet', defaultUnitPrice: 150 },
-    { id: 'sps2', category: 'Specialty Painting Services', description: 'Cabinet Refinishing', unit: 'cabinet', defaultUnitPrice: 250 },
-    { id: 'sps3', category: 'Specialty Painting Services', description: 'Wood Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'sps4', category: 'Specialty Painting Services', description: 'Deck Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'sps5', category: 'Specialty Painting Services', description: 'Fence Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'sps6', category: 'Specialty Painting Services', description: 'Varnish / Polyurethane Finish', unit: 'sq ft', defaultUnitPrice: 1.5 },
-    { id: 'sps7', category: 'Specialty Painting Services', description: 'Texture Application', unit: 'sq ft', defaultUnitPrice: 1.5 },
-    { id: 'sps8', category: 'Specialty Painting Services', description: 'Epoxy Garage Floor Coating', unit: 'sq ft', defaultUnitPrice: 6.0 },
-    { id: 'sps9', category: 'Specialty Painting Services', description: 'Waterproof Coating', unit: 'sq ft', defaultUnitPrice: 3.5 },
+    // Painting - Specialty
+    { id: 'sps1', category: 'Painting - Specialty Painting Services', description: 'Cabinet Refinishing', unit: 'cabinet', defaultUnitPrice: 225 },
+    { id: 'sps8', category: 'Painting - Specialty Painting Services', description: 'Epoxy Floor Coating', unit: 'sq ft', defaultUnitPrice: 7.5 },
 
-    // Additional Services
-    { id: 'as1', category: 'Additional Services', description: 'Wallpaper Removal', unit: 'sq ft', defaultUnitPrice: 2.0 },
-    { id: 'as2', category: 'Additional Services', description: 'Popcorn Ceiling Removal', unit: 'sq ft', defaultUnitPrice: 4.0 },
-    { id: 'as3', category: 'Additional Services', description: 'Touch-Up Painting', unit: 'hr', defaultUnitPrice: 75 },
-    { id: 'as4', category: 'Additional Services', description: 'Disposal & Material Handling', defaultUnitPrice: 45 },
+    // Painting - Additional
+    { id: 'as1', category: 'Painting - Additional Services', description: 'Wallpaper Removal', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'as3', category: 'Painting - Additional Services', description: 'Touch-Up Service', unit: 'hr', defaultUnitPrice: 85 },
 
-    // General
-    { id: 'g1', category: 'General', description: 'Service Call Fee / Diagnostic', defaultUnitPrice: 95 }
+    // Roofing
+    { id: 'rf1', category: 'Roofing', description: 'Roof Inspection & Assessment', unit: 'ea', defaultUnitPrice: 150 },
+    { id: 'rf2', category: 'Roofing', description: 'Gutter Cleaning & Inspection', unit: 'linear ft', defaultUnitPrice: 2.5 },
+    
+    // Carpentry
+    { id: 'cp1', category: 'Carpentry', description: 'Custom Trim Installation', unit: 'linear ft', defaultUnitPrice: 8.5 },
+    { id: 'cp2', category: 'Carpentry', description: 'Door Hanging & Hardware', unit: 'ea', defaultUnitPrice: 250 },
+    
+    // Cleaning
+    { id: 'cl1', category: 'Cleaning', description: 'Deep House Cleaning', unit: 'hr', defaultUnitPrice: 65 },
+    { id: 'cl2', category: 'Cleaning', description: 'Post-Construction Cleanup', unit: 'sq ft', defaultUnitPrice: 0.75 },
+    
+    // Other
+    { id: 'ot1', category: 'Other', description: 'General Handyman Labor', unit: 'hr', defaultUnitPrice: 75 }
   ];
+
+  if (!stored) return hardCodedItems;
+  
+  const userItems: CommonItem[] = JSON.parse(stored);
+  // Merge user items with hardcoded items, preferring user items if IDs collide
+  const itemMap = new Map();
+  hardCodedItems.forEach(item => itemMap.set(item.id, item));
+  userItems.forEach(item => itemMap.set(item.id, item));
+  
+  return Array.from(itemMap.values());
 };
 
 export const saveCommonItems = (items: CommonItem[]) => {

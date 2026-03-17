@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate, ChevronRight } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +44,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [clientId, setClientId] = useState<string>(preSelectedClientId || duplicateSource?.clientId || "");
   const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "General Contracting");
-  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
+  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "ea", quantity: 1, unitPrice: 0, total: 0 }]);
   const [laborHours, setLaborHours] = useState<number>(duplicateSource?.laborHours || 0);
   const [laborRate, setLaborRate] = useState<number>(duplicateSource?.laborRate || initialProfile.defaultLaborRate);
   const [materialCosts, setMaterialCosts] = useState<number>(duplicateSource?.materialCosts || 0);
@@ -73,7 +73,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         applyTemplate(matchingTemplate);
       }
     }
-  }, [serviceCategory, templates]);
+  }, [serviceCategory, templates, duplicateSource]);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
@@ -95,12 +95,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [items, laborHours, laborRate, materialCosts, taxRate]);
 
   const addItem = () => {
-    setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    setItems([...items, { id: uuidv4(), description: "", unit: "ea", quantity: 1, unitPrice: 0, total: 0 }]);
   };
 
   const removeItem = (id: string) => {
     if (items.length === 1) {
-      setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
+      setItems([{ id: uuidv4(), description: "", unit: "ea", quantity: 1, unitPrice: 0, total: 0 }]);
     } else {
       setItems(items.filter(item => item.id !== id));
     }
@@ -125,7 +125,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             return {
                 ...i,
                 description: item.description,
-                unit: item.unit || "",
+                unit: item.unit || "ea",
                 unitPrice: item.defaultUnitPrice,
                 total: i.quantity * item.defaultUnitPrice
             };
@@ -227,12 +227,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const commonItemsByCategory = useMemo(() => {
-    return commonItems.reduce((acc, item) => {
+    const categories: Record<string, CommonItem[]> = {};
+    commonItems.forEach(item => {
       const cat = item.category || "General";
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(item);
-      return acc;
-    }, {} as Record<string, CommonItem[]>);
+      if (!categories[cat]) categories[cat] = [];
+      categories[cat].push(item);
+    });
+    return categories;
   }, [commonItems]);
 
   return (
@@ -278,7 +279,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   </PopoverTrigger>
                   <PopoverContent className="w-64 p-2" align="end">
                     <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
+                      <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Saved Templates</p>
                       <ScrollArea className="h-64">
                         {templates.map(t => (
                           <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto" onClick={() => applyTemplate(t)}>
@@ -411,23 +412,26 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                               <BookOpen className="w-3.5 h-3.5" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-72 p-2" align="start">
-                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase">Standard Item Library</p>
-                            <ScrollArea className="h-64">
+                          <PopoverContent className="w-80 p-2" align="start">
+                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
+                            <ScrollArea className="h-72">
                               {Object.entries(commonItemsByCategory).map(([category, libItems]) => (
-                                <div key={category} className="mb-4 last:mb-0">
-                                  <p className="text-[9px] font-black uppercase text-primary/50 px-2 mb-1">{category}</p>
+                                <div key={category} className="mb-4 last:mb-0 px-1">
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <ChevronRight className="w-2.5 h-2.5 text-primary/40" />
+                                    <p className="text-[9px] font-black uppercase text-primary/70">{category}</p>
+                                  </div>
                                   <div className="space-y-0.5">
                                     {libItems.map(ci => (
                                       <Button 
                                         key={ci.id} 
                                         variant="ghost" 
-                                        className="w-full justify-start text-xs py-1.5 h-auto px-2" 
+                                        className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-muted" 
                                         onClick={() => selectCommonItem(item.id, ci)}
                                       >
                                         <div className="text-left w-full flex justify-between items-center gap-2">
                                           <span className="font-medium truncate">{ci.description}</span>
-                                          <span className="text-[10px] font-mono shrink-0">${ci.defaultUnitPrice}</span>
+                                          <span className="text-[10px] font-mono shrink-0 opacity-60">${ci.defaultUnitPrice}</span>
                                         </div>
                                       </Button>
                                     ))}
@@ -458,7 +462,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </div>
                 
                 <div className="pt-4 flex justify-start border-t">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2">
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2 font-bold hover:bg-primary/5">
                     <Plus className="w-4 h-4" /> Add Another Item
                   </Button>
                 </div>
