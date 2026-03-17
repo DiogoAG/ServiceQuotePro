@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate, ChevronRight, Undo2 } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, ChevronsUpDown, LayoutTemplate, ChevronRight, Undo2, X } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -108,6 +108,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
 
+  // New Client Dialog State
+  const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientAddress, setNewClientAddress] = useState("");
+
   useEffect(() => {
     setCommonItems(getCommonItems());
     setTemplates(getTemplates());
@@ -159,13 +166,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const restoreItem = useCallback((item: QuoteItem) => {
     setItems(prev => {
-      // If the only item is a single empty placeholder, replace it
       if (prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0)) {
         return [item];
       }
       return [...prev, item];
     });
-    // Remove it from the stack if it was there to prevent double undo
     deletedStack.current = deletedStack.current.filter(i => i.id !== item.id);
   }, []);
 
@@ -199,7 +204,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const itemToRemove = items.find(item => item.id === id);
     if (!itemToRemove) return;
 
-    // Check if the item is completely empty (no info at all)
     const isEmpty = !itemToRemove.description.trim() && !itemToRemove.unit?.trim() && (!itemToRemove.unitPrice || itemToRemove.unitPrice === 0);
 
     if (items.length === 1) {
@@ -208,7 +212,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       setItems(items.filter(item => item.id !== id));
     }
 
-    // Only show undo and stack for items that actually had content
     if (!isEmpty) {
       deletedStack.current.push(itemToRemove);
       toast({
@@ -287,22 +290,40 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     toast({ title: "Template Saved", description: `"${newTemplate.name}" is now in your library.` });
   };
 
-  const handleQuickAddClient = () => {
-    if (!clientSearch) return;
+  const handleOpenNewClientDialog = () => {
+    setNewClientName(clientSearch);
+    setIsNewClientDialogOpen(true);
+    setIsClientPopoverOpen(false);
+  };
+
+  const handleSaveNewClient = () => {
+    if (!newClientName || !newClientEmail) {
+      toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
+      return;
+    }
+
     const newClient: Client = {
       id: uuidv4(),
-      name: clientSearch,
-      email: `${clientSearch.toLowerCase().replace(/\s/g, '.')}@example.com`,
-      phone: "",
-      address: ""
+      name: newClientName,
+      email: newClientEmail,
+      phone: newClientPhone,
+      address: newClientAddress
     };
+
     const updated = [...clients, newClient];
     saveClients(updated);
     setClients(updated);
     setClientId(newClient.id);
-    setIsClientPopoverOpen(false);
+    setIsNewClientDialogOpen(false);
     setClientSearch("");
-    toast({ title: "Client Created", description: `Added ${newClient.name} to directory.` });
+    
+    // Reset form
+    setNewClientName("");
+    setNewClientEmail("");
+    setNewClientPhone("");
+    setNewClientAddress("");
+
+    toast({ title: "Client Added", description: `${newClient.name} is now in your directory.` });
   };
 
   const handleGenerateScope = async () => {
@@ -334,7 +355,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return;
     }
 
-    // Filter out completely empty rows
     const filteredItems = items.filter(item => {
       if (item.isHardCoded) return true;
       const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
@@ -346,9 +366,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         toast({ title: "Description Required", description: "All service items must have a description.", variant: "destructive" });
         return;
       }
-      // Custom items must have a price > 0
-      if (!item.isHardCoded && (!item.unitPrice || item.unitPrice <= 0)) {
-        toast({ title: "Price Required", description: `"${item.description}" requires a valid price.`, variant: "destructive" });
+      if (!item.isHardCoded && (!item.unitPrice || item.unitPrice < 0)) {
+        toast({ title: "Price Error", description: `"${item.description}" requires a valid price.`, variant: "destructive" });
         return;
       }
     }
@@ -376,7 +395,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       notes,
     };
     
-    // Success: clear the draft
     clearDraftQuote();
     onSave(newQuote);
   };
@@ -402,12 +420,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
-                      <LayoutTemplate className="w-4 h-4" /> Save as Template
+                      <LayoutTemplate className="w-4 h-4" /> Save Template
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Save as Template</DialogTitle>
+                      <DialogTitle>Save as Reusable Template</DialogTitle>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                       <div className="space-y-2">
@@ -454,65 +472,71 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                 <div className="space-y-2">
-                  <Label>Client Selection</Label>
+                  <Label>Client Search & Selection</Label>
                   <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isClientPopoverOpen}
-                        className="w-full justify-between h-10 font-normal px-3"
-                      >
-                        {selectedClient ? (
-                          <div className="flex flex-col items-start truncate text-left">
-                            <span className="text-sm font-medium">{selectedClient.name}</span>
-                            <span className="text-[10px] opacity-60 truncate">{selectedClient.email}</span>
+                      <div className="relative group">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                          placeholder="Search clients by name or email..."
+                          className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all"
+                          value={clientSearch}
+                          onChange={(e) => {
+                            setClientSearch(e.target.value);
+                            setIsClientPopoverOpen(true);
+                          }}
+                          onFocus={() => setIsClientPopoverOpen(true)}
+                        />
+                        {selectedClient && !clientSearch && (
+                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary">
+                            <span className="truncate max-w-[100px]">{selectedClient.name}</span>
+                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.stopPropagation(); setClientId(""); }} />
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">Search or select client...</span>
                         )}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                      <div className="p-2 border-b">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Type name or email..."
-                            className="pl-8 h-9 border-none shadow-none focus-visible:ring-0"
-                            value={clientSearch}
-                            onChange={(e) => setClientSearch(e.target.value)}
-                          />
-                        </div>
                       </div>
-                      <ScrollArea className="h-[300px]">
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[340px] p-0" align="start">
+                      <div className="p-2 border-b bg-muted/30">
+                        <p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Search Results</p>
+                      </div>
+                      <ScrollArea className="h-[280px]">
                         {filteredClients.map((c) => (
                           <Button
                             key={c.id}
                             variant="ghost"
-                            className="w-full justify-start rounded-none px-4 py-2.5 h-auto"
+                            className={cn(
+                              "w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0",
+                              clientId === c.id && "bg-primary/5"
+                            )}
                             onClick={() => {
                               setClientId(c.id);
                               setIsClientPopoverOpen(false);
+                              setClientSearch("");
                             }}
                           >
-                            <div className="flex flex-col items-start w-full">
+                            <div className="flex flex-col items-start w-full gap-0.5">
                               <div className="flex items-center justify-between w-full">
-                                <span className="font-medium text-sm">{c.name}</span>
-                                {clientId === c.id && <Check className="h-3.5 w-3.5 text-primary" />}
+                                <span className="font-semibold text-sm">{c.name}</span>
+                                {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
                               </div>
-                              <span className="text-[10px] text-muted-foreground">{c.email}</span>
+                              <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
                             </div>
                           </Button>
                         ))}
-                        {filteredClients.length === 0 && clientSearch && (
-                          <Button variant="ghost" className="w-full justify-start text-primary rounded-none px-4 py-3 h-auto gap-2" onClick={handleQuickAddClient}>
-                            <UserPlus className="h-4 w-4" />
-                            <div className="flex flex-col items-start">
-                              <span className="text-sm font-semibold">Create "{clientSearch}"</span>
-                            </div>
-                          </Button>
+                        {filteredClients.length === 0 && (
+                          <div className="p-4 text-center">
+                            <p className="text-sm text-muted-foreground mb-4">No clients found matching "{clientSearch}"</p>
+                            <Button variant="outline" size="sm" className="w-full gap-2 text-primary border-primary/20 hover:bg-primary/5" onClick={handleOpenNewClientDialog}>
+                              <UserPlus className="h-4 w-4" /> Create New Client
+                            </Button>
+                          </div>
+                        )}
+                        {filteredClients.length > 0 && clientSearch && (
+                          <div className="p-2 border-t mt-1">
+                            <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
+                              <UserPlus className="h-3.5 w-3.5" /> Not seeing them? Create new client
+                            </Button>
+                          </div>
                         )}
                       </ScrollArea>
                     </PopoverContent>
@@ -522,7 +546,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="space-y-2">
                   <Label>Service Category</Label>
                   <Select onValueChange={setServiceCategory} value={serviceCategory}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-11 border-primary/20">
                       <SelectValue placeholder="Select service type..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -535,6 +559,37 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
             </CardContent>
           </Card>
+
+          {/* New Client Dialog */}
+          <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add New Client</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-name">Full Name</Label>
+                  <Input id="new-name" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="e.g. John Doe" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">Email Address</Label>
+                  <Input id="new-email" type="email" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} placeholder="e.g. john@example.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-phone">Phone Number</Label>
+                  <Input id="new-phone" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} placeholder="e.g. 555-0101" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-address">Address</Label>
+                  <Input id="new-address" value={newClientAddress} onChange={(e) => setNewClientAddress(e.target.value)} placeholder="e.g. 123 Main St" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsNewClientDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveNewClient}>Save & Select Client</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Card className="shadow-sm border-primary/10">
             <CardHeader className="border-b bg-muted/20 py-4">
@@ -680,7 +735,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
               <Button className="w-full gap-2 shadow-xl h-14 text-lg font-bold" size="lg" onClick={handleSave}>
                 <Save className="w-5 h-5" />
-                Preview & Save
+                Preview & Save Quote
               </Button>
             </CardContent>
           </Card>
