@@ -103,14 +103,28 @@ export default function DashboardPage() {
                   recentQuotes.map((quote) => (
                     <TableRow key={quote.id}>
                       <TableCell className="font-medium">
-                        {clients.find(c => c.id === quote.clientId)?.name || 'Unknown Client'}
+                        <Link 
+                          href={`/clients/${quote.clientId}`} 
+                          className="hover:underline text-primary transition-colors"
+                        >
+                          {clients.find(c => c.id === quote.clientId)?.name || 'Unknown Client'}
+                        </Link>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}>
-                          {quote.status}
-                        </Badge>
+                        <Link href={`/quotes/${quote.id}`}>
+                          <Badge 
+                            variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            {quote.status}
+                          </Badge>
+                        </Link>
                       </TableCell>
-                      <TableCell className="text-right">${quote.grandTotal.toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        <Link href={`/quotes/${quote.id}`} className="hover:underline">
+                          ${quote.grandTotal.toLocaleString()}
+                        </Link>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
