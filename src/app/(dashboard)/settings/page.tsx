@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Save, Building } from "lucide-react";
 
-// Helper to truncate string to 2 decimals as user types
+// Helper to strictly truncate digits beyond 2 decimals as user types
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');
