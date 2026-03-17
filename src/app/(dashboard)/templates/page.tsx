@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -36,7 +37,7 @@ const PAINTING_SUBCATEGORIES = [
 ];
 
 // Helper for rounding to 2 decimals
-const roundToCent = (val: number) => Math.round(val * 100) / 100;
+const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
 export default function TemplatesPage() {
   const { toast } = useToast();
@@ -118,11 +119,7 @@ export default function TemplatesPage() {
   };
 
   const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
-    let finalValue = value;
-    if (field === 'defaultUnitPrice') {
-      finalValue = roundToCent(Number(value) || 0);
-    }
-    setCommonItems(prev => prev.map(item => item.id === id ? { ...item, [field]: finalValue } : item));
+    setCommonItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
   const handleRemoveCommonItem = (id: string) => {
@@ -342,8 +339,9 @@ export default function TemplatesPage() {
                                     <Input 
                                       type="number" 
                                       step="1.0"
-                                      value={item.defaultUnitPrice || ""} 
-                                      onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', e.target.value)} 
+                                      value={item.defaultUnitPrice} 
+                                      onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', e.target.value)}
+                                      onBlur={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', roundToCent(e.target.value))}
                                       className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
                                       placeholder="0.00"
                                     />

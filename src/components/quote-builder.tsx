@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -40,7 +41,7 @@ const SERVICE_CATEGORIES = [
 ];
 
 // Helper for rounding to 2 decimals
-const roundToCent = (val: number) => Math.round(val * 100) / 100;
+const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
   const { toast } = useToast();
@@ -83,10 +84,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [clientId, setClientId] = useState<string>(initialState.clientId);
   const [serviceCategory, setServiceCategory] = useState<string>(initialState.serviceCategory);
   const [items, setItems] = useState<QuoteItem[]>(initialState.items);
-  const [laborHours, setLaborHours] = useState<number>(initialState.laborHours);
-  const [laborRate, setLaborRate] = useState<number>(initialState.laborRate);
-  const [materialCosts, setMaterialCosts] = useState<number>(initialState.materialCosts);
-  const [taxRate, setTaxRate] = useState<number>(initialState.taxRate);
+  const [laborHours, setLaborHours] = useState<number | string>(initialState.laborHours);
+  const [laborRate, setLaborRate] = useState<number | string>(initialState.laborRate);
+  const [materialCosts, setMaterialCosts] = useState<number | string>(initialState.materialCosts);
+  const [taxRate, setTaxRate] = useState<number | string>(initialState.taxRate);
   const [notes, setNotes] = useState(initialState.notes);
   const [scopeDescription, setScopeDescription] = useState(initialState.scopeDescription);
   
@@ -119,10 +120,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       clientId,
       serviceCategory,
       items,
-      laborHours,
-      laborRate,
-      materialCosts,
-      taxRate,
+      laborHours: Number(laborHours),
+      laborRate: Number(laborRate),
+      materialCosts: Number(materialCosts),
+      taxRate: Number(taxRate),
       notes,
       scopeDescription
     };
@@ -140,10 +141,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [clients, clientSearch]);
 
   const calculateTotals = useCallback(() => {
-    const itemsTotal = items.reduce((acc, item) => acc + (item.total || 0), 0);
-    const laborTotal = roundToCent((laborHours || 0) * (laborRate || 0));
-    const subtotal = roundToCent(itemsTotal + laborTotal + (materialCosts || 0));
-    const taxTotal = roundToCent(subtotal * ((taxRate || 0) / 100));
+    const itemsTotal = items.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
+    const laborTotal = roundToCent((Number(laborHours) || 0) * (Number(laborRate) || 0));
+    const subtotal = roundToCent(itemsTotal + laborTotal + (Number(materialCosts) || 0));
+    const taxTotal = roundToCent(subtotal * ((Number(taxRate) || 0) / 100));
     const grandTotal = roundToCent(subtotal + taxTotal);
     
     return { subtotal, taxTotal, grandTotal };
@@ -226,15 +227,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const updateItem = (id: string, field: keyof QuoteItem, value: any) => {
     setItems(items.map(item => {
       if (item.id === id) {
-        let finalValue = value;
+        const updated = { ...item, [field]: value };
         if (field === 'quantity' || field === 'unitPrice') {
-          finalValue = roundToCent(Number(value) || 0);
-        }
-        
-        const updated = { ...item, [field]: finalValue };
-        if (field === 'quantity' || field === 'unitPrice') {
-          const q = Number(field === 'quantity' ? finalValue : item.quantity) || 0;
-          const p = Number(field === 'unitPrice' ? finalValue : item.unitPrice) || 0;
+          const q = Number(field === 'quantity' ? value : item.quantity) || 0;
+          const p = Number(field === 'unitPrice' ? value : item.unitPrice) || 0;
           updated.total = roundToCent(q * p);
         }
         return updated;
@@ -247,7 +243,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setItems(items.map(i => {
         if (i.id === id) {
             const up = roundToCent(item.defaultUnitPrice || 0);
-            const q = roundToCent(i.quantity || 1);
+            const q = Number(i.quantity) || 1;
             return {
                 ...i,
                 description: item.description,
@@ -268,7 +264,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       ...i, 
       id: uuidv4(), 
       isHardCoded: false,
-      total: roundToCent((i.quantity || 1) * (i.unitPrice || 0))
+      total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
     })));
   };
 
@@ -293,8 +289,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       serviceCategory,
       items: validItems.map(({ id, ...rest }) => ({
         ...rest,
-        quantity: roundToCent(Number(rest.quantity)),
-        unitPrice: roundToCent(Number(rest.unitPrice)),
+        quantity: roundToCent(rest.quantity),
+        unitPrice: roundToCent(rest.unitPrice),
         total: roundToCent(Number(rest.quantity) * Number(rest.unitPrice))
       })),
       scopeDescription
@@ -373,12 +369,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     }
 
     const finalItems = items.filter(item => {
-      const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || item.unitPrice === 0);
+      const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || Number(item.unitPrice) === 0);
       return !isEmpty;
     }).map(item => ({
       ...item,
-      quantity: roundToCent(Number(item.quantity)),
-      unitPrice: roundToCent(Number(item.unitPrice)),
+      quantity: roundToCent(item.quantity),
+      unitPrice: roundToCent(item.unitPrice),
       total: roundToCent(Number(item.quantity) * Number(item.unitPrice))
     }));
 
@@ -402,10 +398,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       serviceCategory,
       items: finalItems,
       scopeDescription,
-      laborHours: roundToCent(laborHours || 0),
-      laborRate: roundToCent(laborRate || 0),
-      materialCosts: roundToCent(materialCosts || 0),
-      taxRate: taxRate || 0,
+      laborHours: roundToCent(laborHours),
+      laborRate: roundToCent(laborRate),
+      materialCosts: roundToCent(materialCosts),
+      taxRate: Number(taxRate) || 0,
       taxTotal: totals.taxTotal,
       subtotal: totals.subtotal,
       grandTotal: totals.grandTotal,
@@ -706,8 +702,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           type="number" 
                           step="1.0" 
                           className="h-9 text-sm" 
-                          value={item.quantity || ""} 
-                          onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} 
+                          value={item.quantity} 
+                          onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
+                          onBlur={(e) => updateItem(item.id, 'quantity', roundToCent(e.target.value))}
                         />
                       </div>
                       <div>
@@ -715,12 +712,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           type="number" 
                           step="1.0" 
                           className="h-9 text-sm" 
-                          value={item.unitPrice || ""} 
-                          onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} 
+                          value={item.unitPrice} 
+                          onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
+                          onBlur={(e) => updateItem(item.id, 'unitPrice', roundToCent(e.target.value))}
                         />
                       </div>
                       <div className="text-right font-medium text-sm">
-                        ${(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                       <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
@@ -768,8 +766,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     type="number" 
                     step="1.0" 
                     className="h-10" 
-                    value={laborRate || ""} 
-                    onChange={(e) => setLaborRate(roundToCent(Number(e.target.value)))} 
+                    value={laborRate} 
+                    onChange={(e) => setLaborRate(e.target.value)}
+                    onBlur={(e) => setLaborRate(roundToCent(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -778,8 +777,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     type="number" 
                     step="1.0" 
                     className="h-10" 
-                    value={laborHours || ""} 
-                    onChange={(e) => setLaborHours(roundToCent(Number(e.target.value)))} 
+                    value={laborHours} 
+                    onChange={(e) => setLaborHours(e.target.value)}
+                    onBlur={(e) => setLaborHours(roundToCent(e.target.value))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -788,8 +788,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     type="number" 
                     step="1.0" 
                     className="h-10" 
-                    value={materialCosts || ""} 
-                    onChange={(e) => setMaterialCosts(roundToCent(Number(e.target.value)))} 
+                    value={materialCosts} 
+                    onChange={(e) => setMaterialCosts(e.target.value)}
+                    onBlur={(e) => setMaterialCosts(roundToCent(e.target.value))}
                   />
                 </div>
               </div>
