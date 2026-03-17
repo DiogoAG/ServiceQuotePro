@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, User } from "lucide-react";
+import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, User, Star } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 type QuoteBuilderProps = {
   initialClients: Client[];
@@ -376,25 +377,36 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       categories[cat].push(item);
     });
 
-    const result: { category: string; items: CommonItem[] }[] = [];
+    const result: { category: string; items: CommonItem[]; isOffered: boolean }[] = [];
     
-    SERVICE_CATEGORIES.forEach(mainCat => {
+    // Sort SERVICE_CATEGORIES so offered services are at the top
+    const offered = initialProfile?.offeredServices || [];
+    const sortedCategories = [...SERVICE_CATEGORIES].sort((a, b) => {
+      const aIsOffered = offered.includes(a);
+      const bIsOffered = offered.includes(b);
+      if (aIsOffered && !bIsOffered) return -1;
+      if (!aIsOffered && bIsOffered) return 1;
+      return 0;
+    });
+
+    sortedCategories.forEach(mainCat => {
+      const isOffered = offered.includes(mainCat);
       if (SERVICE_SUBCATEGORIES[mainCat]) {
         SERVICE_SUBCATEGORIES[mainCat].forEach(sub => {
           const fullCatName = `${mainCat} - ${sub}`;
           if (categories[fullCatName]) {
-            result.push({ category: fullCatName, items: categories[fullCatName] });
+            result.push({ category: fullCatName, items: categories[fullCatName], isOffered });
           }
         });
       } else {
         if (categories[mainCat]) {
-          result.push({ category: mainCat, items: categories[mainCat] });
+          result.push({ category: mainCat, items: categories[mainCat], isOffered });
         }
       }
     });
 
     return result;
-  }, [commonItems]);
+  }, [commonItems, initialProfile]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -561,12 +573,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_100px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_100px_90px_110px_120px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_90px_110px_120px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item description..." className="pr-8 h-9 text-sm" />
                         <Popover>
@@ -574,9 +586,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           <PopoverContent className="w-80 p-2" align="start">
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
                             <ScrollArea className="h-72">
-                              {organizedCommonItems.map(({ category, items: libItems }) => (
+                              {organizedCommonItems.map(({ category, items: libItems, isOffered }) => (
                                 <div key={category} className="mb-4 last:mb-0 px-1">
-                                  <div className="flex items-center gap-1.5 mb-1"><ChevronRight className="w-2.5 h-2.5 text-primary/40" /><p className="text-[9px] font-black uppercase text-primary/70">{category}</p></div>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <ChevronRight className="w-2.5 h-2.5 text-primary/40" />
+                                    <p className="text-[9px] font-black uppercase text-primary/70">{category}</p>
+                                    {isOffered && <Badge variant="secondary" className="px-1 py-0 h-3 text-[7px] bg-primary/10 text-primary border-none"><Star className="w-2 h-2 fill-primary mr-0.5" /> PINNED</Badge>}
+                                  </div>
                                   <div className="space-y-0.5">
                                     {libItems.map(ci => (
                                       <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-muted" onClick={() => selectCommonItem(item.id, ci)}>
