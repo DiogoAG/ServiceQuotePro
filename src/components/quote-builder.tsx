@@ -28,15 +28,15 @@ type QuoteBuilderProps = {
 };
 
 const SERVICE_CATEGORIES = [
-  "Carpentry",
-  "Cleaning",
-  "Electrical",
   "General Contracting",
+  "Electrical",
+  "Plumbing",
   "HVAC",
   "Landscaping",
   "Painting",
-  "Plumbing",
   "Roofing",
+  "Carpentry",
+  "Cleaning",
   "Other"
 ];
 
