@@ -229,8 +229,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const commonItemsByCategory = useMemo(() => {
     return commonItems.reduce((acc, item) => {
-      if (!acc[item.category]) acc[item.category] = [];
-      acc[item.category].push(item);
+      const cat = item.category || "General";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
       return acc;
     }, {} as Record<string, CommonItem[]>);
   }, [commonItems]);
