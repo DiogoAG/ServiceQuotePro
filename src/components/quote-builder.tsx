@@ -28,12 +28,12 @@ type QuoteBuilderProps = {
 };
 
 const SERVICE_CATEGORIES = [
+  "Painting",
   "General Contracting",
   "Electrical",
   "Plumbing",
   "HVAC",
   "Landscaping",
-  "Painting",
   "Roofing",
   "Carpentry",
   "Cleaning",
@@ -44,8 +44,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [clientId, setClientId] = useState<string>(preSelectedClientId || duplicateSource?.clientId || "");
-  const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "General Contracting");
-  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+  const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "Painting");
+  const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
   const [laborHours, setLaborHours] = useState<number>(duplicateSource?.laborHours || 0);
   const [laborRate, setLaborRate] = useState<number>(duplicateSource?.laborRate || initialProfile.defaultLaborRate);
   const [materialCosts, setMaterialCosts] = useState<number>(duplicateSource?.materialCosts || 0);
@@ -54,14 +54,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [scopeDescription, setScopeDescription] = useState(duplicateSource?.scopeDescription || "");
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Template Creation State
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
-
-  // Client Search/Select State
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
 
@@ -70,17 +66,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setTemplates(getTemplates());
   }, []);
 
-  // Auto-fill template based on category
   useEffect(() => {
     const isEmpty = items.length <= 1 && !items[0].description && !scopeDescription;
     if (isEmpty && !duplicateSource) {
       const matchingTemplate = templates.find(t => t.serviceCategory === serviceCategory);
       if (matchingTemplate) {
         applyTemplate(matchingTemplate);
-        toast({ 
-          title: "Template Auto-Applied", 
-          description: `Loaded ${matchingTemplate.name} for ${serviceCategory} category.` 
-        });
       }
     }
   }, [serviceCategory, templates]);
@@ -105,12 +96,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [items, laborHours, laborRate, materialCosts, taxRate]);
 
   const addItem = () => {
-    setItems([...items, { id: uuidv4(), description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
   };
 
   const removeItem = (id: string) => {
     if (items.length === 1) {
-      setItems([{ id: uuidv4(), description: "", quantity: 1, unitPrice: 0, total: 0 }]);
+      setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
     } else {
       setItems(items.filter(item => item.id !== id));
     }
@@ -135,6 +126,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             return {
                 ...i,
                 description: item.description,
+                unit: item.unit || "",
                 unitPrice: item.defaultUnitPrice,
                 total: i.quantity * item.defaultUnitPrice
             };
@@ -200,7 +192,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         businessName: initialProfile.businessName
       });
       setScopeDescription(result.generatedDescription);
-      toast({ title: "Scope Generated", description: "The professional scope description is ready." });
+      toast({ title: "Scope Generated" });
     } catch (err) {
       toast({ title: "Error", description: "Failed to generate AI description.", variant: "destructive" });
     } finally {
@@ -270,9 +262,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           onChange={(e) => setNewTemplateName(e.target.value)}
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        This will save the current items, category, and scope description for reuse.
-                      </p>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
@@ -292,10 +281,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Templates</p>
                       <ScrollArea className="h-64">
                         {templates.map(t => (
-                          <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto" onClick={() => {
-                            applyTemplate(t);
-                            toast({ title: "Template Applied", description: t.name });
-                          }}>
+                          <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto" onClick={() => applyTemplate(t)}>
                             <div className="text-left">
                               <div className="font-medium">{t.name}</div>
                               <div className="text-[10px] opacity-60">{t.serviceCategory}</div>
@@ -353,7 +339,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             onClick={() => {
                               setClientId(c.id);
                               setIsClientPopoverOpen(false);
-                              setClientSearch("");
                             }}
                           >
                             <div className="flex flex-col items-start w-full">
@@ -366,20 +351,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           </Button>
                         ))}
                         {filteredClients.length === 0 && clientSearch && (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-primary rounded-none px-4 py-3 h-auto gap-2"
-                            onClick={handleQuickAddClient}
-                          >
+                          <Button variant="ghost" className="w-full justify-start text-primary rounded-none px-4 py-3 h-auto gap-2" onClick={handleQuickAddClient}>
                             <UserPlus className="h-4 w-4" />
                             <div className="flex flex-col items-start">
                               <span className="text-sm font-semibold">Create "{clientSearch}"</span>
-                              <span className="text-[10px] opacity-70">Add this new client to directory</span>
                             </div>
                           </Button>
-                        )}
-                        {filteredClients.length === 0 && !clientSearch && (
-                          <p className="text-xs text-center py-6 text-muted-foreground">No clients found.</p>
                         )}
                       </ScrollArea>
                     </PopoverContent>
@@ -404,13 +381,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           </Card>
 
           <Card className="shadow-sm border-primary/10">
-            <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/20 py-4">
+            <CardHeader className="border-b bg-muted/20 py-4">
               <CardTitle className="text-xl">Work Scope & Line Items</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                <div className="grid grid-cols-[1fr_80px_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div>
+                  <div>Unit</div>
                   <div>Qty</div>
                   <div>Price ($)</div>
                   <div className="text-right">Total</div>
@@ -419,7 +397,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_120px_100px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_80px_120px_100px_40px] gap-4 items-center group">
                       <div className="relative">
                         <Input 
                           value={item.description} 
@@ -434,33 +412,34 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-72 p-2" align="start">
-                            <div className="space-y-2">
-                              <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase tracking-tight">Standard Item Library</p>
-                              <ScrollArea className="h-64">
-                                {Object.entries(commonItemsByCategory).map(([category, items]) => (
-                                  <div key={category} className="mb-4 last:mb-0">
-                                    <p className="text-[9px] font-black uppercase text-primary/50 px-2 mb-1 tracking-widest">{category}</p>
-                                    <div className="space-y-0.5">
-                                      {items.map(ci => (
-                                        <Button 
-                                          key={ci.id} 
-                                          variant="ghost" 
-                                          className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-primary/5" 
-                                          onClick={() => selectCommonItem(item.id, ci)}
-                                        >
-                                          <div className="text-left w-full flex justify-between items-center gap-2">
-                                            <span className="font-medium truncate">{ci.description}</span>
-                                            <span className="text-[10px] font-mono shrink-0">${ci.defaultUnitPrice}</span>
-                                          </div>
-                                        </Button>
-                                      ))}
-                                    </div>
+                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase">Standard Item Library</p>
+                            <ScrollArea className="h-64">
+                              {Object.entries(commonItemsByCategory).map(([category, libItems]) => (
+                                <div key={category} className="mb-4 last:mb-0">
+                                  <p className="text-[9px] font-black uppercase text-primary/50 px-2 mb-1">{category}</p>
+                                  <div className="space-y-0.5">
+                                    {libItems.map(ci => (
+                                      <Button 
+                                        key={ci.id} 
+                                        variant="ghost" 
+                                        className="w-full justify-start text-xs py-1.5 h-auto px-2" 
+                                        onClick={() => selectCommonItem(item.id, ci)}
+                                      >
+                                        <div className="text-left w-full flex justify-between items-center gap-2">
+                                          <span className="font-medium truncate">{ci.description}</span>
+                                          <span className="text-[10px] font-mono shrink-0">${ci.defaultUnitPrice}</span>
+                                        </div>
+                                      </Button>
+                                    ))}
                                   </div>
-                                ))}
-                              </ScrollArea>
-                            </div>
+                                </div>
+                              ))}
+                            </ScrollArea>
                           </PopoverContent>
                         </Popover>
+                      </div>
+                      <div>
+                        <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="sq ft" className="h-9 text-sm" />
                       </div>
                       <div>
                         <Input type="number" className="h-9 text-sm" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} />
@@ -478,8 +457,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   ))}
                 </div>
                 
-                <div className="pt-4 flex justify-start">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2 hover:bg-primary/5">
+                <div className="pt-4 flex justify-start border-t">
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2">
                     <Plus className="w-4 h-4" /> Add Another Item
                   </Button>
                 </div>
@@ -488,7 +467,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-3 pt-6 border-t">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label>
-                  <Button variant="ghost" size="sm" className="text-primary gap-2 h-8 px-2 hover:bg-primary/5" onClick={handleGenerateScope} disabled={isGenerating}>
+                  <Button variant="ghost" size="sm" className="text-primary gap-2 h-8 px-2" onClick={handleGenerateScope} disabled={isGenerating}>
                     {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />}
                     Generate Professional Scope
                   </Button>
@@ -505,7 +484,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         </div>
 
         <div className="space-y-6">
-          <Card className="shadow-lg border-primary/20 sticky top-8 overflow-hidden">
+          <Card className="shadow-lg border-primary/20 sticky top-8">
             <CardHeader className="bg-primary/5 py-4">
               <CardTitle className="text-lg">Pricing & Totals</CardTitle>
             </CardHeader>
@@ -527,19 +506,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
               <div className="space-y-3 pt-6 border-t border-dashed">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Items Total</span>
-                  <span className="font-medium">${items.reduce((acc, item) => acc + item.total, 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Labor ({laborHours} hrs)</span>
-                  <span className="font-medium">${(laborHours * laborRate).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Materials</span>
-                  <span className="font-medium">${materialCosts.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm pt-2">
-                  <span className="text-muted-foreground font-semibold">Subtotal</span>
+                  <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-bold">${totals.subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">

@@ -18,6 +18,7 @@ export type BusinessProfile = {
 export type QuoteItem = {
   id: string;
   description: string;
+  unit?: string;
   quantity: number;
   unitPrice: number;
   total: number;
@@ -27,6 +28,7 @@ export type CommonItem = {
   id: string;
   description: string;
   category: string;
+  unit?: string;
   defaultUnitPrice: number;
 };
 

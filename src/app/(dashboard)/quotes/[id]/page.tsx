@@ -7,7 +7,7 @@ import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { getQuotes, getClients, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Download, Mail, ChevronLeft, Building2, User, Wrench } from "lucide-react";
+import { Printer, Mail, ChevronLeft, Building2, User, Wrench } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -92,7 +92,6 @@ export default function QuoteSummaryPage() {
               <div className="space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
                 <p>License: {profile.licenseNumber}</p>
-                <p>Default Rate: ${profile.defaultLaborRate}/hr</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -110,12 +109,7 @@ export default function QuoteSummaryPage() {
 
           {/* Work Scope Section */}
           <div className="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-100">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold uppercase text-xs tracking-widest text-primary">Proposed Scope of Work</h3>
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
-                <Wrench className="w-3 h-3" /> {quote.serviceCategory}
-              </div>
-            </div>
+            <h3 className="font-bold uppercase text-xs tracking-widest text-primary">Proposed Scope of Work</h3>
             <div className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">
               {quote.scopeDescription}
             </div>
@@ -128,6 +122,7 @@ export default function QuoteSummaryPage() {
               <TableHeader className="bg-gray-50">
                 <TableRow>
                   <TableHead className="w-full">Description</TableHead>
+                  <TableHead>Unit</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
                   <TableHead className="text-right">Total</TableHead>
@@ -137,6 +132,7 @@ export default function QuoteSummaryPage() {
                 {quote.items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.description}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground uppercase">{item.unit || '-'}</TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right">${item.unitPrice.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-medium">${item.total.toLocaleString()}</TableCell>
@@ -144,7 +140,8 @@ export default function QuoteSummaryPage() {
                 ))}
                 {quote.laborHours > 0 && (
                   <TableRow>
-                    <TableCell>Labor Cost ({quote.laborHours} hours @ ${quote.laborRate}/hr)</TableCell>
+                    <TableCell>Labor Hours</TableCell>
+                    <TableCell className="text-xs text-muted-foreground uppercase">hr</TableCell>
                     <TableCell className="text-right">{quote.laborHours}</TableCell>
                     <TableCell className="text-right">${quote.laborRate}</TableCell>
                     <TableCell className="text-right font-medium">${(quote.laborHours * quote.laborRate).toLocaleString()}</TableCell>
@@ -152,7 +149,7 @@ export default function QuoteSummaryPage() {
                 )}
                 {quote.materialCosts > 0 && (
                   <TableRow>
-                    <TableCell>Materials & Equipment</TableCell>
+                    <TableCell colSpan={2}>Materials & Equipment</TableCell>
                     <TableCell className="text-right">1</TableCell>
                     <TableCell className="text-right">${quote.materialCosts.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-medium">${quote.materialCosts.toLocaleString()}</TableCell>
@@ -181,10 +178,10 @@ export default function QuoteSummaryPage() {
           </div>
 
           {/* Footer Info */}
-          <div className="border-t pt-12 text-center space-y-4">
+          <div className="border-t pt-12 text-center">
             <p className="text-sm font-medium">Thank you for considering {profile.businessName}!</p>
-            <p className="text-xs text-muted-foreground max-w-lg mx-auto italic">
-              Terms & Conditions: This quote is valid for 30 days from the date above. Payment is due within 15 days of job completion.
+            <p className="text-xs text-muted-foreground mt-4 italic">
+              Valid for 30 days. Payment is due upon completion.
             </p>
           </div>
         </CardContent>

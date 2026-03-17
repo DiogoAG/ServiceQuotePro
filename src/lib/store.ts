@@ -52,47 +52,25 @@ export const getTemplates = (): QuoteTemplate[] => {
   return stored ? JSON.parse(stored) : [
     {
       id: 't1',
-      name: 'Standard Electrical Inspection',
-      serviceCategory: 'Electrical',
+      name: 'Interior Living Room Paint',
+      serviceCategory: 'Painting',
       items: [
-        { description: 'Panel Inspection & Testing', quantity: 1, unitPrice: 150, total: 150 },
-        { description: 'Circuit Breaker Evaluation', quantity: 1, unitPrice: 75, total: 75 },
-        { description: 'Grounding System Check', quantity: 1, unitPrice: 50, total: 50 }
+        { description: 'Interior Wall Painting', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
+        { description: 'Ceiling Painting', unit: 'sq ft', quantity: 200, unitPrice: 2.0, total: 400 },
+        { description: 'Baseboard Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 }
       ],
-      scopeDescription: 'Comprehensive safety inspection of the main electrical panel, grounding system, and branch circuits to ensure compliance with local codes.'
+      scopeDescription: 'Full preparation and painting of living room walls and ceiling. Includes minor patching and baseboard painting.'
     },
     {
       id: 't2',
-      name: 'Residential Plumbing Repair',
-      serviceCategory: 'Plumbing',
+      name: 'Standard Electrical Inspection',
+      serviceCategory: 'Electrical',
       items: [
-        { description: 'Faucet/Fixture Repair Kit', quantity: 1, unitPrice: 45, total: 45 },
-        { description: 'Drain Clearing Service (Main Line)', quantity: 1, unitPrice: 180, total: 180 },
-        { description: 'Pipe Section Replacement', quantity: 1, unitPrice: 95, total: 95 }
+        { description: 'Panel Inspection & Testing', unit: 'inspection', quantity: 1, unitPrice: 150, total: 150 },
+        { description: 'Circuit Breaker Evaluation', unit: 'unit', quantity: 1, unitPrice: 75, total: 75 },
+        { description: 'Grounding System Check', unit: 'system', quantity: 1, unitPrice: 50, total: 50 }
       ],
-      scopeDescription: 'Diagnosis and repair of residential plumbing fixtures, drainage clearing, and minor pipe restoration to prevent leaks.'
-    },
-    {
-      id: 't3',
-      name: 'HVAC Seasonal Maintenance',
-      serviceCategory: 'HVAC',
-      items: [
-        { description: 'Filter Replacement (High MERV)', quantity: 1, unitPrice: 35, total: 35 },
-        { description: 'Refrigerant Level Check', quantity: 1, unitPrice: 85, total: 85 },
-        { description: 'Condenser Coil Cleaning', quantity: 1, unitPrice: 120, total: 120 }
-      ],
-      scopeDescription: 'Standard 21-point HVAC system inspection including coil cleaning, filter replacement, and performance testing for peak efficiency.'
-    },
-    {
-      id: 't4',
-      name: 'Interior Painting - Single Room',
-      serviceCategory: 'Painting',
-      items: [
-        { description: 'Premium Low-VOC Paint (Gallons)', quantity: 2, unitPrice: 65, total: 130 },
-        { description: 'Surface Prep & Sanding', quantity: 1, unitPrice: 100, total: 100 },
-        { description: 'Trim & Ceiling Detail', quantity: 1, unitPrice: 150, total: 150 }
-      ],
-      scopeDescription: 'Full interior painting of a standard 12x12 room including ceiling, trim, and wall surfaces with professional preparation.'
+      scopeDescription: 'Comprehensive safety inspection of the main electrical panel, grounding system, and branch circuits.'
     }
   ];
 };
@@ -105,78 +83,60 @@ export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
   return stored ? JSON.parse(stored) : [
+    // Interior Painting
+    { id: 'ip1', category: 'Interior Painting', description: 'Interior Wall Painting', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'ip2', category: 'Interior Painting', description: 'Ceiling Painting', unit: 'sq ft', defaultUnitPrice: 2.0 },
+    { id: 'ip3', category: 'Interior Painting', description: 'Accent Wall Painting', unit: 'wall', defaultUnitPrice: 350 },
+    { id: 'ip4', category: 'Interior Painting', description: 'Trim Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
+    { id: 'ip5', category: 'Interior Painting', description: 'Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
+    { id: 'ip6', category: 'Interior Painting', description: 'Crown Molding Painting', unit: 'linear ft', defaultUnitPrice: 1.75 },
+    { id: 'ip7', category: 'Interior Painting', description: 'Door Painting (Interior)', unit: 'door', defaultUnitPrice: 125 },
+    { id: 'ip8', category: 'Interior Painting', description: 'Door Frame Painting', unit: 'frame', defaultUnitPrice: 50 },
+    { id: 'ip9', category: 'Interior Painting', description: 'Window Frame Painting', unit: 'window', defaultUnitPrice: 75 },
+    { id: 'ip10', category: 'Interior Painting', description: 'Closet Painting', unit: 'closet', defaultUnitPrice: 150 },
+    { id: 'ip11', category: 'Interior Painting', description: 'Staircase / Railing Painting', unit: 'set', defaultUnitPrice: 1500 },
+
+    // Exterior Painting
+    { id: 'ep1', category: 'Exterior Painting', description: 'Exterior Wall Painting', unit: 'sq ft', defaultUnitPrice: 3.0 },
+    { id: 'ep2', category: 'Exterior Painting', description: 'Stucco Painting', unit: 'sq ft', defaultUnitPrice: 3.5 },
+    { id: 'ep3', category: 'Exterior Painting', description: 'Brick Painting', unit: 'sq ft', defaultUnitPrice: 3.5 },
+    { id: 'ep4', category: 'Exterior Painting', description: 'Trim / Fascia Painting', unit: 'linear ft', defaultUnitPrice: 2.0 },
+    { id: 'ep5', category: 'Exterior Painting', description: 'Garage Door Painting', unit: 'door', defaultUnitPrice: 400 },
+    { id: 'ep6', category: 'Exterior Painting', description: 'Front Door Painting', unit: 'door', defaultUnitPrice: 250 },
+    { id: 'ep7', category: 'Exterior Painting', description: 'Window Frame Painting (Exterior)', unit: 'window', defaultUnitPrice: 95 },
+    { id: 'ep8', category: 'Exterior Painting', description: 'Shutter Painting', unit: 'shutter', defaultUnitPrice: 45 },
+    { id: 'ep9', category: 'Exterior Painting', description: 'Deck Painting', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'ep10', category: 'Exterior Painting', description: 'Fence Painting', unit: 'linear ft', defaultUnitPrice: 2.0 },
+
+    // Surface Preparation
+    { id: 'sp1', category: 'Surface Preparation', description: 'Pressure Washing', unit: 'sq ft', defaultUnitPrice: 0.25 },
+    { id: 'sp2', category: 'Surface Preparation', description: 'Paint Scraping', unit: 'sq ft', defaultUnitPrice: 1.5 },
+    { id: 'sp3', category: 'Surface Preparation', description: 'Sanding', unit: 'sq ft', defaultUnitPrice: 1.0 },
+    { id: 'sp4', category: 'Surface Preparation', description: 'Caulking / Sealing', unit: 'linear ft', defaultUnitPrice: 0.75 },
+    { id: 'sp5', category: 'Surface Preparation', description: 'Crack / Hole Patching', unit: 'patch', defaultUnitPrice: 25 },
+    { id: 'sp6', category: 'Surface Preparation', description: 'Drywall Repair', unit: 'repair', defaultUnitPrice: 150 },
+    { id: 'sp7', category: 'Surface Preparation', description: 'Priming Surfaces', unit: 'sq ft', defaultUnitPrice: 1.0 },
+
+    // Wood & Specialty
+    { id: 'ws1', category: 'Wood & Specialty Finishes', description: 'Cabinet Painting', unit: 'cabinet', defaultUnitPrice: 150 },
+    { id: 'ws2', category: 'Wood & Specialty Finishes', description: 'Cabinet Refinishing', unit: 'cabinet', defaultUnitPrice: 250 },
+    { id: 'ws3', category: 'Wood & Specialty Finishes', description: 'Wood Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'ws4', category: 'Wood & Specialty Finishes', description: 'Deck Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'ws5', category: 'Wood & Specialty Finishes', description: 'Fence Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'ws6', category: 'Wood & Specialty Finishes', description: 'Varnish / Polyurethane Finish', unit: 'sq ft', defaultUnitPrice: 1.5 },
+
+    // Additional Services
+    { id: 'as1', category: 'Additional Services', description: 'Wallpaper Removal', unit: 'sq ft', defaultUnitPrice: 2.0 },
+    { id: 'as2', category: 'Additional Services', description: 'Popcorn Ceiling Removal', unit: 'sq ft', defaultUnitPrice: 4.0 },
+    { id: 'as3', category: 'Additional Services', description: 'Texture Application', unit: 'sq ft', defaultUnitPrice: 1.5 },
+    { id: 'as4', category: 'Additional Services', description: 'Epoxy Garage Floor Coating', unit: 'sq ft', defaultUnitPrice: 6.0 },
+    { id: 'as5', category: 'Additional Services', description: 'Waterproof Coating', unit: 'sq ft', defaultUnitPrice: 3.0 },
+    { id: 'as6', category: 'Additional Services', description: 'Touch-Up Painting', unit: 'hr', defaultUnitPrice: 75 },
+
     // General
     { id: 'g1', category: 'General', description: 'Service Call Fee / Diagnostic', defaultUnitPrice: 95 },
     { id: 'g2', category: 'General', description: 'Emergency / After-Hours Fee', defaultUnitPrice: 185 },
-    { id: 'g3', category: 'General', description: 'Disposal & Material Handling', defaultUnitPrice: 45 },
-    { id: 'g4', category: 'General', description: 'Labor - Apprentice/Helper', defaultUnitPrice: 45 },
-    { id: 'g5', category: 'General', description: 'Equipment Rental (Daily)', defaultUnitPrice: 150 },
-    { id: 'g6', category: 'General', description: 'Travel Surcharge (Out of area)', defaultUnitPrice: 50 },
-
-    // Electrical
-    { id: 'e1', category: 'Electrical', description: 'Labor - Master Electrician', defaultUnitPrice: 115 },
-    { id: 'e2', category: 'Electrical', description: 'Circuit Breaker Replacement (Standard)', defaultUnitPrice: 45 },
-    { id: 'e3', category: 'Electrical', description: 'Electrical Panel Upgrade (200 Amp)', defaultUnitPrice: 2400 },
-    { id: 'e4', category: 'Electrical', description: 'GFCI Outlet Installation', defaultUnitPrice: 95 },
-    { id: 'e5', category: 'Electrical', description: 'Lighting Fixture Installation (Basic)', defaultUnitPrice: 125 },
-    { id: 'e6', category: 'Electrical', description: 'Ceiling Fan Installation', defaultUnitPrice: 175 },
-    { id: 'e7', category: 'Electrical', description: 'EV Charger Circuit (NEMA 14-50)', defaultUnitPrice: 450 },
-    { id: 'e8', category: 'Electrical', description: 'Recessed Lighting (per fixture)', defaultUnitPrice: 110 },
-    
-    // Plumbing
-    { id: 'p1', category: 'Plumbing', description: 'Labor - Master Plumber', defaultUnitPrice: 125 },
-    { id: 'p2', category: 'Plumbing', description: 'Drain Clearing - Main Line', defaultUnitPrice: 225 },
-    { id: 'p3', category: 'Plumbing', description: 'Water Heater Replacement (50 Gal)', defaultUnitPrice: 1650 },
-    { id: 'p4', category: 'Plumbing', description: 'Faucet Repair/Installation', defaultUnitPrice: 185 },
-    { id: 'p5', category: 'Plumbing', description: 'Toilet Replacement (Standard)', defaultUnitPrice: 395 },
-    { id: 'p6', category: 'Plumbing', description: 'Garbage Disposal Installation', defaultUnitPrice: 225 },
-    { id: 'p7', category: 'Plumbing', description: 'Sump Pump Replacement', defaultUnitPrice: 450 },
-    { id: 'p8', category: 'Plumbing', description: 'Whole House Water Filter', defaultUnitPrice: 850 },
-    
-    // HVAC
-    { id: 'h1', category: 'HVAC', description: 'Labor - HVAC Technician', defaultUnitPrice: 110 },
-    { id: 'h2', category: 'HVAC', description: 'A/C Seasonal Tune-Up', defaultUnitPrice: 159 },
-    { id: 'h3', category: 'HVAC', description: 'Furnace Inspection & Service', defaultUnitPrice: 145 },
-    { id: 'h4', category: 'HVAC', description: 'Smart Thermostat Installation', defaultUnitPrice: 195 },
-    { id: 'h5', category: 'HVAC', description: 'Refrigerant Recharge (per lb)', defaultUnitPrice: 115 },
-    { id: 'h6', category: 'HVAC', description: 'Condenser Motor Replacement', defaultUnitPrice: 450 },
-    { id: 'h7', category: 'HVAC', description: 'Duct Cleaning (per vent)', defaultUnitPrice: 35 },
-    { id: 'h8', category: 'HVAC', description: 'Capacitor Replacement', defaultUnitPrice: 185 },
-    
-    // Painting
-    { id: 'pt1', category: 'Painting', description: 'Labor - Professional Painter', defaultUnitPrice: 65 },
-    { id: 'pt2', category: 'Painting', description: 'Premium Paint (Gallon)', defaultUnitPrice: 68 },
-    { id: 'pt3', category: 'Painting', description: 'Surface Prep & Drywall Patching', defaultUnitPrice: 145 },
-    { id: 'pt4', category: 'Painting', description: 'Trim & Baseboard Painting (per room)', defaultUnitPrice: 175 },
-    { id: 'pt5', category: 'Painting', description: 'Ceiling Painting (Standard Room)', defaultUnitPrice: 125 },
-    { id: 'pt6', category: 'Painting', description: 'Cabinet Refinishing (per door)', defaultUnitPrice: 85 },
-    { id: 'pt7', category: 'Painting', description: 'Wallpaper Removal (per hour)', defaultUnitPrice: 75 },
-    { id: 'pt8', category: 'Painting', description: 'Exterior Siding Stain (per sq ft)', defaultUnitPrice: 4.5 },
-
-    // Landscaping
-    { id: 'l1', category: 'Landscaping', description: 'Lawn Maintenance (Mow/Edge)', defaultUnitPrice: 65 },
-    { id: 'l2', category: 'Landscaping', description: 'Mulch Installation (per yard)', defaultUnitPrice: 85 },
-    { id: 'l3', category: 'Landscaping', description: 'Irrigation System Repair (per hour)', defaultUnitPrice: 95 },
-    { id: 'l4', category: 'Landscaping', description: 'Tree Trimming (Small/Medium)', defaultUnitPrice: 250 },
-    { id: 'l5', category: 'Landscaping', description: 'Fertilizer Application', defaultUnitPrice: 45 },
-    
-    // Roofing
-    { id: 'r1', category: 'Roofing', description: 'Roof Inspection & Certification', defaultUnitPrice: 250 },
-    { id: 'r2', category: 'Roofing', description: 'Shingle Repair (Minor)', defaultUnitPrice: 350 },
-    { id: 'r3', category: 'Roofing', description: 'Gutter Cleaning (Standard)', defaultUnitPrice: 145 },
-    { id: 'r4', category: 'Roofing', description: 'Flashing Repair', defaultUnitPrice: 185 },
-    
-    // Carpentry
-    { id: 'c1', category: 'Carpentry', description: 'Custom Shelving Installation', defaultUnitPrice: 450 },
-    { id: 'c2', category: 'Carpentry', description: 'Door Hanging & Hardware', defaultUnitPrice: 195 },
-    { id: 'c3', category: 'Carpentry', description: 'Deck Board Replacement (per board)', defaultUnitPrice: 45 },
-    { id: 'c4', category: 'Carpentry', description: 'Crown Molding (per linear ft)', defaultUnitPrice: 12 },
-    
-    // Cleaning
-    { id: 'cl1', category: 'Cleaning', description: 'Deep House Cleaning (Standard)', defaultUnitPrice: 250 },
-    { id: 'cl2', category: 'Cleaning', description: 'Move-In/Move-Out Cleaning', defaultUnitPrice: 450 },
-    { id: 'cl3', category: 'Cleaning', description: 'Window Cleaning (per window)', defaultUnitPrice: 15 },
-    { id: 'cl4', category: 'Cleaning', description: 'Carpet Steam Cleaning (per room)', defaultUnitPrice: 65 }
+    { id: 'g3', category: 'General', description: 'Disposal & Material Handling', defaultUnitPrice: 45 }
   ];
 };
 
