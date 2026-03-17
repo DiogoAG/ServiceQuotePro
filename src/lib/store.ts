@@ -1,4 +1,3 @@
-
 import { Client, Quote, BusinessProfile, QuoteTemplate, CommonItem } from './types';
 
 const CLIENTS_KEY = 'service_quote_pro_clients';

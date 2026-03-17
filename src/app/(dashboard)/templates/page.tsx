@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,7 +23,11 @@ const CATEGORIES = [
   "Exterior Painting",
   "Surface Preparation",
   "Specialty Painting Services",
-  "Additional Services"
+  "Additional Services",
+  "Roofing",
+  "Carpentry",
+  "Cleaning",
+  "Other"
 ];
 
 export default function TemplatesPage() {
