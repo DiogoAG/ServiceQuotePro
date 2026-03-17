@@ -40,7 +40,7 @@ const SERVICE_CATEGORIES = [
   "Other"
 ];
 
-// Helper for rounding to 2 decimals for calculations
+// Helper for rounding to 2 decimals for final calculations
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
 // Helper to truncate string to 2 decimals as user types (cutting off, not rounding)
@@ -61,8 +61,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const getInitialState = useCallback(() => {
     const draft = getDraftQuote();
     
-    // Always prefer the latest profile settings for new/duplicated quotes
-    // but keep draft values if they exist
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
@@ -154,9 +152,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const calculateTotals = useCallback(() => {
     const itemsTotal = items.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
-    const laborTotal = (Number(laborHours) || 0) * (Number(laborRate) || 0);
-    const subtotal = roundToCent(itemsTotal + laborTotal + (Number(materialCosts) || 0));
-    const taxTotal = roundToCent(subtotal * ((Number(taxRate) || 0) / 100));
+    const lh = Number(laborHours) || 0;
+    const lr = Number(laborRate) || 0;
+    const laborTotal = lh * lr;
+    const mc = Number(materialCosts) || 0;
+    const subtotal = roundToCent(itemsTotal + laborTotal + mc);
+    const tr = Number(taxRate) || 0;
+    const taxTotal = roundToCent(subtotal * (tr / 100));
     const grandTotal = roundToCent(subtotal + taxTotal);
     
     return { subtotal, taxTotal, grandTotal };
@@ -169,9 +171,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const restoreItem = useCallback((item: QuoteItem) => {
     setItems(prev => {
       const isEmptyDefault = prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0);
-      if (isEmptyDefault) {
-        return [item];
-      }
+      if (isEmptyDefault) return [item];
       return [...prev, item];
     });
     deletedStack.current = deletedStack.current.filter(i => i.id !== item.id);
@@ -181,10 +181,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const lastItem = deletedStack.current.pop();
     if (lastItem) {
       restoreItem(lastItem);
-      toast({ 
-        title: "Restored", 
-        description: `"${lastItem.description || 'Service Item'}" has been restored.` 
-      });
+      toast({ title: "Restored", description: `"${lastItem.description || 'Service Item'}" has been restored.` });
     }
   }, [restoreItem, toast]);
 
@@ -206,29 +203,19 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const removeItem = (id: string) => {
     const itemToRemove = items.find(item => item.id === id);
     if (!itemToRemove) return;
-
     const isEmpty = !itemToRemove.description.trim() && !itemToRemove.unit?.trim() && (!itemToRemove.unitPrice || itemToRemove.unitPrice === 0);
-
     if (items.length === 1) {
       setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
     } else {
       setItems(items.filter(item => item.id !== id));
     }
-
     if (!isEmpty) {
       deletedStack.current.push(itemToRemove);
       toast({
         title: "Item Removed",
         description: `"${itemToRemove.description || 'Service Item'}" has been removed.`,
         action: (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              restoreItem(itemToRemove);
-              toast({ title: "Restored", description: "The item has been restored." });
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={() => { restoreItem(itemToRemove); toast({ title: "Restored" }); }}>
             <Undo2 className="w-4 h-4 mr-2" /> Undo
           </Button>
         )
@@ -243,11 +230,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         if (field === 'quantity' || field === 'unitPrice') {
           finalValue = truncateToTwoDecimals(value.toString());
         }
-        
         const updated = { ...item, [field]: finalValue };
         if (field === 'quantity' || field === 'unitPrice') {
-          const q = Number(field === 'quantity' ? finalValue : item.quantity) || 0;
-          const p = Number(field === 'unitPrice' ? finalValue : item.unitPrice) || 0;
+          const q = Number(updated.quantity) || 0;
+          const p = Number(updated.unitPrice) || 0;
           updated.total = roundToCent(q * p);
         }
         return updated;
@@ -258,19 +244,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const selectCommonItem = (id: string, item: CommonItem) => {
     setItems(items.map(i => {
-        if (i.id === id) {
-            const up = roundToCent(item.defaultUnitPrice || 0);
-            const q = Number(i.quantity) || 1;
-            return {
-                ...i,
-                description: item.description,
-                unit: item.unit || "",
-                unitPrice: up,
-                total: roundToCent(q * up),
-                isHardCoded: true
-            };
-        }
-        return i;
+      if (i.id === id) {
+        const up = roundToCent(item.defaultUnitPrice || 0);
+        const q = Number(i.quantity) || 1;
+        return { ...i, description: item.description, unit: item.unit || "", unitPrice: up, total: roundToCent(q * up), isHardCoded: true };
+      }
+      return i;
     }));
   };
 
@@ -290,16 +269,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       toast({ title: "Name Required", description: "Please give your template a name.", variant: "destructive" });
       return;
     }
-
-    const validItems = items.filter(item => {
-      return item.description.trim() !== "";
-    });
-
+    const validItems = items.filter(item => item.description.trim() !== "");
     if (validItems.length === 0) {
-      toast({ title: "No Items", description: "Please add at least one valid service item to your template.", variant: "destructive" });
+      toast({ title: "No Items", description: "Please add at least one valid service item.", variant: "destructive" });
       return;
     }
-
     const newTemplate: QuoteTemplate = {
       id: uuidv4(),
       name: newTemplateName,
@@ -312,13 +286,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       })),
       scopeDescription
     };
-
     const updated = [...templates, newTemplate];
     saveTemplates(updated);
     setTemplates(updated);
     setIsTemplateDialogOpen(false);
     setNewTemplateName("");
-    toast({ title: "Template Saved", description: `"${newTemplate.name}" is now in your library.` });
+    toast({ title: "Template Saved" });
   };
 
   const handleOpenNewClientDialog = () => {
@@ -332,28 +305,18 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
       return;
     }
-
-    const newClient: Client = {
-      id: uuidv4(),
-      name: newClientName,
-      email: newClientEmail,
-      phone: newClientPhone,
-      address: newClientAddress
-    };
-
+    const newClient: Client = { id: uuidv4(), name: newClientName, email: newClientEmail, phone: newClientPhone, address: newClientAddress };
     const updated = [...clients, newClient];
     saveClients(updated);
     setClients(updated);
     setClientId(newClient.id);
     setIsNewClientDialogOpen(false);
     setClientSearch("");
-    
     setNewClientName("");
     setNewClientEmail("");
     setNewClientPhone("");
     setNewClientAddress("");
-
-    toast({ title: "Client Added", description: `${newClient.name} is now in your directory.` });
+    toast({ title: "Client Added" });
   };
 
   const handleGenerateScope = async () => {
@@ -363,15 +326,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     }
     setIsGenerating(true);
     try {
-      const result = await generateScopeDescription({
-        briefInput: scopeDescription,
-        serviceType: serviceCategory,
-        businessName: initialProfile.businessName
-      });
+      const result = await generateScopeDescription({ briefInput: scopeDescription, serviceType: serviceCategory, businessName: initialProfile.businessName });
       setScopeDescription(result.generatedDescription);
       toast({ title: "Scope Generated" });
     } catch (err) {
-      toast({ title: "Error", description: "Failed to generate AI description.", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -381,50 +340,27 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const handleSave = () => {
     if (!clientId) {
-      toast({ title: "Client Required", description: "Please select a client for this quote.", variant: "destructive" });
+      toast({ title: "Client Required", variant: "destructive" });
       return;
     }
-
-    const finalItems = items.filter(item => {
-      const isEmpty = !item.description.trim() && !item.unit?.trim() && (!item.unitPrice || Number(item.unitPrice) === 0);
-      return !isEmpty;
-    }).map(item => ({
-      ...item,
-      quantity: roundToCent(item.quantity),
-      unitPrice: roundToCent(item.unitPrice),
-      total: roundToCent(Number(item.quantity) * Number(item.unitPrice))
-    }));
-
+    const finalItems = items.filter(item => !(!item.description.trim() && !item.unit?.trim() && (!item.unitPrice || Number(item.unitPrice) === 0)))
+      .map(item => ({ ...item, quantity: roundToCent(item.quantity), unitPrice: roundToCent(item.unitPrice), total: roundToCent(Number(item.quantity) * Number(item.unitPrice)) }));
+    
     for (const item of finalItems) {
       if (!item.description.trim()) {
-        toast({ title: "Description Required", description: "All service items must have a description.", variant: "destructive" });
+        toast({ title: "Description Required", variant: "destructive" });
         return;
       }
     }
-
     if (finalItems.length === 0) {
-      toast({ title: "No Items", description: "Please add at least one valid service item.", variant: "destructive" });
+      toast({ title: "No Items", variant: "destructive" });
       return;
     }
-
     const newQuote: Quote = {
-      id: uuidv4(),
-      clientId,
-      date: new Date().toISOString(),
-      status: 'draft',
-      serviceCategory,
-      items: finalItems,
-      scopeDescription,
-      laborHours: roundToCent(laborHours),
-      laborRate: roundToCent(laborRate),
-      materialCosts: roundToCent(materialCosts),
-      taxRate: Number(taxRate) || 0,
-      taxTotal: totals.taxTotal,
-      subtotal: totals.subtotal,
-      grandTotal: totals.grandTotal,
-      notes,
+      id: uuidv4(), clientId, date: new Date().toISOString(), status: 'draft', serviceCategory, items: finalItems,
+      scopeDescription, laborHours: roundToCent(laborHours), laborRate: roundToCent(laborRate), materialCosts: roundToCent(materialCosts),
+      taxRate: Number(taxRate) || 0, taxTotal: totals.taxTotal, subtotal: totals.subtotal, grandTotal: totals.grandTotal, notes,
     };
-    
     clearDraftQuote();
     onSave(newQuote);
   };
@@ -436,24 +372,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(item);
     });
-
     const mainCategories = SERVICE_CATEGORIES.filter(c => c !== "Painting");
-    const PAINTING_SUBCATEGORIES = [
-      "Painting - Interior Painting",
-      "Painting - Exterior Painting",
-      "Painting - Surface Preparation",
-      "Painting - Specialty Painting Services",
-      "Painting - Additional Services"
-    ];
-
+    const PAINTING_SUBCATEGORIES = ["Painting - Interior Painting", "Painting - Exterior Painting", "Painting - Surface Preparation", "Painting - Specialty Painting Services", "Painting - Additional Services"];
     const result: { category: string; items: CommonItem[] }[] = [];
-    mainCategories.forEach(cat => {
-      if (categories[cat]) result.push({ category: cat, items: categories[cat] });
-    });
-    PAINTING_SUBCATEGORIES.forEach(sub => {
-      if (categories[sub]) result.push({ category: sub, items: categories[sub] });
-    });
-
+    mainCategories.forEach(cat => { if (categories[cat]) result.push({ category: cat, items: categories[cat] }); });
+    PAINTING_SUBCATEGORIES.forEach(sub => { if (categories[sub]) result.push({ category: sub, items: categories[sub] }); });
     return result;
   }, [commonItems]);
 
@@ -472,17 +395,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Save as Reusable Template</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Save as Reusable Template</DialogTitle></DialogHeader>
                     <div className="py-4 space-y-4">
                       <div className="space-y-2">
                         <Label>Template Name</Label>
-                        <Input 
-                          placeholder="e.g. Standard 3-Room Interior Paint" 
-                          value={newTemplateName} 
-                          onChange={(e) => setNewTemplateName(e.target.value)}
-                        />
+                        <Input placeholder="e.g. Standard 3-Room Interior Paint" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} />
                       </div>
                     </div>
                     <DialogFooter>
@@ -491,7 +408,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 bg-secondary/30">
@@ -521,63 +437,25 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end overflow-visible">
                 <div className="space-y-2 relative">
                   <Label>Client Search & Selection</Label>
-                  <Popover 
-                    open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} 
-                    onOpenChange={setIsClientPopoverOpen}
-                  >
+                  <Popover open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} onOpenChange={setIsClientPopoverOpen}>
                     <PopoverTrigger asChild>
                       <div className="relative group w-full">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
-                        <Input
-                          placeholder="Search clients..."
-                          className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all"
-                          value={clientSearch}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setClientSearch(val);
-                            if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
-                          }}
-                          onFocus={() => {
-                            if (!isClientPopoverOpen) setIsClientPopoverOpen(true);
-                          }}
-                        />
+                        <Input placeholder="Search clients..." className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} onFocus={() => { if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} />
                         {selectedClient && !clientSearch && (
                           <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
                             <span className="truncate max-w-[120px]">{selectedClient.name}</span>
-                            <X className="w-3 h-3 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
-                              e.stopPropagation();
-                              setClientId("");
-                            }} />
+                            <X className="w-3 h-3 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => { e.stopPropagation(); setClientId(""); }} />
                           </div>
                         )}
                       </div>
                     </PopoverTrigger>
-                    <PopoverContent 
-                      className="p-0 border shadow-xl bg-popover" 
-                      align="start"
-                      sideOffset={4}
-                      style={{ width: 'var(--radix-popover-trigger-width)' }}
-                      onOpenAutoFocus={(e) => e.preventDefault()}
-                    >
+                    <PopoverContent className="p-0 border shadow-xl bg-popover" align="start" sideOffset={4} style={{ width: 'var(--radix-popover-trigger-width)' }} onOpenAutoFocus={(e) => e.preventDefault()}>
                       <ScrollArea className="max-h-[300px]">
-                        <div className="p-2 border-b bg-muted/30">
-                          <p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p>
-                        </div>
+                        <div className="p-2 border-b bg-muted/30"><p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p></div>
                         {filteredClients.length > 0 ? (
                           filteredClients.map((c) => (
-                            <Button
-                              key={c.id}
-                              variant="ghost"
-                              className={cn(
-                                "w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0",
-                                clientId === c.id && "bg-primary/5"
-                              )}
-                              onClick={() => {
-                                setClientId(c.id);
-                                setClientSearch("");
-                                setIsClientPopoverOpen(false);
-                              }}
-                            >
+                            <Button key={c.id} variant="ghost" className={cn("w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0", clientId === c.id && "bg-primary/5")} onClick={() => { setClientId(c.id); setClientSearch(""); setIsClientPopoverOpen(false); }}>
                               <div className="flex flex-col items-start w-full gap-0.5">
                                 <div className="flex items-center justify-between w-full text-left">
                                   <span className="font-semibold text-sm">{c.name}</span>
@@ -589,31 +467,19 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           ))
                         ) : null}
                         <div className="p-2">
-                          <Button 
-                            variant="ghost" 
-                            className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" 
-                            onClick={handleOpenNewClientDialog}
-                          >
-                            <UserPlus className="h-3.5 w-3.5" /> 
-                            {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
+                          <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
+                            <UserPlus className="h-3.5 w-3.5" /> {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
                           </Button>
                         </div>
                       </ScrollArea>
                     </PopoverContent>
                   </Popover>
                 </div>
-
                 <div className="space-y-2">
                   <Label>Service Category</Label>
                   <Select onValueChange={setServiceCategory} value={serviceCategory}>
-                    <SelectTrigger className="h-11 border-primary/20">
-                      <SelectValue placeholder="Select service type..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SERVICE_CATEGORIES.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectTrigger className="h-11 border-primary/20"><SelectValue placeholder="Select service type..." /></SelectTrigger>
+                    <SelectContent>{SERVICE_CATEGORIES.map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
               </div>
@@ -622,9 +488,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
           <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
             <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add New Client</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Add New Client</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-name">Full Name *</Label>
@@ -651,57 +515,29 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           </Dialog>
 
           <Card className="shadow-sm border-primary/10">
-            <CardHeader className="border-b bg-muted/20 py-4">
-              <CardTitle className="text-xl">Work Scope & Line Items</CardTitle>
-            </CardHeader>
+            <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_80px_80px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
-                  <div>Item Description</div>
-                  <div>Unit</div>
-                  <div>Qty</div>
-                  <div>Price ($)</div>
-                  <div className="text-right">Total</div>
-                  <div></div>
+                <div className="grid grid-cols-[1fr_80px_100px_120px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                  <div>Item Description</div><div>Unit</div><div>Qty</div><div>Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
-
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1fr_80px_80px_120px_100px_40px] gap-4 items-center group">
+                    <div key={item.id} className="grid grid-cols-[1fr_80px_100px_120px_100px_40px] gap-4 items-center group">
                       <div className="relative">
-                        <Input 
-                          value={item.description || ""} 
-                          onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
-                          placeholder="New item..." 
-                          className="pr-8 h-9 text-sm"
-                        />
+                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="New item..." className="pr-8 h-9 text-sm" />
                         <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-primary">
-                              <BookOpen className="w-3.5 h-3.5" />
-                            </Button>
-                          </PopoverTrigger>
+                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
                             <ScrollArea className="h-72">
                               {organizedCommonItems.map(({ category, items: libItems }) => (
                                 <div key={category} className="mb-4 last:mb-0 px-1">
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <ChevronRight className="w-2.5 h-2.5 text-primary/40" />
-                                    <p className="text-[9px] font-black uppercase text-primary/70">{category}</p>
-                                  </div>
+                                  <div className="flex items-center gap-1.5 mb-1"><ChevronRight className="w-2.5 h-2.5 text-primary/40" /><p className="text-[9px] font-black uppercase text-primary/70">{category}</p></div>
                                   <div className="space-y-0.5">
                                     {libItems.map(ci => (
-                                      <Button 
-                                        key={ci.id} 
-                                        variant="ghost" 
-                                        className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-muted" 
-                                        onClick={() => selectCommonItem(item.id, ci)}
-                                      >
-                                        <div className="text-left w-full flex justify-between items-center gap-2">
-                                          <span className="font-medium truncate">{ci.description}</span>
-                                          <span className="text-[10px] font-mono shrink-0 opacity-60">${ci.defaultUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                        </div>
+                                      <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-muted" onClick={() => selectCommonItem(item.id, ci)}>
+                                        <div className="text-left w-full flex justify-between items-center gap-2"><span className="font-medium truncate">{ci.description}</span><span className="text-[10px] font-mono shrink-0 opacity-60">${ci.defaultUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
                                       </Button>
                                     ))}
                                   </div>
@@ -711,127 +547,40 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <div>
-                        <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" />
-                      </div>
-                      <div>
-                        <Input 
-                          type="number" 
-                          step="1.0" 
-                          className="h-9 text-sm" 
-                          value={item.quantity} 
-                          onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Input 
-                          type="number" 
-                          step="1.0" 
-                          className="h-9 text-sm" 
-                          value={item.unitPrice} 
-                          onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)}
-                        />
-                      </div>
-                      <div className="text-right font-medium text-sm">
-                        ${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div><Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-9 text-sm" /></div>
+                      <div><Input type="number" step="1.0" className="h-9 text-sm" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} /></div>
+                      <div><Input type="number" step="1.0" className="h-9 text-sm" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} /></div>
+                      <div className="text-right font-medium text-sm">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   ))}
                 </div>
-                
                 <div className="pt-4 flex justify-start border-t">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2 font-bold hover:bg-primary/5">
-                    <Plus className="w-4 h-4" /> Add Another Item
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-8 px-2 font-bold hover:bg-primary/5"><Plus className="w-4 h-4" /> Add Another Item</Button>
                 </div>
               </div>
-
               <div className="space-y-3 pt-6 border-t">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label>
-                  <Button variant="ghost" size="sm" className="text-primary gap-2 h-8 px-2" onClick={handleGenerateScope} disabled={isGenerating}>
-                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />}
-                    Generate Professional Scope
-                  </Button>
-                </div>
-                <Textarea 
-                  value={scopeDescription} 
-                  onChange={(e) => setScopeDescription(e.target.value)} 
-                  placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`}
-                  className="min-h-[150px] text-sm leading-relaxed"
-                />
+                <div className="flex items-center justify-between"><Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label><Button variant="ghost" size="sm" className="text-primary gap-2 h-8 px-2" onClick={handleGenerateScope} disabled={isGenerating}>{isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />} Generate Professional Scope</Button></div>
+                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[150px] text-sm leading-relaxed" />
               </div>
             </CardContent>
           </Card>
         </div>
-
         <div className="space-y-6">
           <Card className="shadow-lg border-primary/20 sticky top-8">
-            <CardHeader className="bg-primary/5 py-4">
-              <CardTitle className="text-lg">Pricing & Totals</CardTitle>
-            </CardHeader>
+            <CardHeader className="bg-primary/5 py-4"><CardTitle className="text-lg">Pricing & Totals</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label>
-                  <Input 
-                    type="number" 
-                    step="1.0" 
-                    className="h-10" 
-                    value={laborRate} 
-                    onChange={(e) => setLaborRate(truncateToTwoDecimals(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label>
-                  <Input 
-                    type="number" 
-                    step="1.0" 
-                    className="h-10" 
-                    value={laborHours} 
-                    onChange={(e) => setLaborHours(truncateToTwoDecimals(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label>
-                  <Input 
-                    type="number" 
-                    step="1.0" 
-                    className="h-10" 
-                    value={materialCosts} 
-                    onChange={(e) => setMaterialCosts(truncateToTwoDecimals(e.target.value))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Applied Tax Rate (%)</Label>
-                  <Input 
-                    type="number" 
-                    step="1.0" 
-                    className="h-10" 
-                    value={taxRate} 
-                    onChange={(e) => setTaxRate(truncateToTwoDecimals(e.target.value))}
-                  />
-                </div>
+                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Labor Rate ($/hr)</Label><Input type="number" step="1.0" className="h-10" value={laborRate} onChange={(e) => setLaborRate(truncateToTwoDecimals(e.target.value))} /></div>
+                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Estimated Labor Hours</Label><Input type="number" step="1.0" className="h-10" value={laborHours} onChange={(e) => setLaborHours(truncateToTwoDecimals(e.target.value))} /></div>
+                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Material/Equipment Costs ($)</Label><Input type="number" step="1.0" className="h-10" value={materialCosts} onChange={(e) => setMaterialCosts(truncateToTwoDecimals(e.target.value))} /></div>
+                <div className="space-y-2"><Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Applied Tax Rate (%)</Label><Input type="number" step="1.0" className="h-10" value={taxRate} onChange={(e) => setTaxRate(truncateToTwoDecimals(e.target.value))} /></div>
               </div>
-
               <div className="space-y-3 pt-6 border-t border-dashed">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20">
-                  <span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span>
-                  <span className="text-3xl font-black text-primary">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20"><span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span><span className="text-3xl font-black text-primary">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
               </div>
-
-              <Button className="w-full gap-2 shadow-xl h-14 text-lg font-bold" size="lg" onClick={handleSave}>
-                <Save className="w-5 h-5" />
-                Preview & Save Quote
-              </Button>
+              <Button className="w-full gap-2 shadow-xl h-14 text-lg font-bold" size="lg" onClick={handleSave}><Save className="w-5 h-5" /> Preview & Save Quote</Button>
             </CardContent>
           </Card>
         </div>
