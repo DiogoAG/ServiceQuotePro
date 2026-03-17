@@ -2,14 +2,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BusinessProfile } from "@/lib/types";
+import { BusinessProfile, SERVICE_CATEGORIES } from "@/lib/types";
 import { getBusinessProfile, saveBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Building } from "lucide-react";
+import { Save, Building, Briefcase } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Helper to strictly truncate digits beyond 2 decimals as user types
 const truncateToTwoDecimals = (value: string) => {
@@ -30,7 +31,8 @@ export default function SettingsPage() {
     businessName: "",
     licenseNumber: "",
     defaultTaxRate: 0,
-    defaultLaborRate: 0
+    defaultLaborRate: 0,
+    offeredServices: []
   });
 
   useEffect(() => {
@@ -41,11 +43,22 @@ export default function SettingsPage() {
     const normalizedProfile = {
       ...profile,
       defaultTaxRate: roundToCent(profile.defaultTaxRate),
-      defaultLaborRate: roundToCent(profile.defaultLaborRate)
+      defaultLaborRate: roundToCent(profile.defaultLaborRate),
+      offeredServices: profile.offeredServices || []
     };
     saveBusinessProfile(normalizedProfile);
     setProfile(normalizedProfile);
     toast({ title: "Profile Saved", description: "Your business settings have been updated." });
+  };
+
+  const toggleService = (service: string) => {
+    setProfile(prev => {
+      const current = prev.offeredServices || [];
+      const updated = current.includes(service)
+        ? current.filter(s => s !== service)
+        : [...current, service];
+      return { ...prev, offeredServices: updated };
+    });
   };
 
   return (
@@ -84,6 +97,35 @@ export default function SettingsPage() {
                   placeholder="e.g. LIC-12345678"
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              <CardTitle>Services Offered</CardTitle>
+            </div>
+            <CardDescription>Select the categories of services your business provides.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {SERVICE_CATEGORIES.map((category) => (
+                <div key={category} className="flex items-center space-x-3 p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => toggleService(category)}>
+                  <Checkbox 
+                    id={`service-${category}`} 
+                    checked={(profile.offeredServices || []).includes(category)}
+                    onCheckedChange={() => toggleService(category)}
+                  />
+                  <label 
+                    htmlFor={`service-${category}`}
+                    className="text-sm font-medium leading-none cursor-pointer select-none"
+                  >
+                    {category}
+                  </label>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

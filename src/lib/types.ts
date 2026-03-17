@@ -1,4 +1,17 @@
 
+export const SERVICE_CATEGORIES = [
+  "General Contracting",
+  "Electrical",
+  "Plumbing",
+  "HVAC",
+  "Landscaping",
+  "Painting",
+  "Roofing",
+  "Carpentry",
+  "Cleaning",
+  "Other"
+];
+
 export type Client = {
   id: string;
   name: string;
@@ -13,6 +26,7 @@ export type BusinessProfile = {
   logoUrl?: string;
   defaultTaxRate: number;
   defaultLaborRate: number;
+  offeredServices: string[];
 };
 
 export type QuoteItem = {

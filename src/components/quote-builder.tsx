@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X } from "lucide-react";
-import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate } from "@/lib/types";
+import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
 import { getCommonItems, getTemplates, saveClients, saveTemplates, getDraftQuote, saveDraftQuote, clearDraftQuote, QuoteDraft } from "@/lib/store";
@@ -25,19 +26,6 @@ type QuoteBuilderProps = {
   preSelectedClientId?: string;
   duplicateSource?: Quote;
 };
-
-const SERVICE_CATEGORIES = [
-  "General Contracting",
-  "Electrical",
-  "Plumbing",
-  "HVAC",
-  "Landscaping",
-  "Painting",
-  "Roofing",
-  "Carpentry",
-  "Cleaning",
-  "Other"
-];
 
 // Helper for rounding to 2 decimals for final storage/totals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;

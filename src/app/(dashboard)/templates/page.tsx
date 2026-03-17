@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { QuoteTemplate, CommonItem } from "@/lib/types";
+import { QuoteTemplate, CommonItem, SERVICE_CATEGORIES } from "@/lib/types";
 import { getTemplates, saveTemplates, getCommonItems, saveCommonItems } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +14,6 @@ import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-
-const SERVICE_CATEGORIES = [
-  "General Contracting",
-  "Electrical",
-  "Plumbing",
-  "HVAC",
-  "Landscaping",
-  "Painting",
-  "Roofing",
-  "Carpentry",
-  "Cleaning",
-  "Other"
-];
 
 const PAINTING_SUBCATEGORIES = [
   "Interior Painting",

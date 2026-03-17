@@ -33,13 +33,23 @@ export const saveQuotes = (quotes: Quote[]) => {
 };
 
 export const getBusinessProfile = (): BusinessProfile => {
-  if (typeof window === 'undefined') return { businessName: 'ProContractor Services', licenseNumber: 'LIC-123456', defaultTaxRate: 8.5, defaultLaborRate: 75 };
-  const stored = localStorage.getItem(PROFILE_KEY);
-  return stored ? JSON.parse(stored) : {
+  const defaultProfile: BusinessProfile = {
     businessName: 'ProContractor Services',
     licenseNumber: 'LIC-123456',
     defaultTaxRate: 8.5,
-    defaultLaborRate: 75
+    defaultLaborRate: 75,
+    offeredServices: []
+  };
+
+  if (typeof window === 'undefined') return defaultProfile;
+  const stored = localStorage.getItem(PROFILE_KEY);
+  if (!stored) return defaultProfile;
+  
+  const parsed = JSON.parse(stored);
+  return {
+    ...defaultProfile,
+    ...parsed,
+    offeredServices: parsed.offeredServices || []
   };
 };
 
