@@ -159,7 +159,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const restoreItem = useCallback((item: QuoteItem) => {
     setItems(prev => {
-      if (prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0)) {
+      const isEmptyDefault = prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0);
+      if (isEmptyDefault) {
         return [item];
       }
       return [...prev, item];
@@ -268,13 +269,31 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       toast({ title: "Name Required", description: "Please give your template a name.", variant: "destructive" });
       return;
     }
+
+    const validItems = items.filter(item => {
+      return item.description.trim() !== "" || (item.unit && item.unit.trim() !== "") || (item.unitPrice !== 0 && item.unitPrice !== null);
+    });
+
+    if (validItems.length === 0) {
+      toast({ title: "No Items", description: "Please add at least one valid service item to your template.", variant: "destructive" });
+      return;
+    }
+
+    for (const item of validItems) {
+      if (!item.description.trim()) {
+        toast({ title: "Description Required", description: "All template items must have a description.", variant: "destructive" });
+        return;
+      }
+    }
+
     const newTemplate: QuoteTemplate = {
       id: uuidv4(),
       name: newTemplateName,
       serviceCategory,
-      items: items.map(({ id, ...rest }) => rest),
+      items: validItems.map(({ id, ...rest }) => rest),
       scopeDescription
     };
+
     const updated = [...templates, newTemplate];
     saveTemplates(updated);
     setTemplates(updated);
@@ -512,9 +531,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           }}
                         />
                         {selectedClient && !clientSearch && (
-                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
-                            <span className="truncate max-w-[120px]">{selectedClient.name}</span>
-                            <X className="w-3 h-3 cursor-pointer hover:text-primary/70" onClick={(e) => {
+                          <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded border border-primary/20 shadow-sm z-10">
+                            <span className="truncate max-w-[150px] text-primary font-bold text-sm">{selectedClient.name}</span>
+                            <X className="w-3.5 h-3.5 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
                               e.stopPropagation();
                               setClientId("");
                             }} />
