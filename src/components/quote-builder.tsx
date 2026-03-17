@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -40,10 +39,8 @@ const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
 };
 
-// Helper for rounding to 2 decimals for final storage/totals
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
-// Strict 2-decimal truncation helper (no rounding)
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');
@@ -325,17 +322,29 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const handleGenerateScope = async () => {
-    if (!scopeDescription.trim()) {
-      toast({ title: "Input Required", description: "Please enter some basic bullet points first." });
+    const activeItems = items.filter(i => i.description.trim() !== "");
+    
+    if (!scopeDescription.trim() && activeItems.length === 0) {
+      toast({ 
+        title: "Information Needed", 
+        description: "Please add some line items or a brief context first so the AI knows what to generate.",
+        variant: "destructive"
+      });
       return;
     }
+
     setIsGenerating(true);
     try {
-      const result = await generateScopeDescription({ briefInput: scopeDescription, serviceType: serviceCategory, businessName: initialProfile.businessName });
+      const result = await generateScopeDescription({ 
+        briefInput: scopeDescription, 
+        serviceType: serviceCategory, 
+        businessName: initialProfile.businessName,
+        lineItems: activeItems.map(i => `${i.description}${i.unit ? ` (${i.unit})` : ""}`)
+      });
       setScopeDescription(result.generatedDescription);
-      toast({ title: "Scope Generated" });
+      toast({ title: "Scope Generated", description: "Professional work scope has been created." });
     } catch (err) {
-      toast({ title: "Error", variant: "destructive" });
+      toast({ title: "Generation Failed", description: "Could not connect to the AI service. Please try again.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -345,7 +354,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const handleSave = () => {
     if (!clientId) {
-      toast({ title: "Client Required", variant: "destructive" });
+      toast({ title: "Client Required", description: "Please select a client before saving.", variant: "destructive" });
       return;
     }
     const finalItems = items.filter(item => !(!item.description.trim() && !item.unit?.trim() && (!item.unitPrice || Number(item.unitPrice) === 0)))
@@ -666,8 +675,20 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </div>
               </div>
               <div className="space-y-3 pt-6 border-t">
-                <div className="flex items-center justify-between"><Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label><Button variant="ghost" size="sm" className="text-primary gap-2 h-8 px-2" onClick={handleGenerateScope} disabled={isGenerating}>{isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />} Generate Professional Scope</Button></div>
-                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[150px] text-sm leading-relaxed" />
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Detailed Work Scope (AI Assisted)</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-primary gap-2 h-8 px-2" 
+                    onClick={handleGenerateScope} 
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-accent" />} 
+                    Generate Professional Scope
+                  </Button>
+                </div>
+                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work, or leave blank to generate from line items...`} className="min-h-[150px] text-sm leading-relaxed" />
               </div>
             </CardContent>
           </Card>
