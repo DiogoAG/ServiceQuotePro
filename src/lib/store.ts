@@ -60,17 +60,6 @@ export const getTemplates = (): QuoteTemplate[] => {
         { description: 'Baseboard Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 }
       ],
       scopeDescription: 'Full preparation and painting of living room walls and ceiling. Includes minor patching and baseboard painting.'
-    },
-    {
-      id: 't2',
-      name: 'Standard Electrical Inspection',
-      serviceCategory: 'Electrical',
-      items: [
-        { description: 'Panel Inspection & Testing', unit: 'inspection', quantity: 1, unitPrice: 150, total: 150 },
-        { description: 'Circuit Breaker Evaluation', unit: 'unit', quantity: 1, unitPrice: 75, total: 75 },
-        { description: 'Grounding System Check', unit: 'system', quantity: 1, unitPrice: 50, total: 50 }
-      ],
-      scopeDescription: 'Comprehensive safety inspection of the main electrical panel, grounding system, and branch circuits.'
     }
   ];
 };
@@ -90,7 +79,7 @@ export const getCommonItems = (): CommonItem[] => {
     { id: 'ip4', category: 'Interior Painting', description: 'Trim Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
     { id: 'ip5', category: 'Interior Painting', description: 'Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.5 },
     { id: 'ip6', category: 'Interior Painting', description: 'Crown Molding Painting', unit: 'linear ft', defaultUnitPrice: 1.75 },
-    { id: 'ip7', category: 'Interior Painting', description: 'Door Painting (Interior)', unit: 'door', defaultUnitPrice: 125 },
+    { id: 'ip7', category: 'Interior Painting', description: 'Door Painting', unit: 'door', defaultUnitPrice: 125 },
     { id: 'ip8', category: 'Interior Painting', description: 'Door Frame Painting', unit: 'frame', defaultUnitPrice: 50 },
     { id: 'ip9', category: 'Interior Painting', description: 'Window Frame Painting', unit: 'window', defaultUnitPrice: 75 },
     { id: 'ip10', category: 'Interior Painting', description: 'Closet Painting', unit: 'closet', defaultUnitPrice: 150 },
@@ -117,26 +106,25 @@ export const getCommonItems = (): CommonItem[] => {
     { id: 'sp6', category: 'Surface Preparation', description: 'Drywall Repair', unit: 'repair', defaultUnitPrice: 150 },
     { id: 'sp7', category: 'Surface Preparation', description: 'Priming Surfaces', unit: 'sq ft', defaultUnitPrice: 1.0 },
 
-    // Wood & Specialty
-    { id: 'ws1', category: 'Wood & Specialty Finishes', description: 'Cabinet Painting', unit: 'cabinet', defaultUnitPrice: 150 },
-    { id: 'ws2', category: 'Wood & Specialty Finishes', description: 'Cabinet Refinishing', unit: 'cabinet', defaultUnitPrice: 250 },
-    { id: 'ws3', category: 'Wood & Specialty Finishes', description: 'Wood Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'ws4', category: 'Wood & Specialty Finishes', description: 'Deck Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'ws5', category: 'Wood & Specialty Finishes', description: 'Fence Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
-    { id: 'ws6', category: 'Wood & Specialty Finishes', description: 'Varnish / Polyurethane Finish', unit: 'sq ft', defaultUnitPrice: 1.5 },
+    // Specialty Painting Services
+    { id: 'sps1', category: 'Specialty Painting Services', description: 'Cabinet Painting', unit: 'cabinet', defaultUnitPrice: 150 },
+    { id: 'sps2', category: 'Specialty Painting Services', description: 'Cabinet Refinishing', unit: 'cabinet', defaultUnitPrice: 250 },
+    { id: 'sps3', category: 'Specialty Painting Services', description: 'Wood Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'sps4', category: 'Specialty Painting Services', description: 'Deck Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'sps5', category: 'Specialty Painting Services', description: 'Fence Staining', unit: 'sq ft', defaultUnitPrice: 2.5 },
+    { id: 'sps6', category: 'Specialty Painting Services', description: 'Varnish / Polyurethane Finish', unit: 'sq ft', defaultUnitPrice: 1.5 },
+    { id: 'sps7', category: 'Specialty Painting Services', description: 'Texture Application', unit: 'sq ft', defaultUnitPrice: 1.5 },
+    { id: 'sps8', category: 'Specialty Painting Services', description: 'Epoxy Garage Floor Coating', unit: 'sq ft', defaultUnitPrice: 6.0 },
+    { id: 'sps9', category: 'Specialty Painting Services', description: 'Waterproof Coating', unit: 'sq ft', defaultUnitPrice: 3.5 },
 
     // Additional Services
     { id: 'as1', category: 'Additional Services', description: 'Wallpaper Removal', unit: 'sq ft', defaultUnitPrice: 2.0 },
     { id: 'as2', category: 'Additional Services', description: 'Popcorn Ceiling Removal', unit: 'sq ft', defaultUnitPrice: 4.0 },
-    { id: 'as3', category: 'Additional Services', description: 'Texture Application', unit: 'sq ft', defaultUnitPrice: 1.5 },
-    { id: 'as4', category: 'Additional Services', description: 'Epoxy Garage Floor Coating', unit: 'sq ft', defaultUnitPrice: 6.0 },
-    { id: 'as5', category: 'Additional Services', description: 'Waterproof Coating', unit: 'sq ft', defaultUnitPrice: 3.0 },
-    { id: 'as6', category: 'Additional Services', description: 'Touch-Up Painting', unit: 'hr', defaultUnitPrice: 75 },
+    { id: 'as3', category: 'Additional Services', description: 'Touch-Up Painting', unit: 'hr', defaultUnitPrice: 75 },
+    { id: 'as4', category: 'Additional Services', description: 'Disposal & Material Handling', defaultUnitPrice: 45 },
 
     // General
-    { id: 'g1', category: 'General', description: 'Service Call Fee / Diagnostic', defaultUnitPrice: 95 },
-    { id: 'g2', category: 'General', description: 'Emergency / After-Hours Fee', defaultUnitPrice: 185 },
-    { id: 'g3', category: 'General', description: 'Disposal & Material Handling', defaultUnitPrice: 45 }
+    { id: 'g1', category: 'General', description: 'Service Call Fee / Diagnostic', defaultUnitPrice: 95 }
   ];
 };
 

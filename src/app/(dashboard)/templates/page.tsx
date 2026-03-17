@@ -18,7 +18,7 @@ const CATEGORIES = [
   "Interior Painting",
   "Exterior Painting",
   "Surface Preparation",
-  "Wood & Specialty Finishes",
+  "Specialty Painting Services",
   "Additional Services",
   "General",
   "Electrical",
