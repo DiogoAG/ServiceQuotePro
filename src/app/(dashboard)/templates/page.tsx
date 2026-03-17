@@ -2,18 +2,19 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { QuoteTemplate, CommonItem, SERVICE_CATEGORIES } from "@/lib/types";
-import { getTemplates, saveTemplates, getCommonItems, saveCommonItems } from "@/lib/store";
+import { QuoteTemplate, CommonItem, SERVICE_CATEGORIES, BusinessProfile } from "@/lib/types";
+import { getTemplates, saveTemplates, getCommonItems, saveCommonItems, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "General Contracting": ["Site Prep & Protection", "Management & Permits", "Cleanup & Disposal"],
@@ -38,14 +39,24 @@ export default function TemplatesPage() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
   const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [searchItem, setSearchItem] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(SERVICE_CATEGORIES);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const isInitialMount = useRef(true);
   const undoStack = useRef<{ type: 'item' | 'template', data: any }[]>([]);
 
   useEffect(() => {
     setTemplates(getTemplates());
     setCommonItems(getCommonItems());
+    const bizProfile = getBusinessProfile();
+    setProfile(bizProfile);
+    
+    // Auto-expand offered services by default
+    if (bizProfile.offeredServices?.length > 0) {
+      setExpandedCategories(bizProfile.offeredServices);
+    } else {
+      setExpandedCategories(SERVICE_CATEGORIES);
+    }
   }, []);
 
   useEffect(() => {
@@ -207,6 +218,18 @@ export default function TemplatesPage() {
     }
   };
 
+  // Sort categories so offered services are at the top
+  const sortedCategories = useMemo(() => {
+    const offered = profile?.offeredServices || [];
+    return [...SERVICE_CATEGORIES].sort((a, b) => {
+      const aIsOffered = offered.includes(a);
+      const bIsOffered = offered.includes(b);
+      if (aIsOffered && !bIsOffered) return -1;
+      if (!aIsOffered && bIsOffered) return 1;
+      return 0;
+    });
+  }, [profile]);
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sticky top-0 z-20 bg-background/95 backdrop-blur py-4 border-b">
@@ -275,18 +298,27 @@ export default function TemplatesPage() {
                 onValueChange={setExpandedCategories}
                 className="space-y-4"
               >
-                {SERVICE_CATEGORIES.map(category => {
+                {sortedCategories.map(category => {
                   const groups = getItemsForCategory(category);
                   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0);
+                  const isOffered = profile?.offeredServices?.includes(category);
                   
                   if (totalItems === 0) return null;
 
                   return (
-                    <AccordionItem key={category} value={category} className="border rounded-xl overflow-hidden px-4">
+                    <AccordionItem key={category} value={category} className={cn(
+                      "border rounded-xl overflow-hidden px-4",
+                      isOffered ? "border-primary/20 bg-primary/5" : ""
+                    )}>
                       <AccordionTrigger className="hover:no-underline py-4">
                         <div className="flex items-center gap-3">
                           <span className="font-bold text-base">{category}</span>
-                          <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                          {isOffered && (
+                            <Badge variant="secondary" className="gap-1 text-[9px] bg-primary/10 text-primary border-none uppercase tracking-tighter">
+                              <Star className="w-2.5 h-2.5 fill-primary" /> Offered
+                            </Badge>
+                          )}
+                          <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">
                             {totalItems} Items
                           </span>
                         </div>
@@ -317,7 +349,7 @@ export default function TemplatesPage() {
                                         value={item.description} 
                                         onChange={(e) => handleUpdateCommonItem(item.id, 'description', e.target.value)} 
                                         className={cn(
-                                          "h-9 text-sm bg-muted/20 border-none focus-visible:ring-1 pr-8",
+                                          "h-9 text-sm bg-background/50 border-none focus-visible:ring-1 pr-8",
                                           item.isHardCoded && "opacity-80 font-medium cursor-not-allowed"
                                         )}
                                         readOnly={item.isHardCoded}
@@ -330,7 +362,7 @@ export default function TemplatesPage() {
                                     <Input 
                                       value={item.unit || ""} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'unit', e.target.value)} 
-                                      className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1" 
+                                      className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1" 
                                       placeholder="unit"
                                     />
                                     <Input 
@@ -338,7 +370,7 @@ export default function TemplatesPage() {
                                       step="1.0"
                                       value={item.defaultUnitPrice} 
                                       onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', e.target.value)}
-                                      className="h-9 text-sm bg-muted/20 border-none focus-visible:ring-1 px-2" 
+                                      className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1 px-2" 
                                       placeholder="0.00"
                                     />
                                     <div className="flex justify-center">
@@ -362,7 +394,7 @@ export default function TemplatesPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="w-full border border-dashed text-muted-foreground h-10 hover:bg-muted/50 hover:text-primary transition-colors" 
+                                className="w-full border border-dashed text-muted-foreground h-10 hover:bg-background/80 hover:text-primary transition-colors" 
                                 onClick={() => handleAddCommonItem(group.subName ? `${category} - ${group.subName}` : category)}
                               >
                                 <Plus className="w-4 h-4 mr-2" /> Add Custom Item
