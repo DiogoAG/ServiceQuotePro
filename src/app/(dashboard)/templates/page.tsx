@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Check, Undo2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -55,11 +55,13 @@ export default function TemplatesPage() {
       return;
     }
     
-    // Filter out completely empty custom items before saving
+    // Filter out invalid items before saving to library
     const validItems = commonItems.filter(item => {
+      // Hardcoded items stay
       if (item.isHardCoded) return true;
-      const isEmpty = !item.description?.trim() && !item.unit?.trim() && (!item.defaultUnitPrice || item.defaultUnitPrice === 0);
-      return !isEmpty;
+      
+      // User must provide at least an item description for it to be saved to the library
+      return item.description && item.description.trim().length > 0;
     });
 
     saveCommonItems(validItems);

@@ -201,7 +201,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return;
     }
 
-    // Filter and Validate Items
+    // Filter out completely blank rows
     const filteredItems = items.filter(item => {
       // Hardcoded items are never removed
       if (item.isHardCoded) return true;
@@ -211,13 +211,24 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return !isEmpty;
     });
 
-    // Partial Row Validation
+    // Validation for remaining items
     for (const item of filteredItems) {
+      // At least item description is mandatory for all items being saved
+      if (!item.description.trim()) {
+        toast({ 
+          title: "Description Required", 
+          description: "All service items must have a description.", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // If it's a custom service being added, we also require a valid price
       if (!item.isHardCoded) {
-        if (!item.description.trim() || !item.unitPrice || item.unitPrice <= 0) {
+        if (!item.unitPrice || item.unitPrice <= 0) {
           toast({ 
-            title: "Validation Error", 
-            description: "Custom services require both a description and a valid price (> 0).", 
+            title: "Price Required", 
+            description: `"${item.description}" requires a valid price.`, 
             variant: "destructive" 
           });
           return;
