@@ -61,6 +61,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const getInitialState = useCallback(() => {
     const draft = getDraftQuote();
     
+    // Always prefer the latest profile settings for new/duplicated quotes
+    // but keep draft values if they exist
     if (duplicateSource) {
       return {
         clientId: preSelectedClientId || duplicateSource.clientId || "",
