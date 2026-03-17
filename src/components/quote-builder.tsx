@@ -374,7 +374,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const search = templateSearch.toLowerCase();
     return templates.filter(t => 
       t.name.toLowerCase().includes(search) || 
-      t.serviceCategory.toLowerCase().includes(search)
+      t.serviceCategory.toLowerCase().includes(search) ||
+      t.items.some(item => item.description.toLowerCase().includes(search))
     );
   }, [templates, templateSearch]);
 
@@ -466,7 +467,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <div className="relative">
                           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                           <Input 
-                            placeholder="Search templates..." 
+                            placeholder="Search name, category, or items..." 
                             className="pl-8 h-8 text-xs bg-background" 
                             value={templateSearch} 
                             onChange={(e) => setTemplateSearch(e.target.value)}

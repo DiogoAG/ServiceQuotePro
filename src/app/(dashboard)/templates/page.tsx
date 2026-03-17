@@ -207,7 +207,8 @@ export default function TemplatesPage() {
     const search = searchTemplate.toLowerCase();
     return templates.filter(t => 
       t.name.toLowerCase().includes(search) || 
-      t.serviceCategory.toLowerCase().includes(search)
+      t.serviceCategory.toLowerCase().includes(search) ||
+      t.items.some(item => item.description.toLowerCase().includes(search))
     );
   }, [templates, searchTemplate]);
 
@@ -438,7 +439,7 @@ export default function TemplatesPage() {
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search templates by name or category..." 
+                placeholder="Search templates by name, category, or line items..." 
                 value={searchTemplate} 
                 onChange={(e) => setSearchTemplate(e.target.value)} 
                 className="pl-10 h-11 bg-card shadow-sm border-none focus-visible:ring-1" 
