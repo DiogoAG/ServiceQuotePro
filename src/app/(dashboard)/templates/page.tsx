@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Check } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Check, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -82,15 +82,56 @@ export default function TemplatesPage() {
   };
 
   const handleRemoveCommonItem = (id: string) => {
+    const itemToRemove = commonItems.find(i => i.id === id);
+    if (!itemToRemove) return;
+
     setCommonItems(prev => prev.filter(i => i.id !== id));
-    toast({ title: "Item Removed" });
+    
+    toast({ 
+      title: "Item Removed", 
+      description: `"${itemToRemove.description || 'Custom Item'}" has been deleted.`,
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            setCommonItems(prev => [...prev, itemToRemove]);
+            toast({ title: "Restored", description: "The item has been restored." });
+          }}
+        >
+          <Undo2 className="w-4 h-4 mr-2" /> Undo
+        </Button>
+      )
+    });
   };
 
   const handleRemoveTemplate = (id: string) => {
+    const templateToRemove = templates.find(t => t.id === id);
+    if (!templateToRemove) return;
+
     const updated = templates.filter(t => t.id !== id);
     setTemplates(updated);
     saveTemplates(updated);
-    toast({ title: "Template Removed" });
+
+    toast({ 
+      title: "Template Removed", 
+      description: `"${templateToRemove.name}" has been deleted.`,
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            const currentTemplates = getTemplates();
+            const restored = [...currentTemplates, templateToRemove];
+            setTemplates(restored);
+            saveTemplates(restored);
+            toast({ title: "Restored", description: "The template has been restored." });
+          }}
+        >
+          <Undo2 className="w-4 h-4 mr-2" /> Undo
+        </Button>
+      )
+    });
   };
 
   const filteredItems = commonItems.filter(i => {
