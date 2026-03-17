@@ -40,10 +40,10 @@ const SERVICE_CATEGORIES = [
   "Other"
 ];
 
-// Helper for rounding to 2 decimals
+// Helper for rounding to 2 decimals for calculations
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
-// Helper to truncate string to 2 decimals as user types
+// Helper to truncate string to 2 decimals as user types (cutting off, not rounding)
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
   const parts = value.split('.');
@@ -67,9 +67,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         serviceCategory: duplicateSource.serviceCategory || "General Contracting",
         items: duplicateSource.items.map(i => ({ ...i, id: uuidv4() })),
         laborHours: duplicateSource.laborHours || 0,
-        laborRate: duplicateSource.laborRate || initialProfile.defaultLaborRate,
+        laborRate: initialProfile.defaultLaborRate, // Use profile default
         materialCosts: duplicateSource.materialCosts || 0,
-        taxRate: duplicateSource.taxRate || initialProfile.defaultTaxRate,
+        taxRate: initialProfile.defaultTaxRate, // Use profile default
         notes: duplicateSource.notes || "",
         scopeDescription: duplicateSource.scopeDescription || ""
       };
@@ -152,7 +152,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const calculateTotals = useCallback(() => {
     const itemsTotal = items.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
-    const laborTotal = roundToCent((Number(laborHours) || 0) * (Number(laborRate) || 0));
+    const laborTotal = (Number(laborHours) || 0) * (Number(laborRate) || 0);
     const subtotal = roundToCent(itemsTotal + laborTotal + (Number(materialCosts) || 0));
     const taxTotal = roundToCent(subtotal * ((Number(taxRate) || 0) / 100));
     const grandTotal = roundToCent(subtotal + taxTotal);
@@ -541,7 +541,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         />
                         {selectedClient && !clientSearch && (
                           <div className="absolute right-3 top-2.5 flex items-center gap-2 bg-primary/10 px-2 py-1 rounded text-xs font-medium text-primary z-10">
-                            <span className="truncate max-w-[120px] font-medium text-xs">{selectedClient.name}</span>
+                            <span className="truncate max-w-[120px]">{selectedClient.name}</span>
                             <X className="w-3 h-3 text-primary cursor-pointer hover:text-primary/70 transition-colors" onClick={(e) => {
                               e.stopPropagation();
                               setClientId("");

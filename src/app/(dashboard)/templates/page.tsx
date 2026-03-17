@@ -36,9 +36,6 @@ const PAINTING_SUBCATEGORIES = [
   "Additional Services"
 ];
 
-// Helper for rounding to 2 decimals
-const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
-
 // Helper to truncate string to 2 decimals as user types
 const truncateToTwoDecimals = (value: string) => {
   if (!value) return "";
