@@ -28,15 +28,15 @@ type QuoteBuilderProps = {
 };
 
 const SERVICE_CATEGORIES = [
-  "Painting",
-  "General Contracting",
-  "Electrical",
-  "Plumbing",
-  "HVAC",
-  "Landscaping",
-  "Roofing",
   "Carpentry",
   "Cleaning",
+  "Electrical",
+  "General Contracting",
+  "HVAC",
+  "Landscaping",
+  "Painting",
+  "Plumbing",
+  "Roofing",
   "Other"
 ];
 
@@ -44,7 +44,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [clientId, setClientId] = useState<string>(preSelectedClientId || duplicateSource?.clientId || "");
-  const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "Painting");
+  const [serviceCategory, setServiceCategory] = useState<string>(duplicateSource?.serviceCategory || "General Contracting");
   const [items, setItems] = useState<QuoteItem[]>(duplicateSource?.items.map(i => ({...i, id: uuidv4()})) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
   const [laborHours, setLaborHours] = useState<number>(duplicateSource?.laborHours || 0);
   const [laborRate, setLaborRate] = useState<number>(duplicateSource?.laborRate || initialProfile.defaultLaborRate);

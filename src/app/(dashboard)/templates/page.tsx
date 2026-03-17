@@ -15,16 +15,16 @@ import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const CATEGORIES = [
-  "Interior Painting",
-  "Exterior Painting",
-  "Surface Preparation",
-  "Specialty Painting Services",
-  "Additional Services",
   "General",
   "Electrical",
   "Plumbing",
   "HVAC",
-  "Landscaping"
+  "Landscaping",
+  "Interior Painting",
+  "Exterior Painting",
+  "Surface Preparation",
+  "Specialty Painting Services",
+  "Additional Services"
 ];
 
 export default function TemplatesPage() {
