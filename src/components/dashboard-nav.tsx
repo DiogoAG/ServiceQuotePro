@@ -13,10 +13,13 @@ import {
   Menu,
   X,
   LogOut,
-  Copy
+  Copy,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -26,12 +29,17 @@ const navItems = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-export function DashboardNav() {
+interface DashboardNavProps {
+  isFolded?: boolean;
+  onToggleFold?: () => void;
+}
+
+export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <>
+    <TooltipProvider delayDuration={0}>
       {/* Mobile Toggle */}
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-card">
         <div className="flex items-center gap-2">
@@ -47,53 +55,87 @@ export function DashboardNav() {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 transform md:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        "fixed inset-y-0 left-0 z-50 bg-card border-r flex flex-col transition-all duration-300 transform md:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        isFolded ? "w-20" : "w-64"
       )}>
-        <div className="p-6">
+        <div className={cn("p-6", isFolded ? "px-4 flex justify-center" : "")}>
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shrink-0">
               <FileText className="text-white w-6 h-6" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-primary">ServiceQuotePro</span>
+            {!isFolded && (
+              <span className="font-bold text-xl tracking-tight text-primary truncate">ServiceQuotePro</span>
+            )}
           </Link>
         </div>
 
-        <div className="px-4 py-2 flex-1 space-y-2">
+        <div className={cn("px-4 py-2 flex-1 space-y-2", isFolded ? "px-2" : "")}>
           <Link href="/quotes/new">
-            <Button className="w-full justify-start gap-2 mb-6 shadow-md" size="lg">
-              <PlusCircle className="w-5 h-5" />
-              New Quote
-            </Button>
+            {isFolded ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button className="w-full justify-center p-0 h-12 shadow-md mb-6" size="icon">
+                    <PlusCircle className="w-6 h-6" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">New Quote</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button className="w-full justify-start gap-2 mb-6 shadow-md" size="lg">
+                <PlusCircle className="w-5 h-5" />
+                New Quote
+              </Button>
+            )}
           </Link>
 
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              return (
+              const isActive = pathname === item.href;
+              const content = (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                    pathname === item.href 
+                    isActive 
                       ? "bg-primary/10 text-primary" 
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    isFolded ? "justify-center px-2" : ""
                   )}
                   onClick={() => setIsOpen(false)}
                 >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {!isFolded && <span>{item.name}</span>}
                 </Link>
               );
+
+              return isFolded ? (
+                <Tooltip key={item.href}>
+                  <TooltipTrigger asChild>{content}</TooltipTrigger>
+                  <TooltipContent side="right">{item.name}</TooltipContent>
+                </Tooltip>
+              ) : content;
             })}
           </nav>
         </div>
 
-        <div className="p-4 border-t">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive">
-            <LogOut className="w-5 h-5" />
-            Sign Out
+        <div className="p-4 border-t space-y-2">
+          {onToggleFold && (
+            <Button 
+              variant="ghost" 
+              className={cn("w-full justify-start gap-3 text-muted-foreground hidden md:flex", isFolded ? "justify-center px-0" : "")}
+              onClick={onToggleFold}
+            >
+              {isFolded ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+              {!isFolded && <span>Collapse</span>}
+            </Button>
+          )}
+          
+          <Button variant="ghost" className={cn("w-full justify-start gap-3 text-muted-foreground hover:text-destructive", isFolded ? "justify-center px-0" : "")}>
+            <LogOut className="w-5 h-5 shrink-0" />
+            {!isFolded && <span>Sign Out</span>}
           </Button>
         </div>
       </div>
@@ -105,6 +147,6 @@ export function DashboardNav() {
           onClick={() => setIsOpen(false)}
         />
       )}
-    </>
+    </TooltipProvider>
   );
 }
