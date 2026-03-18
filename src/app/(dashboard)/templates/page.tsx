@@ -70,13 +70,9 @@ export default function TemplatesPage() {
       return;
     }
     
-    const validItems = commonItems.filter(item => {
-      if (item.isHardCoded) return true;
-      return item.description && item.description.trim().length > 0;
-    });
-
-    saveCommonItems(validItems);
-  }, [commonItems]);
+    saveCommonItems(commonItems);
+    saveTemplates(templates);
+  }, [commonItems, templates]);
 
   const undoLastAction = useCallback(() => {
     const lastAction = undoStack.current.pop();
@@ -88,11 +84,7 @@ export default function TemplatesPage() {
       toast({ title: "Restored", description: `"${item.description || 'Custom Item'}" has been restored.` });
     } else if (lastAction.type === 'template') {
       const template = lastAction.data as QuoteTemplate;
-      setTemplates(prev => {
-        const updated = [...prev, template];
-        saveTemplates(updated);
-        return updated;
-      });
+      setTemplates(prev => [...prev, template]);
       toast({ title: "Restored", description: `"${template.name}" has been restored.` });
     }
   }, [toast]);
@@ -167,9 +159,7 @@ export default function TemplatesPage() {
     const templateToRemove = templates.find(t => t.id === id);
     if (!templateToRemove) return;
 
-    const updated = templates.filter(t => t.id !== id);
-    setTemplates(updated);
-    saveTemplates(updated);
+    setTemplates(prev => prev.filter(t => t.id !== id));
     undoStack.current.push({ type: 'template', data: templateToRemove });
 
     toast({ 
@@ -181,11 +171,7 @@ export default function TemplatesPage() {
           size="sm" 
           onClick={() => {
             undoStack.current = undoStack.current.filter(a => a.type === 'template' && a.data.id !== id);
-            setTemplates(prev => {
-              const restored = [...prev, templateToRemove];
-              saveTemplates(restored);
-              return restored;
-            });
+            setTemplates(prev => [...prev, templateToRemove]);
             toast({ title: "Restored", description: "The template has been restored." });
           }}
         >
@@ -516,9 +502,11 @@ export default function TemplatesPage() {
                             <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase truncate">{template.serviceCategory}</span>
                           </p>
                         </div>
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 shrink-0" onClick={() => handleRemoveTemplate(template.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {!template.isHardCoded && (
+                          <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 shrink-0" onClick={() => handleRemoveTemplate(template.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="p-5 pt-4 space-y-4">

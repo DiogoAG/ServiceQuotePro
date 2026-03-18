@@ -56,6 +56,7 @@ export type QuoteTemplate = {
   serviceCategory: string;
   items: Omit<QuoteItem, 'id'>[];
   scopeDescription: string;
+  isHardCoded?: boolean;
 };
 
 export type Quote = {
