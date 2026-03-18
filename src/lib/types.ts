@@ -34,6 +34,8 @@ export type QuoteItem = {
   description: string;
   unit?: string;
   quantity: number;
+  length?: number | string;
+  width?: number | string;
   unitPrice: number;
   total: number;
   isHardCoded?: boolean;

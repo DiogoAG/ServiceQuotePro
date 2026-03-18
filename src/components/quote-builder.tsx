@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -24,18 +25,6 @@ type QuoteBuilderProps = {
   onSave: (quote: Quote) => void;
   preSelectedClientId?: string;
   duplicateSource?: Quote;
-};
-
-const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
-  "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
-  "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
-  "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
-  "HVAC": ["Heating Systems", "Cooling Systems", "Air Distribution", "Controls", "Refrigeration", "Indoor Air Quality", "Maintenance & Service"],
-  "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
-  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
-  "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance", "Inspection"],
-  "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Structural & Specialty", "Exterior Carpentry", "Custom Work", "Repair"],
-  "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
 };
 
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
@@ -77,7 +66,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return {
       clientId: preSelectedClientId || draft?.clientId || "",
       serviceCategory: draft?.serviceCategory || defaultCategory,
-      items: draft?.items.map(i => ({ ...i, id: i.id || uuidv4() })) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }],
+      items: draft?.items.map(i => ({ ...i, id: i.id || uuidv4() })) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }],
       laborHours: draft?.laborHours ?? 0,
       laborRate: currentLaborRate,
       materialCosts: draft?.materialCosts ?? 0,
@@ -167,7 +156,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [items, laborHours, laborRate, materialCosts, taxRate]);
 
   const addItem = () => {
-    setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
+    setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }]);
   };
 
   const restoreItem = useCallback((item: QuoteItem) => {
@@ -206,7 +195,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     if (!itemToRemove) return;
     const isEmpty = !itemToRemove.description.trim() && !itemToRemove.unit?.trim() && (!itemToRemove.unitPrice || itemToRemove.unitPrice === 0);
     if (items.length === 1) {
-      setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, unitPrice: 0, total: 0 }]);
+      setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }]);
     } else {
       setItems(items.filter(item => item.id !== id));
     }
@@ -228,11 +217,23 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setItems(items.map(item => {
       if (item.id === id) {
         let finalValue = value;
-        if (field === 'quantity' || field === 'unitPrice') {
+        if (field === 'quantity' || field === 'unitPrice' || field === 'length' || field === 'width') {
           finalValue = truncateToTwoDecimals(value.toString());
         }
+        
         const updated = { ...item, [field]: finalValue };
-        if (field === 'quantity' || field === 'unitPrice') {
+
+        // Auto-calculate quantity if length and width are edited
+        if (field === 'length' || field === 'width') {
+          const l = parseFloat(String(updated.length));
+          const w = parseFloat(String(updated.width));
+          if (!isNaN(l) && !isNaN(w) && l > 0 && w > 0) {
+            updated.quantity = roundToCent(l * w);
+          }
+        }
+
+        // Recalculate total
+        if (field === 'quantity' || field === 'unitPrice' || field === 'length' || field === 'width') {
           const q = Number(updated.quantity) || 0;
           const p = Number(updated.unitPrice) || 0;
           updated.total = roundToCent(q * p);
@@ -404,6 +405,18 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return 0;
     });
   }, [initialProfile]);
+
+  const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
+    "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
+    "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
+    "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
+    "HVAC": ["Heating Systems", "Cooling Systems", "Air Distribution", "Controls", "Refrigeration", "Indoor Air Quality", "Maintenance & Service"],
+    "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
+    "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
+    "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance", "Inspection"],
+    "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Structural & Specialty", "Exterior Carpentry", "Custom Work", "Repair"],
+    "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-20">
@@ -598,13 +611,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4 px-4 sm:px-6"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
               <div className="space-y-4">
-                <div className="hidden md:grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
-                  <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
+                <div className="hidden md:grid grid-cols-[1fr_70px_65px_65px_75px_90px_90px_40px] gap-2 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
+                  <div>Item Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
                 
                 <div className="space-y-4 md:space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_100px_100px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none">
+                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_70px_65px_65px_75px_90px_90px_40px] gap-2 md:gap-2 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none">
                       <div className="md:hidden flex justify-between items-center mb-1">
                         <span className="text-[10px] font-black text-primary/40 uppercase tracking-widest">Line Item</span>
                         <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
@@ -638,22 +651,30 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         </Popover>
                       </div>
 
-                      <div className="grid grid-cols-2 md:contents gap-4 md:gap-4">
+                      <div className="grid grid-cols-2 md:contents gap-2 md:gap-2">
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Unit</Label>
-                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-10 md:h-9 text-sm rounded-lg" />
+                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-10 md:h-9 text-xs rounded-lg px-1" />
+                        </div>
+                        <div className="space-y-1.5 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Length</Label>
+                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.length || ""} onChange={(e) => updateItem(item.id, 'length', e.target.value)} placeholder="L" />
+                        </div>
+                        <div className="space-y-1.5 md:space-y-0">
+                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Width</Label>
+                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.width || ""} onChange={(e) => updateItem(item.id, 'width', e.target.value)} placeholder="W" />
                         </div>
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Qty</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-sm px-2 rounded-lg" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
+                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
                         </div>
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Price ($)</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-sm px-2 rounded-lg" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
+                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
                         </div>
                         <div className="flex flex-col md:block items-end justify-center bg-primary/5 md:bg-transparent p-2 md:p-0 rounded-lg">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-primary mb-1">Total</Label>
-                          <div className="text-right font-black md:font-medium text-sm text-primary md:text-foreground overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="text-right font-black md:font-medium text-xs text-primary md:text-foreground overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>
                       </div>
 
