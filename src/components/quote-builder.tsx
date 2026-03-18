@@ -19,6 +19,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
+const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
+  "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
+  "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
+  "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
+  "HVAC": ["Heating Systems", "Cooling Systems", "Air Distribution", "Controls", "Refrigeration", "Indoor Air Quality", "Maintenance & Service"],
+  "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
+  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
+  "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance", "Inspection"],
+  "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Structural & Specialty", "Exterior Carpentry", "Custom Work", "Repair"],
+  "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
+};
+
 type QuoteBuilderProps = {
   initialClients: Client[];
   initialProfile: BusinessProfile;
@@ -176,12 +188,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [restoreItem, toast]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
         const activeElement = document.activeElement;
         const isInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
         if (!isInput) {
-          e.preventDefault();
+          event.preventDefault();
           undoLastDelete();
         }
       }
@@ -405,18 +417,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return 0;
     });
   }, [initialProfile]);
-
-  const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
-    "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
-    "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
-    "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
-    "HVAC": ["Heating Systems", "Cooling Systems", "Air Distribution", "Controls", "Refrigeration", "Indoor Air Quality", "Maintenance & Service"],
-    "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
-    "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
-    "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance", "Inspection"],
-    "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Structural & Specialty", "Exterior Carpentry", "Custom Work", "Repair"],
-    "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
-  };
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-20">
