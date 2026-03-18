@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-3xl font-bold">Built for Professionals</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">Everything you need to run your service business quoting process efficiently.</p>
+            <p className="text-muted-foreground max-xl mx-auto">Everything you need to run your service business quoting process efficiently.</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
@@ -64,8 +63,8 @@ export default function LandingPage() {
             />
             <CardFeature 
               icon={<Zap className="w-8 h-8 text-accent" />}
-              title="AI-Assisted Scopes"
-              description="Generate professional work scope descriptions using our built-in AI assistant."
+              title="Detailed Work Scopes"
+              description="Create professional work scope descriptions that clearly outline project objectives."
             />
             <CardFeature 
               icon={<BarChart3 className="w-8 h-8 text-primary" />}

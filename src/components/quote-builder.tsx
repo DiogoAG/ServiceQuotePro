@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -9,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Sparkles, Loader2, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, Star, DollarSign } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, Star, DollarSign } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
-import { generateScopeDescription } from "@/ai/flows/ai-assisted-scope-description";
 import { useToast } from "@/hooks/use-toast";
 import { getCommonItems, getTemplates, saveClients, saveTemplates, getDraftQuote, saveDraftQuote, clearDraftQuote, QuoteDraft } from "@/lib/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -102,7 +100,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [notes, setNotes] = useState(initialState.notes);
   const [scopeDescription, setScopeDescription] = useState(initialState.scopeDescription);
   
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
@@ -320,35 +317,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setNewClientPhone("");
     setNewClientAddress("");
     toast({ title: "Client Added" });
-  };
-
-  const handleGenerateScope = async () => {
-    const activeItems = items.filter(i => i.description.trim() !== "");
-    
-    if (!scopeDescription.trim() && activeItems.length === 0) {
-      toast({ 
-        title: "Information Needed", 
-        description: "Please add some line items or a brief context first so the AI knows what to generate.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const result = await generateScopeDescription({ 
-        briefInput: scopeDescription, 
-        serviceType: serviceCategory, 
-        businessName: initialProfile.businessName,
-        lineItems: activeItems.map(i => `${i.description}${i.unit ? ` (${i.unit})` : ""}`)
-      });
-      setScopeDescription(result.generatedDescription);
-      toast({ title: "Scope Generated", description: "Professional work scope has been created." });
-    } catch (err) {
-      toast({ title: "Generation Failed", description: "Could not connect to the AI service. Please try again.", variant: "destructive" });
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   const totals = calculateTotals();
@@ -630,7 +598,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4 px-4 sm:px-6"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
               <div className="space-y-4">
-                {/* Header for Tablet/Desktop */}
                 <div className="hidden md:grid grid-cols-[1fr_80px_90px_100px_100px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
                   <div>Item Description</div><div>Unit</div><div className="pl-2">Qty</div><div className="pl-2">Price ($)</div><div className="text-right">Total</div><div></div>
                 </div>
@@ -638,13 +605,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="space-y-4 md:space-y-3">
                   {items.map((item) => (
                     <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_100px_100px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none">
-                      {/* Mobile Labels (Hidden on MD) */}
                       <div className="md:hidden flex justify-between items-center mb-1">
                         <span className="text-[10px] font-black text-primary/40 uppercase tracking-widest">Line Item</span>
                         <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
                       </div>
 
-                      {/* Description Field */}
                       <div className="relative">
                         <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-10 h-10 md:h-9 text-sm rounded-lg" />
                         <Popover>
@@ -673,7 +638,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         </Popover>
                       </div>
 
-                      {/* Numeric Fields (Stacked on Mobile) */}
                       <div className="grid grid-cols-2 md:contents gap-4 md:gap-4">
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Unit</Label>
@@ -704,19 +668,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
               <div className="space-y-3 pt-6 border-t">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
-                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope (AI Assisted)</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-primary gap-2 h-10 sm:h-8 px-3 w-full sm:w-auto justify-center bg-primary/5 sm:bg-transparent rounded-xl sm:rounded-md" 
-                    onClick={handleGenerateScope} 
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-primary" />} 
-                    Generate Professional Scope
-                  </Button>
+                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
                 </div>
-                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work, or leave blank to generate from line items...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4" />
+                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4" />
               </div>
             </CardContent>
           </Card>
