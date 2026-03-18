@@ -6,15 +6,17 @@ import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { getQuotes, getClients, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Mail, ChevronLeft, Building2, User } from "lucide-react";
+import { Printer, Share2, ChevronLeft, Building2, User } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 export default function QuoteSummaryPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
@@ -33,6 +35,30 @@ export default function QuoteSummaryPage() {
     setClient(clients.find(c => c.id === foundQuote.clientId) || null);
   }, [id, router]);
 
+  const handleShare = async () => {
+    if (!quote || !profile) return;
+
+    const shareData = {
+      title: `${profile.businessName} - Professional Quote`,
+      text: `Check out the quote for ${quote.serviceCategory} services.`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast({
+          title: "Link Copied",
+          description: "Quote link has been copied to your clipboard.",
+        });
+      }
+    } catch (err) {
+      // User cancelled or browser denied share
+    }
+  };
+
   if (!quote || !profile || !client) return null;
 
   return (
@@ -49,9 +75,12 @@ export default function QuoteSummaryPage() {
             <span className="hidden xs:inline">Print / PDF</span>
             <span className="xs:hidden">PDF</span>
           </Button>
-          <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90 flex-1 sm:flex-none h-11 sm:h-9">
-            <Mail className="w-4 h-4" />
-            Send to Client
+          <Button 
+            className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90 flex-1 sm:flex-none h-11 sm:h-9"
+            onClick={handleShare}
+          >
+            <Share2 className="w-4 h-4" />
+            Share Quote
           </Button>
         </div>
       </div>
@@ -142,7 +171,14 @@ export default function QuoteSummaryPage() {
                   <TableBody>
                     {quote.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="text-sm py-3">{item.description}</TableCell>
+                        <TableCell className="text-sm py-3">
+                          <div className="font-medium">{item.description}</div>
+                          {(item.length || item.width) && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              Dim: {item.length || '0'} x {item.width || '0'}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">{item.unit || '-'}</TableCell>
                         <TableCell className="text-right text-sm">{item.quantity}</TableCell>
                         <TableCell className="text-right text-sm">${Number(item.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
