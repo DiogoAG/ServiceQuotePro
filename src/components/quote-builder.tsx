@@ -509,7 +509,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="space-y-2 relative">
                   <Label>Client Selection</Label>
                   {selectedClient ? (
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-primary/20 bg-primary/5 min-h-[44px]">
+                    <div className="flex items-center justify-between px-3 h-11 rounded-lg border border-primary/20 bg-primary/5">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                           {selectedClient.name.charAt(0)}
