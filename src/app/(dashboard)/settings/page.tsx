@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Building, Briefcase } from "lucide-react";
+import { Save, Building, Briefcase, Palette, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 // Helper to strictly truncate digits beyond 2 decimals as user types
 const truncateToTwoDecimals = (value: string) => {
@@ -30,9 +31,11 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<BusinessProfile>({
     businessName: "",
     licenseNumber: "",
+    logoUrl: "",
     defaultTaxRate: 0,
     defaultLaborRate: 0,
-    offeredServices: []
+    offeredServices: [],
+    quoteTerms: ""
   });
 
   useEffect(() => {
@@ -65,17 +68,17 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Business Profile</h1>
-        <p className="text-muted-foreground">Configure your business details and default pricing rules.</p>
+        <p className="text-muted-foreground">Configure your business details and professional branding.</p>
       </div>
 
-      <div className="grid gap-8">
+      <div className="grid gap-8 pb-20">
         <Card className="shadow-sm">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Building className="w-5 h-5 text-primary" />
               <CardTitle>Business Information</CardTitle>
             </div>
-            <CardDescription>This information will appear on all your generated quotes.</CardDescription>
+            <CardDescription>Legal details for your professional documents.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
@@ -97,6 +100,58 @@ export default function SettingsPage() {
                   placeholder="e.g. LIC-12345678"
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Palette className="w-5 h-5 text-primary" />
+              <CardTitle>Branding</CardTitle>
+            </div>
+            <CardDescription>Customize how your business appears to clients.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="logoUrl">Company Logo URL</Label>
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <Input 
+                  id="logoUrl" 
+                  value={profile.logoUrl} 
+                  onChange={(e) => setProfile({...profile, logoUrl: e.target.value})}
+                  placeholder="https://example.com/logo.png"
+                  className="flex-1"
+                />
+                {profile.logoUrl && (
+                  <div className="w-16 h-16 rounded-lg border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                    <img src={profile.logoUrl} alt="Logo Preview" className="max-w-full max-h-full object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Enter a direct image link (PNG or JPG recommended).</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <CardTitle>Standard Quote Terms</CardTitle>
+            </div>
+            <CardDescription>Default terms that appear at the bottom of every quote.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="quoteTerms">Terms & Conditions</Label>
+              <Textarea 
+                id="quoteTerms" 
+                value={profile.quoteTerms} 
+                onChange={(e) => setProfile({...profile, quoteTerms: e.target.value})}
+                placeholder="e.g. Valid for 30 days. Payment due upon completion..."
+                className="min-h-[120px] text-sm"
+              />
             </div>
           </CardContent>
         </Card>

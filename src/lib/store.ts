@@ -36,9 +36,11 @@ export const getBusinessProfile = (): BusinessProfile => {
   const defaultProfile: BusinessProfile = {
     businessName: 'ProContractor Services',
     licenseNumber: 'LIC-123456',
+    logoUrl: 'https://picsum.photos/seed/logo/200/200',
     defaultTaxRate: 8.5,
     defaultLaborRate: 75,
-    offeredServices: []
+    offeredServices: [],
+    quoteTerms: 'Valid for 30 days. Payment is due upon completion unless otherwise specified. A 50% deposit may be required for projects exceeding $2,000.'
   };
 
   if (typeof window === 'undefined') return defaultProfile;

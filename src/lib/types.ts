@@ -27,6 +27,7 @@ export type BusinessProfile = {
   defaultTaxRate: number;
   defaultLaborRate: number;
   offeredServices: string[];
+  quoteTerms?: string;
 };
 
 export type QuoteItem = {

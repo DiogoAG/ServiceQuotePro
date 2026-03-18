@@ -92,11 +92,17 @@ export default function QuoteSummaryPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 sm:gap-8 border-b pb-6 sm:pb-8">
             <div className="space-y-4 w-full sm:w-auto">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0">
-                  {profile.businessName.charAt(0)}
-                </div>
-                <div className="sm:hidden">
-                  <h1 className="text-xl font-bold uppercase tracking-tight">{profile.businessName}</h1>
+                {profile.logoUrl ? (
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-xl flex items-center justify-center shrink-0 overflow-hidden border">
+                    <img src={profile.logoUrl} alt={profile.businessName} className="max-w-full max-h-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0">
+                    {profile.businessName.charAt(0)}
+                  </div>
+                )}
+                <div className="sm:hidden min-w-0">
+                  <h1 className="text-xl font-bold uppercase tracking-tight truncate">{profile.businessName}</h1>
                   <Badge variant="secondary" className="mt-1 text-[9px] h-4">
                     {quote.serviceCategory}
                   </Badge>
@@ -231,9 +237,11 @@ export default function QuoteSummaryPage() {
           {/* Footer Info */}
           <div className="border-t pt-8 sm:pt-12 text-center">
             <p className="text-sm font-medium">Thank you for considering {profile.businessName}!</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-4 italic max-w-xs mx-auto">
-              Valid for 30 days. Payment is due upon completion unless otherwise specified.
-            </p>
+            {profile.quoteTerms && (
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-4 italic max-w-lg mx-auto whitespace-pre-wrap">
+                {profile.quoteTerms}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
