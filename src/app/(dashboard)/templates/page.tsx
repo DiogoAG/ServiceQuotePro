@@ -206,12 +206,23 @@ export default function TemplatesPage() {
 
   const filteredTemplates = useMemo(() => {
     const search = searchTemplate.toLowerCase();
-    return templates.filter(t => 
+    const offered = profile?.offeredServices || [];
+    
+    const filtered = templates.filter(t => 
       t.name.toLowerCase().includes(search) || 
       t.serviceCategory.toLowerCase().includes(search) ||
       t.items.some(item => item.description.toLowerCase().includes(search))
     );
-  }, [templates, searchTemplate]);
+
+    // Pinning logic: sort offered services to the top
+    return [...filtered].sort((a, b) => {
+      const aIsOffered = offered.includes(a.serviceCategory);
+      const bIsOffered = offered.includes(b.serviceCategory);
+      if (aIsOffered && !bIsOffered) return -1;
+      if (!aIsOffered && bIsOffered) return 1;
+      return 0;
+    });
+  }, [templates, searchTemplate, profile]);
 
   const getItemsForCategory = useCallback((category: string) => {
     if (SERVICE_SUBCATEGORIES[category]) {
@@ -483,39 +494,52 @@ export default function TemplatesPage() {
             </div>
 
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-              {filteredTemplates.map((template) => (
-                <Card key={template.id} className="relative group border-none shadow-sm hover:shadow-md transition-all">
-                  <CardHeader className="p-5 pb-2">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-lg truncate">{template.name}</h3>
-                        <p className="flex items-center gap-2 mt-1">
-                          <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase truncate">{template.serviceCategory}</span>
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 shrink-0" onClick={() => handleRemoveTemplate(template.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-5 pt-4 space-y-4">
-                    <div className="space-y-2">
-                      {template.items.slice(0, 3).map((item, idx) => (
-                        <div key={idx} className="text-xs flex justify-between bg-muted/40 p-2.5 rounded-md">
-                          <span className="truncate font-medium">{item.description}</span>
-                          <span className="text-muted-foreground shrink-0 ml-4 font-mono">${Number(item.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              {filteredTemplates.map((template) => {
+                const isOffered = profile?.offeredServices?.includes(template.serviceCategory);
+                return (
+                  <Card key={template.id} className={cn(
+                    "relative group border-none shadow-sm hover:shadow-md transition-all",
+                    isOffered ? "bg-primary/5 ring-1 ring-primary/20" : ""
+                  )}>
+                    <CardHeader className="p-5 pb-2">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-lg truncate">{template.name}</h3>
+                            {isOffered && (
+                              <Badge variant="secondary" className="gap-1 text-[8px] bg-primary text-primary-foreground border-none uppercase tracking-tighter">
+                                <Star className="w-2.5 h-2.5 fill-primary-foreground" /> Offered
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="flex items-center gap-2 mt-1">
+                            <span className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[10px] font-bold uppercase truncate">{template.serviceCategory}</span>
+                          </p>
                         </div>
-                      ))}
-                      {template.items.length > 3 && <p className="text-[10px] text-center text-muted-foreground pt-1">+{template.items.length - 3} more line items</p>}
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Link href={`/quotes/new?duplicateId=${template.id}`} className="flex-1">
-                        <Button className="w-full text-xs h-10 bg-primary/10 text-primary hover:bg-primary/20 border-none">Use Template</Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 shrink-0" onClick={() => handleRemoveTemplate(template.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-5 pt-4 space-y-4">
+                      <div className="space-y-2">
+                        {template.items.slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="text-xs flex justify-between bg-muted/40 p-2.5 rounded-md">
+                            <span className="truncate font-medium">{item.description}</span>
+                            <span className="text-muted-foreground shrink-0 ml-4 font-mono">${Number(item.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        ))}
+                        {template.items.length > 3 && <p className="text-[10px] text-center text-muted-foreground pt-1">+{template.items.length - 3} more line items</p>}
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Link href={`/quotes/new?duplicateId=${template.id}`} className="flex-1">
+                          <Button className="w-full text-xs h-10 bg-primary/10 text-primary hover:bg-primary/20 border-none">Use Template</Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
               
               <Link href="/quotes/new">
                 <Card className="border-2 border-dashed flex flex-col items-center justify-center p-8 sm:p-12 text-center cursor-pointer hover:bg-muted/30 transition-all h-full min-h-[200px] group">

@@ -62,15 +62,104 @@ export const getTemplates = (): QuoteTemplate[] => {
   const stored = localStorage.getItem(TEMPLATES_KEY);
   return stored ? JSON.parse(stored) : [
     {
-      id: 't1',
-      name: 'Interior Living Room Paint',
+      id: 't-paint-1',
+      name: 'Standard Living Room Refresh',
       serviceCategory: 'Painting',
       items: [
-        { description: 'Interior Wall Painting', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
+        { description: 'Interior Wall Painting (2 coats)', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
         { description: 'Ceiling Painting', unit: 'sq ft', quantity: 200, unitPrice: 2.0, total: 400 },
-        { description: 'Baseboard Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 }
+        { description: 'Baseboard & Trim Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 },
+        { description: 'Minor Wall Patching & Prep', unit: 'hr', quantity: 2, unitPrice: 85, total: 170 }
       ],
-      scopeDescription: 'Full preparation and painting of living room walls and ceiling. Includes minor patching and baseboard painting.'
+      scopeDescription: 'Full preparation and painting of living room walls and ceiling. Includes minor patching, furniture covering, and cleanup.'
+    },
+    {
+      id: 't-elec-1',
+      name: 'Main Service Panel Upgrade (200A)',
+      serviceCategory: 'Electrical',
+      items: [
+        { description: '200 Amp Main Breaker Panel', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
+        { description: 'Circuit Breaker Set (Standard)', unit: 'ea', quantity: 20, unitPrice: 25, total: 500 },
+        { description: 'Permit & Inspection Fee', unit: 'flat', quantity: 1, unitPrice: 350, total: 350 }
+      ],
+      scopeDescription: 'Upgrade existing electrical service to 200A. Includes removal of old panel, installation of new 200A panel, grounding, and labeled breakers.'
+    },
+    {
+      id: 't-plum-1',
+      name: 'Master Bath Fixture Update',
+      serviceCategory: 'Plumbing',
+      items: [
+        { description: 'Dual Sink Faucet Installation', unit: 'ea', quantity: 2, unitPrice: 225, total: 450 },
+        { description: 'High-Efficiency Toilet Install', unit: 'ea', quantity: 1, unitPrice: 350, total: 350 },
+        { description: 'Shower Head & Valve Kit', unit: 'ea', quantity: 1, unitPrice: 450, total: 450 }
+      ],
+      scopeDescription: 'Removal and replacement of existing master bathroom faucets, toilet, and shower trim. Includes testing for leaks.'
+    },
+    {
+      id: 't-hvac-1',
+      name: 'Central AC System Replacement',
+      serviceCategory: 'HVAC',
+      items: [
+        { description: '15 SEER Condenser Unit', unit: 'ea', quantity: 1, unitPrice: 4200, total: 4200 },
+        { description: 'Matching Evaporator Coil', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
+        { description: 'Lineset & Accessories', unit: 'flat', quantity: 1, unitPrice: 450, total: 450 }
+      ],
+      scopeDescription: 'Complete removal of old AC unit and installation of new high-efficiency 15 SEER system. Includes new lineset and refrigerant.'
+    },
+    {
+      id: 't-gc-1',
+      name: 'Kitchen Remodel - Basic',
+      serviceCategory: 'General Contracting',
+      items: [
+        { description: 'Stock Cabinet Installation', unit: 'set', quantity: 1, unitPrice: 8500, total: 8500 },
+        { description: 'Quartz Countertop (Group A)', unit: 'sq ft', quantity: 45, unitPrice: 95, total: 4275 },
+        { description: 'Backsplash Tile Labor', unit: 'sq ft', quantity: 30, unitPrice: 25, total: 750 }
+      ],
+      scopeDescription: 'Moderate kitchen renovation including new stock cabinetry, quartz countertops, and decorative tile backsplash.'
+    },
+    {
+      id: 't-land-1',
+      name: 'Paver Patio & Planting Bed',
+      serviceCategory: 'Landscaping',
+      items: [
+        { description: 'Interlocking Paver Patio', unit: 'sq ft', quantity: 300, unitPrice: 28, total: 8400 },
+        { description: 'Decorative Planting Bed (w/ Mulch)', unit: 'sq ft', quantity: 100, unitPrice: 8, total: 800 },
+        { description: 'Specimen Tree (15 Gal)', unit: 'ea', quantity: 2, unitPrice: 250, total: 500 }
+      ],
+      scopeDescription: 'Installation of a new 300 sq ft paver patio with adjacent planting beds and screening trees.'
+    },
+    {
+      id: 't-roof-1',
+      name: 'Residential Re-Roof (Shingle)',
+      serviceCategory: 'Roofing',
+      items: [
+        { description: 'Architectural Shingle Roof', unit: 'sq', quantity: 22, unitPrice: 650, total: 14300 },
+        { description: 'Tear-off & Disposal Fee', unit: 'sq', quantity: 22, unitPrice: 150, total: 3300 },
+        { description: 'Ice & Water Shield Barrier', unit: 'sq', quantity: 5, unitPrice: 125, total: 625 }
+      ],
+      scopeDescription: 'Complete roof replacement including tear-off of one layer of old shingles and installation of new architectural lifetime shingles.'
+    },
+    {
+      id: 't-carp-1',
+      name: 'Custom Living Room Built-ins',
+      serviceCategory: 'Carpentry',
+      items: [
+        { description: 'Custom Lower Cabinet Bases', unit: 'linear ft', quantity: 12, unitPrice: 350, total: 4200 },
+        { description: 'Open Shelving Units (Upper)', unit: 'linear ft', quantity: 12, unitPrice: 250, total: 3000 },
+        { description: 'Finish Trim & Molding', unit: 'flat', quantity: 1, unitPrice: 850, total: 850 }
+      ],
+      scopeDescription: 'Design and construction of custom fireside built-in cabinets and floating shelves. Material: Paint-grade MDF/Maple.'
+    },
+    {
+      id: 't-clean-1',
+      name: 'Post-Construction Deep Clean',
+      serviceCategory: 'Cleaning',
+      items: [
+        { description: 'Post-Renovation Detailed Clean', unit: 'sq ft', quantity: 2500, unitPrice: 0.85, total: 2125 },
+        { description: 'Exterior Window Cleaning (1st Fl)', unit: 'window', quantity: 12, unitPrice: 15, total: 180 },
+        { description: 'Floor Buff & Polish', unit: 'sq ft', quantity: 800, unitPrice: 1.25, total: 1000 }
+      ],
+      scopeDescription: 'Comprehensive deep cleaning after construction. Includes dust removal from all surfaces, inside cabinets, and window tracks.'
     }
   ];
 };
