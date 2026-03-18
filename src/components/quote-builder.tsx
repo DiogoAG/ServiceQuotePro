@@ -363,12 +363,23 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const filteredTemplates = useMemo(() => {
     const search = templateSearch.toLowerCase();
-    return templates.filter(t => 
+    const offered = initialProfile?.offeredServices || [];
+
+    const filtered = templates.filter(t => 
       t.name.toLowerCase().includes(search) || 
       t.serviceCategory.toLowerCase().includes(search) ||
       t.items.some(item => item.description.toLowerCase().includes(search))
     );
-  }, [templates, templateSearch]);
+
+    // Sort by offered services first
+    return [...filtered].sort((a, b) => {
+      const aIsOffered = offered.includes(a.serviceCategory);
+      const bIsOffered = offered.includes(b.serviceCategory);
+      if (aIsOffered && !bIsOffered) return -1;
+      if (!aIsOffered && bIsOffered) return 1;
+      return 0;
+    });
+  }, [templates, templateSearch, initialProfile]);
 
   const organizedCommonItems = useMemo(() => {
     const categories: Record<string, CommonItem[]> = {};
@@ -467,14 +478,20 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       </div>
                       <ScrollArea className="h-64">
                         <div className="p-2 space-y-1">
-                          {filteredTemplates.map(t => (
-                            <Button key={t.id} variant="ghost" className="w-full justify-start text-sm py-2 h-auto rounded-md" onClick={() => applyTemplate(t)}>
-                              <div className="text-left overflow-hidden">
-                                <div className="font-medium truncate">{t.name}</div>
-                                <div className="text-[10px] opacity-60 uppercase font-bold tracking-tight">{t.serviceCategory}</div>
-                              </div>
-                            </Button>
-                          ))}
+                          {filteredTemplates.map(t => {
+                            const isOffered = initialProfile?.offeredServices?.includes(t.serviceCategory);
+                            return (
+                              <Button key={t.id} variant="ghost" className={cn("w-full justify-start text-sm py-2 h-auto rounded-md group", isOffered && "bg-primary/5")} onClick={() => applyTemplate(t)}>
+                                <div className="text-left overflow-hidden flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="font-medium truncate">{t.name}</div>
+                                    {isOffered && <Star className="w-2.5 h-2.5 fill-primary text-primary shrink-0" />}
+                                  </div>
+                                  <div className="text-[10px] opacity-60 uppercase font-bold tracking-tight">{t.serviceCategory}</div>
+                                </div>
+                              </Button>
+                            );
+                          })}
                           {filteredTemplates.length === 0 && (
                             <p className="text-xs text-center py-8 text-muted-foreground">
                               {templates.length === 0 ? "No templates saved." : "No matches found."}

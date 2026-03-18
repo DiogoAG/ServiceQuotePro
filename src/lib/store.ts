@@ -160,6 +160,16 @@ export const getTemplates = (): QuoteTemplate[] => {
         { description: 'Floor Buff & Polish', unit: 'sq ft', quantity: 800, unitPrice: 1.25, total: 1000 }
       ],
       scopeDescription: 'Comprehensive deep cleaning after construction. Includes dust removal from all surfaces, inside cabinets, and window tracks.'
+    },
+    {
+      id: 't-other-1',
+      name: 'General Handyman Repair',
+      serviceCategory: 'Other',
+      items: [
+        { description: 'Handyman Labor (Minor Repairs)', unit: 'hr', quantity: 4, unitPrice: 75, total: 300 },
+        { description: 'Small Parts & Fasteners Allowance', unit: 'flat', quantity: 1, unitPrice: 50, total: 50 }
+      ],
+      scopeDescription: 'Miscellaneous small repairs and maintenance tasks around the property. Includes labor for up to 4 hours and basic consumables.'
     }
   ];
 };
