@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -80,7 +81,7 @@ export default function QuoteSummaryPage() {
             onClick={handleShare}
           >
             <Share2 className="w-4 h-4" />
-            Share Quote
+            Share
           </Button>
         </div>
       </div>
