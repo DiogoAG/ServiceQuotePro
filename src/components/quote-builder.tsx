@@ -36,7 +36,7 @@ type QuoteBuilderProps = {
   initialProfile: BusinessProfile;
   onSave: (quote: Quote) => void;
   preSelectedClientId?: string;
-  duplicateSource?: Quote;
+  duplicateSource?: Quote | QuoteTemplate;
 };
 
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
@@ -62,15 +62,21 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const defaultCategory = initialProfile.offeredServices?.[0] || "General Contracting";
 
     if (duplicateSource) {
+      const isQuote = 'clientId' in duplicateSource;
       return {
-        clientId: preSelectedClientId || duplicateSource.clientId || "",
+        clientId: preSelectedClientId || (isQuote ? duplicateSource.clientId : "") || "",
         serviceCategory: duplicateSource.serviceCategory || defaultCategory,
-        items: duplicateSource.items.map(i => ({ ...i, id: uuidv4() })),
-        laborHours: duplicateSource.laborHours || 0,
+        items: duplicateSource.items.map(i => ({ 
+          ...i, 
+          id: uuidv4(),
+          length: (i as any).length || "",
+          width: (i as any).width || ""
+        })) as QuoteItem[],
+        laborHours: isQuote ? (duplicateSource as Quote).laborHours : 0,
         laborRate: currentLaborRate,
-        materialCosts: duplicateSource.materialCosts || 0,
+        materialCosts: isQuote ? (duplicateSource as Quote).materialCosts : 0,
         taxRate: currentTaxRate,
-        notes: duplicateSource.notes || "",
+        notes: isQuote ? (duplicateSource as Quote).notes : "",
         scopeDescription: duplicateSource.scopeDescription || ""
       };
     }
@@ -235,7 +241,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         
         const updated = { ...item, [field]: finalValue };
 
-        // Auto-calculate quantity if length and width are edited
         if (field === 'length' || field === 'width') {
           const l = parseFloat(String(updated.length));
           const w = parseFloat(String(updated.width));
@@ -244,7 +249,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           }
         }
 
-        // Recalculate total
         if (field === 'quantity' || field === 'unitPrice' || field === 'length' || field === 'width') {
           const q = Number(updated.quantity) || 0;
           const p = Number(updated.unitPrice) || 0;
@@ -272,9 +276,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setScopeDescription(template.scopeDescription);
     setItems(template.items.map(i => ({ 
       ...i, 
-      id: uuidv4(), 
+      id: uuidv4(),
+      length: (i as any).length || "",
+      width: (i as any).width || "",
       total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
-    })));
+    })) as QuoteItem[]);
   };
 
   const handleSaveAsTemplate = () => {
@@ -371,7 +377,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       t.items.some(item => item.description.toLowerCase().includes(search))
     );
 
-    // Sort by offered services first
     return [...filtered].sort((a, b) => {
       const aIsOffered = offered.includes(a.serviceCategory);
       const bIsOffered = offered.includes(b.serviceCategory);
@@ -418,7 +423,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return result;
   }, [commonItems, initialProfile]);
 
-  const sortedCategories = useMemo(() => {
+  const sortedServiceCategories = useMemo(() => {
     const offered = initialProfile?.offeredServices || [];
     return [...SERVICE_CATEGORIES].sort((a, b) => {
       const aIsOffered = offered.includes(a);
@@ -578,7 +583,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <Select onValueChange={setServiceCategory} value={serviceCategory}>
                     <SelectTrigger className="h-11 border-primary/20"><SelectValue placeholder="Select service type..." /></SelectTrigger>
                     <SelectContent>
-                      {sortedCategories.map(cat => {
+                      {sortedServiceCategories.map(cat => {
                         const isOffered = initialProfile?.offeredServices?.includes(cat);
                         return (
                           <SelectItem key={cat} value={cat}>

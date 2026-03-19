@@ -3,8 +3,8 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { QuoteBuilder } from "@/components/quote-builder";
-import { getClients, getBusinessProfile, saveQuotes, getQuotes } from "@/lib/store";
-import { Client, BusinessProfile, Quote } from "@/lib/types";
+import { getClients, getBusinessProfile, saveQuotes, getQuotes, getTemplates } from "@/lib/store";
+import { Client, BusinessProfile, Quote, QuoteTemplate } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,7 +14,7 @@ function NewQuoteContent() {
   const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
-  const [duplicateSource, setDuplicateSource] = useState<Quote | undefined>(undefined);
+  const [duplicateSource, setDuplicateSource] = useState<Quote | QuoteTemplate | undefined>(undefined);
 
   const preSelectedClientId = searchParams.get('clientId');
   const duplicateId = searchParams.get('duplicateId');
@@ -25,7 +25,9 @@ function NewQuoteContent() {
 
     if (duplicateId) {
       const allQuotes = getQuotes();
-      const source = allQuotes.find(q => q.id === duplicateId);
+      const allTemplates = getTemplates();
+      // Check both quotes and templates for the ID
+      const source = allQuotes.find(q => q.id === duplicateId) || allTemplates.find(t => t.id === duplicateId);
       if (source) {
         setDuplicateSource(source);
       }
@@ -45,10 +47,10 @@ function NewQuoteContent() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">
-          {duplicateSource ? "Duplicate Quote" : "Create New Quote"}
+          {duplicateSource ? "New Quote from Template" : "Create New Quote"}
         </h1>
         <p className="text-muted-foreground">
-          {duplicateSource ? `Reusing structure from quote to ${clients.find(c => c.id === duplicateSource.clientId)?.name}` : "Fill in the details below to generate a professional quote."}
+          {duplicateSource ? `Starting with pre-configured scope for ${duplicateSource.serviceCategory}` : "Fill in the details below to generate a professional quote."}
         </p>
       </div>
       
