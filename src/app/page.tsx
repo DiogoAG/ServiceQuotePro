@@ -1,8 +1,10 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { FileText, ArrowRight, ShieldCheck, Zap, BarChart3, Users, Wrench } from "lucide-react";
+import { ArrowRight, ShieldCheck, Zap, BarChart3, Users, Wrench } from "lucide-react";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 export default function LandingPage() {
   return (
@@ -11,9 +13,7 @@ export default function LandingPage() {
       <header className="border-b bg-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <FileText className="text-white w-5 h-5" />
-            </div>
+            <Logo />
             <span className="font-bold text-xl tracking-tight text-primary">ServiceQuotePro</span>
           </div>
           <div className="flex gap-4">
@@ -72,7 +72,7 @@ export default function LandingPage() {
               description="Automated labor, material, and tax calculations with real-time updates."
             />
             <CardFeature 
-              icon={<FileText className="w-8 h-8 text-accent" />}
+              icon={<ShieldCheck className="w-8 h-8 text-accent" />}
               title="Professional PDF"
               description="Export beautiful, client-ready PDF quotes directly from your browser."
             />
@@ -94,9 +94,7 @@ export default function LandingPage() {
       <footer className="py-12 px-4 border-t bg-white">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-              <FileText className="w-5 h-5" />
-            </div>
+            <Logo />
             <span className="font-bold text-lg text-primary">ServiceQuotePro</span>
           </div>
           <div className="text-sm text-muted-foreground">

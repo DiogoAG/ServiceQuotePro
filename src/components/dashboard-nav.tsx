@@ -20,6 +20,7 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Logo } from "@/components/logo";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -43,9 +44,7 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
       {/* Mobile Toggle */}
       <div className="md:hidden flex items-center justify-between p-4 border-b bg-card sticky top-0 z-50">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shrink-0">
-            <FileText className="text-white w-6 h-6" />
-          </div>
+          <Logo />
           <span className="font-bold text-xl tracking-tight text-primary whitespace-nowrap">ServiceQuotePro</span>
         </Link>
         <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)}>
@@ -61,9 +60,7 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
       )}>
         <div className={cn("p-6", isFolded ? "px-4 flex justify-center" : "")}>
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shrink-0">
-              <FileText className="text-white w-6 h-6" />
-            </div>
+            <Logo />
             {!isFolded && (
               <span className="font-bold text-xl tracking-tight text-primary whitespace-nowrap">ServiceQuotePro</span>
             )}
