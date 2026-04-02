@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -166,7 +167,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       id,
       name: newTemplateName,
       serviceCategory,
-      items: items.map(({ id, total, ...rest }) => rest),
+      items: items.filter(i => i.description.trim() !== "").map(({ id, total, ...rest }) => rest),
       scopeDescription
     };
     const docRef = doc(db, "contractorProfiles", user.uid, "templates", id);
@@ -180,13 +181,23 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       toast({ title: "Client Required", description: "Please select or add a client first.", variant: "destructive" });
       return;
     }
+
+    // Filter out completely empty items
+    const filteredItems = items.filter(i => i.description.trim() !== "");
+    
+    // Safety check: Don't allow saving an empty quote
+    if (filteredItems.length === 0 && Number(laborHours) <= 0 && Number(materialCosts) <= 0) {
+      toast({ title: "Empty Quote", description: "Please add at least one line item or specify labor/material costs.", variant: "destructive" });
+      return;
+    }
+
     const finalQuote: Quote = {
       id: uuidv4(),
       clientId,
       date: new Date().toISOString(),
       status: 'draft',
       serviceCategory,
-      items,
+      items: filteredItems,
       scopeDescription,
       laborHours: Number(laborHours),
       laborRate: Number(laborRate),
@@ -289,7 +300,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <PopoverTrigger asChild>
                       <div className="relative">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search or select client..." className="pl-9" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
+                        <Input placeholder="Search or select client..." className="pl-9 h-10" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
                       </div>
                     </PopoverTrigger>
                     <PopoverContent className="p-0 w-full" style={{ width: 'var(--radix-popover-trigger-width)' }}>
@@ -310,7 +321,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Service Category</Label>
                 <Select value={serviceCategory} onValueChange={setServiceCategory}>
-                  <SelectTrigger className="flex items-center gap-2">
+                  <SelectTrigger className="flex items-center gap-2 h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

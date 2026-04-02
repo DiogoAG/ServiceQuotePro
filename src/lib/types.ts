@@ -65,6 +65,7 @@ export type QuoteTemplate = {
 export type Quote = {
   id: string;
   clientId: string;
+  contractorId?: string;
   date: string;
   status: 'draft' | 'sent' | 'approved' | 'rejected';
   serviceCategory: string;
@@ -78,4 +79,6 @@ export type Quote = {
   subtotal: number;
   grandTotal: number;
   notes: string;
+  createdAt?: any;
+  updatedAt?: any;
 };
