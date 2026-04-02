@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
 import { QuoteBuilder } from "@/components/quote-builder";
-import { getTemplates } from "@/lib/store";
+import { getHardcodedTemplates } from "@/lib/store";
 import { Client, BusinessProfile, Quote, QuoteTemplate } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +33,15 @@ function NewQuoteContent() {
     return collection(db, "contractorProfiles", user.uid, "quotes");
   }, [db, user]);
 
+  const templatesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(db, "contractorProfiles", user.uid, "templates");
+  }, [db, user]);
+
   const { data: profile } = useDoc<BusinessProfile>(profileRef);
   const { data: clients } = useCollection<Client>(clientsRef);
   const { data: quotes } = useCollection<Quote>(quotesRef);
+  const { data: userTemplates } = useCollection<QuoteTemplate>(templatesRef);
 
   const [duplicateSource, setDuplicateSource] = useState<Quote | QuoteTemplate | undefined>(undefined);
 
@@ -42,14 +49,18 @@ function NewQuoteContent() {
   const duplicateId = searchParams.get('duplicateId');
 
   useEffect(() => {
-    if (duplicateId) {
-      const allTemplates = getTemplates();
-      const source = quotes?.find(q => q.id === duplicateId) || allTemplates.find(t => t.id === duplicateId);
+    if (duplicateId && (quotes || userTemplates)) {
+      const allHardcoded = getHardcodedTemplates();
+      const source = 
+        quotes?.find(q => q.id === duplicateId) || 
+        userTemplates?.find(t => t.id === duplicateId) || 
+        allHardcoded.find(t => t.id === duplicateId);
+        
       if (source) {
         setDuplicateSource(source);
       }
     }
-  }, [duplicateId, quotes]);
+  }, [duplicateId, quotes, userTemplates]);
 
   const handleSaveQuote = (newQuote: Quote) => {
     if (!user) return;

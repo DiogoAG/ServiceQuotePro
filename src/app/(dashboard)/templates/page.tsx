@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { QuoteTemplate, CommonItem, SERVICE_CATEGORIES, BusinessProfile } from "@/lib/types";
-import { getHardcodedItems } from "@/lib/store";
+import { getHardcodedItems, getHardcodedTemplates } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -122,23 +122,7 @@ export default function TemplatesPage() {
     const search = searchTemplate.toLowerCase();
     const offered = profile?.offeredServices || [];
     
-    const hardcodedTemplates: QuoteTemplate[] = [
-      {
-        id: 't-paint-1',
-        name: 'Standard Living Room Refresh',
-        serviceCategory: 'Painting',
-        isHardCoded: true,
-        items: [
-          { description: 'Interior Wall Painting', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
-          { description: 'Ceiling Painting', unit: 'sq ft', quantity: 200, unitPrice: 2.0, total: 400 },
-          { description: 'Baseboard Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 },
-          { description: 'Drywall Repair', unit: 'hr', quantity: 2, unitPrice: 85, total: 170 }
-        ],
-        scopeDescription: 'Full preparation and painting of living room walls and ceiling.'
-      }
-    ];
-
-    const all = [...hardcodedTemplates, ...(userTemplates || [])];
+    const all = [...getHardcodedTemplates(), ...(userTemplates || [])];
 
     const filtered = all.filter(t => 
       t.name.toLowerCase().includes(search) || 

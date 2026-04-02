@@ -156,6 +156,22 @@ export const getHardcodedItems = (): CommonItem[] => [
   { id: 'h-ot-2', category: 'Other', description: 'Furniture Assembly', unit: 'hr', defaultUnitPrice: 65.00, isHardCoded: true }
 ];
 
+export const getHardcodedTemplates = (): QuoteTemplate[] => [
+  {
+    id: 't-paint-1',
+    name: 'Standard Living Room Refresh',
+    serviceCategory: 'Painting',
+    isHardCoded: true,
+    items: [
+      { description: 'Interior Wall Painting', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
+      { description: 'Ceiling Painting', unit: 'sq ft', quantity: 200, unitPrice: 2.0, total: 400 },
+      { description: 'Baseboard Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 },
+      { description: 'Drywall Repair', unit: 'hr', quantity: 2, unitPrice: 85, total: 170 }
+    ],
+    scopeDescription: 'Full preparation and painting of living room walls and ceiling.'
+  }
+];
+
 export type QuoteDraft = {
   clientId: string;
   serviceCategory: string;
