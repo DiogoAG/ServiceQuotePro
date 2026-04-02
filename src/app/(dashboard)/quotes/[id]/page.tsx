@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -6,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock, ExternalLink } from "lucide-react";
+import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -56,7 +55,6 @@ export default function QuoteSummaryPage() {
   const handleShare = async () => {
     if (!quote || !profile || !user) return;
 
-    // Use a dedicated public view URL
     const publicUrl = `${window.location.origin}/view/${user.uid}/${quote.id}`;
 
     const shareData = {
@@ -125,7 +123,7 @@ export default function QuoteSummaryPage() {
         </div>
       </div>
 
-      <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border-none overflow-hidden mx-1 sm:mx-0">
+      <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 overflow-hidden mx-1 sm:mx-0">
         <CardContent className="p-4 sm:p-12 space-y-8 sm:space-y-12">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 sm:gap-8 border-b pb-6 sm:pb-8">
             <div className="space-y-4 w-full sm:w-auto">
@@ -191,7 +189,7 @@ export default function QuoteSummaryPage() {
             </div>
           </div>
 
-          <div className="space-y-3 sm:space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
+          <div className="space-y-3 sm:space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100 print:bg-white">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Proposed Scope of Work</h3>
             <div className="text-sm sm:text-base leading-relaxed text-gray-700 whitespace-pre-wrap italic sm:not-italic">
               {quote.scopeDescription || "No scope description provided."}
@@ -203,7 +201,7 @@ export default function QuoteSummaryPage() {
             <div className="rounded-md border overflow-hidden">
               <ScrollArea className="w-full">
                 <Table>
-                  <TableHeader className="bg-gray-50">
+                  <TableHeader className="bg-gray-50 print:bg-white">
                     <TableRow>
                       <TableHead className="min-w-[180px] sm:w-full">Description</TableHead>
                       <TableHead className="min-w-[60px]">Unit</TableHead>
@@ -243,7 +241,7 @@ export default function QuoteSummaryPage() {
                     )}
                   </TableBody>
                 </Table>
-                <ScrollBar orientation="horizontal" />
+                <ScrollBar orientation="horizontal" className="no-print" />
               </ScrollArea>
             </div>
           </div>
@@ -278,7 +276,7 @@ export default function QuoteSummaryPage() {
 
       {/* Internal Notes - Hidden from Print */}
       {quote.notes && (
-        <Card className="no-print border-primary/20 bg-primary/5 mx-1 sm:mx-0 shadow-sm">
+        <Card className="no-print border-primary/20 bg-primary/5 mx-1 sm:mx-0 shadow-sm mt-8">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="flex items-center gap-2">
               <StickyNote className="w-5 h-5 text-primary" />

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -22,10 +21,6 @@ const DEFAULT_PROFILE: BusinessProfile = {
   quoteTerms: "Payment is due within 15 days of completion."
 };
 
-/**
- * @fileOverview Public Quote View Page
- * This page is accessible without authentication to allow clients to view their quotes.
- */
 export default function PublicQuoteView() {
   const params = useParams();
   const contractorId = params?.contractorId as string;
@@ -78,8 +73,8 @@ export default function PublicQuoteView() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 pb-20">
-      <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-6">
+    <div className="min-h-screen bg-muted/20 pb-20 print:bg-white print:pb-0">
+      <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-6 print:p-0">
         <div className="flex justify-between items-center no-print">
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-sm">
@@ -96,7 +91,7 @@ export default function PublicQuoteView() {
           </Button>
         </div>
 
-        <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border-none overflow-hidden">
+        <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 overflow-hidden">
           <CardContent className="p-6 sm:p-12 space-y-10 sm:space-y-16">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-8 border-b pb-8 sm:pb-12">
               <div className="space-y-4">
@@ -153,7 +148,7 @@ export default function PublicQuoteView() {
               </div>
             </div>
 
-            <div className="space-y-4 bg-gray-50 p-6 sm:p-8 rounded-2xl border border-gray-100">
+            <div className="space-y-4 bg-gray-50 p-6 sm:p-8 rounded-2xl border border-gray-100 print:bg-white">
               <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Proposed Scope of Work</h3>
               <div className="text-sm sm:text-base leading-relaxed text-gray-700 whitespace-pre-wrap">
                 {quote.scopeDescription || "Professional service quote for " + quote.serviceCategory + "."}
@@ -165,7 +160,7 @@ export default function PublicQuoteView() {
               <div className="rounded-xl border overflow-hidden bg-white">
                 <ScrollArea className="w-full">
                   <Table>
-                    <TableHeader className="bg-gray-50/50">
+                    <TableHeader className="bg-gray-50/50 print:bg-white">
                       <TableRow>
                         <TableHead className="min-w-[200px] py-4">Description</TableHead>
                         <TableHead className="min-w-[60px]">Unit</TableHead>
@@ -205,7 +200,7 @@ export default function PublicQuoteView() {
                       )}
                     </TableBody>
                   </Table>
-                  <ScrollBar orientation="horizontal" />
+                  <ScrollBar orientation="horizontal" className="no-print" />
                 </ScrollArea>
               </div>
             </div>
@@ -235,7 +230,7 @@ export default function PublicQuoteView() {
                  <p className="text-xs text-muted-foreground">Please review the details above and reach out with any questions.</p>
               </div>
               {profile.quoteTerms && (
-                <div className="max-w-xl mx-auto p-6 bg-muted/30 rounded-xl">
+                <div className="max-w-xl mx-auto p-6 bg-muted/30 rounded-xl print:bg-white print:border">
                   <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-2">Terms & Conditions</p>
                   <p className="text-[11px] text-gray-500 leading-relaxed italic whitespace-pre-wrap">
                     {profile.quoteTerms}
