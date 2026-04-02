@@ -365,7 +365,6 @@ export default function TemplatesPage() {
                               <div className="space-y-4 md:space-y-2">
                                 {group.items.map((item) => (
                                   <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_100px_120px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-lg md:border-none md:p-0 bg-background/30 md:bg-transparent">
-                                    {/* Mobile labels and delete button */}
                                     <div className="md:hidden flex justify-between items-center mb-1">
                                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Item Detail</span>
                                       {!item.isHardCoded && (
@@ -528,24 +527,7 @@ export default function TemplatesPage() {
                   </Card>
                 );
               })}
-              
-              <Link href="/quotes/new">
-                <Card className="border-2 border-dashed flex flex-col items-center justify-center p-8 sm:p-12 text-center cursor-pointer hover:bg-muted/30 transition-all h-full min-h-[200px] group">
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Plus className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-bold text-muted-foreground">Create New Template</h3>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1 max-w-[200px]">Design a reusable scope and items list in the Quote Builder</p>
-                </Card>
-              </Link>
             </div>
-
-            {filteredTemplates.length === 0 && searchTemplate && (
-              <div className="text-center py-20 bg-muted/20 rounded-xl">
-                <p className="text-muted-foreground">No templates found matching "{searchTemplate}"</p>
-                <Button variant="link" onClick={() => setSearchTemplate("")}>Clear search</Button>
-              </div>
-            )}
           </div>
         </TabsContent>
       </Tabs>

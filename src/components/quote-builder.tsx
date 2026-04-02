@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -472,12 +473,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       <div className="p-3 border-b bg-muted/20">
                         <div className="relative">
                           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                          <Input 
-                            placeholder="Search name, category, or items..." 
-                            className="pl-8 h-8 text-xs bg-background" 
-                            value={templateSearch} 
-                            onChange={(e) => setTemplateSearch(e.target.value)}
-                          />
+                          <Input placeholder="Search name, category, or items..." className="pl-8 h-8 text-xs bg-background" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} />
                         </div>
                       </div>
                       <ScrollArea className="h-64">
@@ -496,11 +492,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                               </Button>
                             );
                           })}
-                          {filteredTemplates.length === 0 && (
-                            <p className="text-xs text-center py-8 text-muted-foreground">
-                              {templates.length === 0 ? "No templates saved." : "No matches found."}
-                            </p>
-                          )}
                         </div>
                       </ScrollArea>
                     </div>
@@ -523,50 +514,29 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           <span className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</span>
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive shrink-0 ml-2"
-                        onClick={() => setClientId("")}
-                      >
-                        <X className="w-3 h-3 mr-1" /> Change
-                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive shrink-0 ml-2" onClick={() => setClientId("")}><X className="w-3 h-3 mr-1" /> Change</Button>
                     </div>
                   ) : (
                     <Popover open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} onOpenChange={setIsClientPopoverOpen}>
                       <PopoverTrigger asChild>
                         <div className="relative group w-full">
                           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
-                          <Input 
-                            placeholder="Search by name, email..." 
-                            className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" 
-                            value={clientSearch} 
-                            onChange={(e) => { 
-                              setClientSearch(e.target.value); 
-                              if (!isClientPopoverOpen) setIsClientPopoverOpen(true); 
-                            }} 
-                            onFocus={() => { 
-                              if (!isClientPopoverOpen) setIsClientPopoverOpen(true); 
-                            }} 
-                          />
+                          <Input placeholder="Search by name, email..." className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} onFocus={() => { if (!isClientPopoverOpen) setIsClientPopoverOpen(true); }} />
                         </div>
                       </PopoverTrigger>
                       <PopoverContent className="p-0 border shadow-xl bg-popover" align="start" sideOffset={4} style={{ width: 'var(--radix-popover-trigger-width)' }} onOpenAutoFocus={(e) => e.preventDefault()}>
                         <ScrollArea className="max-h-[300px]">
-                          <div className="p-2 border-b bg-muted/30"><p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p></div>
-                          {filteredClients.length > 0 ? (
-                            filteredClients.map((c) => (
-                              <Button key={c.id} variant="ghost" className={cn("w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0", clientId === c.id && "bg-primary/5")} onClick={() => { setClientId(c.id); setClientSearch(""); setIsClientPopoverOpen(false); }}>
-                                <div className="flex flex-col items-start w-full gap-0.5">
-                                  <div className="flex items-center justify-between w-full text-left">
-                                    <span className="font-semibold text-sm">{c.name}</span>
-                                    {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
+                          {filteredClients.map((c) => (
+                            <Button key={c.id} variant="ghost" className={cn("w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0", clientId === c.id && "bg-primary/5")} onClick={() => { setClientId(c.id); setClientSearch(""); setIsClientPopoverOpen(false); }}>
+                              <div className="flex flex-col items-start w-full gap-0.5">
+                                <div className="flex items-center justify-between w-full text-left">
+                                  <span className="font-semibold text-sm">{c.name}</span>
+                                  {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
                                 </div>
-                              </Button>
-                            ))
-                          ) : null}
+                                <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
+                              </div>
+                            </Button>
+                          ))}
                           <div className="p-2">
                             <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
                               <UserPlus className="h-3.5 w-3.5" /> {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
@@ -632,7 +602,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4 px-4 sm:px-6"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
               <div className="space-y-4">
-                {/* Desktop Header: Redesigned for compactness */}
                 <div className="hidden md:grid grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-1.5 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-tight border-b pb-2">
                   <div>Item Description</div>
                   <div className="text-center">Unit</div>
@@ -647,25 +616,16 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="space-y-4 md:space-y-1.5">
                   {items.map((item) => (
                     <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 md:gap-1.5 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none hover:bg-muted/10 transition-colors">
-                      {/* Mobile Label */}
                       <div className="md:hidden flex justify-between items-center mb-1">
                         <span className="text-[10px] font-black text-primary/40 uppercase tracking-widest">Line Item</span>
                         <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
                       </div>
 
-                      {/* Description: Maximized Width */}
                       <div className="relative">
-                        <Input 
-                          value={item.description || ""} 
-                          onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
-                          placeholder="Item description..." 
-                          className="pr-10 h-10 md:h-8 text-sm md:text-xs rounded-lg md:rounded-md bg-background" 
-                        />
+                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-10 h-10 md:h-8 text-sm md:text-xs rounded-lg md:rounded-md bg-background" />
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="absolute right-1 top-1.5 md:top-0.5 h-7 w-7 md:h-7 md:w-7 text-muted-foreground hover:text-primary">
-                              <BookOpen className="w-3.5 h-3.5" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="absolute right-1 top-1.5 md:top-0.5 h-7 w-7 md:h-7 md:w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
@@ -691,7 +651,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         </Popover>
                       </div>
 
-                      {/* Numeric Inputs: Compact Layout */}
                       <div className="grid grid-cols-2 md:contents gap-2 md:gap-1.5">
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Unit</Label>
@@ -729,9 +688,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
 
               <div className="space-y-3 pt-6 border-t">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
-                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
-                </div>
+                <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
                 <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4 shadow-inner" />
               </div>
             </CardContent>
