@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -19,6 +20,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@
 import { collection, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { ToastAction } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 
 const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
@@ -70,6 +72,13 @@ export default function TemplatesPage() {
   const [undoStack, setUndoStack] = useState<HistoryAction[]>([]);
   const [redoStack, setRedoStack] = useState<HistoryAction[]>([]);
 
+  // Add Item Dialog State
+  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
+  const [newItemCategory, setNewItemCategory] = useState("");
+  const [newItemDescription, setNewItemDescription] = useState("");
+  const [newItemUnit, setNewItemUnit] = useState("ea");
+  const [newItemPrice, setNewItemPrice] = useState<number>(0);
+
   const hardcodedItems = getHardcodedItems();
 
   const allItems = useMemo(() => {
@@ -91,41 +100,34 @@ export default function TemplatesPage() {
     }
   }, [profile]);
 
-  // Undo Function
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || !user) return;
     
     const action = undoStack[undoStack.length - 1];
     const docRef = doc(db, action.path);
     
-    // Restore the data
     setDocumentNonBlocking(docRef, action.data, { merge: true });
     
-    // Move to redo stack
     setRedoStack(prev => [...prev, action]);
     setUndoStack(prev => prev.slice(0, -1));
     
     toast({ title: "Restored", description: "Deletion has been undone." });
   }, [undoStack, user, db, toast]);
 
-  // Redo Function
   const handleRedo = useCallback(() => {
     if (redoStack.length === 0 || !user) return;
     
     const action = redoStack[redoStack.length - 1];
     const docRef = doc(db, action.path);
     
-    // Re-delete the document
     deleteDocumentNonBlocking(docRef);
     
-    // Move back to undo stack
     setUndoStack(prev => [...prev, action]);
     setRedoStack(prev => prev.slice(0, -1));
     
     toast({ title: "Action Redone", description: "Item removed again." });
   }, [redoStack, user, db, toast]);
 
-  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey)) {
@@ -147,26 +149,40 @@ export default function TemplatesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  const handleAddCommonItem = (category: string) => {
-    if (!user) return;
+  const handleOpenAddItemDialog = (category: string) => {
+    setNewItemCategory(category);
+    setNewItemDescription("");
+    setNewItemUnit("ea");
+    setNewItemPrice(0);
+    setIsAddItemDialogOpen(true);
+  };
+
+  const handleConfirmAddItem = () => {
+    if (!user || !newItemDescription.trim()) {
+      toast({ title: "Description Required", variant: "destructive" });
+      return;
+    }
+
     const id = uuidv4();
     const newItem: CommonItem = { 
       id, 
-      category, 
-      description: "New Item", // Ensure it has a description at creation
-      unit: "ea",
-      defaultUnitPrice: 0,
+      category: newItemCategory, 
+      description: newItemDescription.trim(), 
+      unit: newItemUnit,
+      defaultUnitPrice: newItemPrice,
       isHardCoded: false
     };
+
     const docRef = doc(db, "contractorProfiles", user.uid, "customItems", id);
     setDocumentNonBlocking(docRef, newItem, { merge: true });
-    toast({ title: "Item Added", description: `Added to ${category}` });
+    
+    setIsAddItemDialogOpen(false);
+    toast({ title: "Item Added", description: `Added to library.` });
   };
 
   const handleUpdateCommonItem = (item: CommonItem, field: keyof CommonItem, value: any) => {
     if (!user) return;
 
-    // Validation: Description cannot be empty
     if (field === 'description' && (!value || value.trim() === "")) {
       toast({ 
         title: "Required Field", 
@@ -193,7 +209,7 @@ export default function TemplatesPage() {
     
     const action: HistoryAction = { type: 'item', data: item, path };
     setUndoStack(prev => [...prev, action]);
-    setRedoStack([]); // Clear redo on new action
+    setRedoStack([]); 
     
     const docRef = doc(db, path);
     deleteDocumentNonBlocking(docRef);
@@ -211,7 +227,7 @@ export default function TemplatesPage() {
     
     const action: HistoryAction = { type: 'template', data: template, path };
     setUndoStack(prev => [...prev, action]);
-    setRedoStack([]); // Clear redo on new action
+    setRedoStack([]); 
     
     const docRef = doc(db, path);
     deleteDocumentNonBlocking(docRef);
@@ -294,19 +310,15 @@ export default function TemplatesPage() {
           <p className="text-muted-foreground text-sm">Manage your professional service library.</p>
         </div>
         <div className="flex gap-2">
-          {undoStack.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleUndo} className="hidden sm:flex gap-2">
-              <Undo2 className="w-4 h-4" /> Undo
-            </Button>
-          )}
-          {redoStack.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleRedo} className="hidden sm:flex gap-2">
-              <Redo2 className="w-4 h-4" /> Redo
-            </Button>
-          )}
+          <Button variant="ghost" size="sm" onClick={handleUndo} disabled={undoStack.length === 0} className="hidden sm:flex gap-2">
+            <Undo2 className="w-4 h-4" /> Undo
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleRedo} disabled={redoStack.length === 0} className="hidden sm:flex gap-2">
+            <Redo2 className="w-4 h-4" /> Redo
+          </Button>
           <Link href="/quotes/new">
             <Button variant="outline" className="gap-2 shadow-sm w-full md:w-auto">
-              <Plus className="w-4 h-4" /> New Quote / Template
+              <Plus className="w-4 h-4" /> New Quote
             </Button>
           </Link>
         </div>
@@ -415,7 +427,12 @@ export default function TemplatesPage() {
                                     </div>
                                   </div>
                                 ))}
-                                <Button variant="ghost" size="sm" className="w-full border border-dashed text-muted-foreground h-12 md:h-10 hover:bg-background/80 hover:text-primary transition-colors mt-2" onClick={() => handleAddCommonItem(group.subName ? `${category} - ${group.subName}` : category)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="w-full border border-dashed text-muted-foreground h-12 md:h-10 hover:bg-background/80 hover:text-primary transition-colors mt-2" 
+                                  onClick={() => handleOpenAddItemDialog(group.subName ? `${category} - ${group.subName}` : category)}
+                                >
                                   <Plus className="w-4 h-4 mr-2" /> Add Custom Item
                                 </Button>
                               </div>
@@ -480,6 +497,40 @@ export default function TemplatesPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader><DialogTitle>Add Custom Item to Library</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Description (Required)</Label>
+              <Input 
+                placeholder="e.g. Premium Hardware Upgrade" 
+                value={newItemDescription} 
+                onChange={(e) => setNewItemDescription(e.target.value)} 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Standard Unit</Label>
+                <Input value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} placeholder="ea" />
+              </div>
+              <div className="space-y-2">
+                <Label>Standard Price</Label>
+                <Input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(Number(e.target.value))} placeholder="0.00" />
+              </div>
+            </div>
+            <div className="pt-2">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Category</Label>
+              <p className="text-sm font-medium text-primary">{newItemCategory}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddItemDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmAddItem} disabled={!newItemDescription.trim()}>Add to Library</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

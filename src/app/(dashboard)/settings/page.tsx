@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [form, setForm] = useState<BusinessProfile>({
     businessName: "",
     licenseNumber: "",
+    email: "",
     address: "",
     phone: "",
     logoUrl: "",
@@ -155,6 +156,10 @@ export default function SettingsPage() {
               <Input value={form.businessName} onChange={(e) => setForm({...form, businessName: e.target.value})} placeholder="e.g. Pro Contractor Services" />
             </div>
             <div className="space-y-2">
+              <Label>Business Email (Displayed on Quotes)</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} placeholder="business@company.com" />
+            </div>
+            <div className="space-y-2">
               <Label>Contractor License</Label>
               <Input value={form.licenseNumber} onChange={(e) => setForm({...form, licenseNumber: e.target.value})} placeholder="e.g. LIC-12345" />
             </div>
@@ -162,9 +167,9 @@ export default function SettingsPage() {
               <Label>Business Phone</Label>
               <Input value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} placeholder="e.g. 555-0100" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label>Business Address</Label>
-              <Input value={form.address} onChange={(e) => setForm({...form, address: e.target.value})} placeholder="e.g. 123 Main St" />
+              <Input value={form.address} onChange={(e) => setForm({...form, address: e.target.value})} placeholder="e.g. 123 Main St, Anytown, ST 12345" />
             </div>
           </CardContent>
         </Card>

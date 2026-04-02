@@ -23,6 +23,7 @@ export type Client = {
 export type BusinessProfile = {
   businessName: string;
   licenseNumber: string;
+  email?: string;
   address?: string;
   phone?: string;
   logoUrl?: string;
