@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,10 +22,10 @@ const DEFAULT_PROFILE: BusinessProfile = {
   quoteTerms: "Payment is due within 15 days of completion. All materials guaranteed to be as specified."
 };
 
-export default function QuoteSummaryPage(props: { params: Promise<{ id: string }> }) {
-  const params = React.use(props.params);
-  const id = params.id;
+export default function QuoteSummaryPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
@@ -57,7 +57,7 @@ export default function QuoteSummaryPage(props: { params: Promise<{ id: string }
 
     const shareData = {
       title: `${profile.businessName} - Professional Quote`,
-      text: `Check out the quote for ${quote.serviceCategory} services.`,
+      text: `View my quote for ${quote.serviceCategory} services.`,
       url: window.location.href,
     };
 
@@ -71,14 +71,20 @@ export default function QuoteSummaryPage(props: { params: Promise<{ id: string }
           description: "Quote link has been copied to your clipboard.",
         });
       }
-    } catch (err) {}
+    } catch (err) {
+      toast({
+        title: "Share Failed",
+        description: "Could not share the link. Please copy the URL manually.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (quoteLoading || profileLoading || clientLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">Generating professional view...</p>
+        <p className="text-muted-foreground animate-pulse font-medium">Generating professional view...</p>
       </div>
     );
   }
