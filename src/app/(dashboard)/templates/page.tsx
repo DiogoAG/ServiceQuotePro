@@ -20,7 +20,6 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@
 import { collection, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { ToastAction } from "@/components/ui/toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 
 const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
@@ -72,9 +71,8 @@ export default function TemplatesPage() {
   const [undoStack, setUndoStack] = useState<HistoryAction[]>([]);
   const [redoStack, setRedoStack] = useState<HistoryAction[]>([]);
 
-  // Add Item Dialog State
-  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
-  const [newItemCategory, setNewItemCategory] = useState("");
+  // Inline Add Item State
+  const [activeAddingCategory, setActiveAddingCategory] = useState<string | null>(null);
   const [newItemDescription, setNewItemDescription] = useState("");
   const [newItemUnit, setNewItemUnit] = useState("ea");
   const [newItemPrice, setNewItemPrice] = useState<number>(0);
@@ -149,24 +147,19 @@ export default function TemplatesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
-  const handleOpenAddItemDialog = (category: string) => {
-    setNewItemCategory(category);
-    setNewItemDescription("");
-    setNewItemUnit("ea");
-    setNewItemPrice(0);
-    setIsAddItemDialogOpen(true);
-  };
-
   const handleConfirmAddItem = () => {
-    if (!user || !newItemDescription.trim()) {
-      toast({ title: "Description Required", variant: "destructive" });
+    if (!user || !activeAddingCategory) return;
+    
+    if (!newItemDescription.trim()) {
+      setActiveAddingCategory(null);
+      setNewItemDescription("");
       return;
     }
 
     const id = uuidv4();
     const newItem: CommonItem = { 
       id, 
-      category: newItemCategory, 
+      category: activeAddingCategory, 
       description: newItemDescription.trim(), 
       unit: newItemUnit,
       defaultUnitPrice: newItemPrice,
@@ -176,7 +169,10 @@ export default function TemplatesPage() {
     const docRef = doc(db, "contractorProfiles", user.uid, "customItems", id);
     setDocumentNonBlocking(docRef, newItem, { merge: true });
     
-    setIsAddItemDialogOpen(false);
+    setActiveAddingCategory(null);
+    setNewItemDescription("");
+    setNewItemUnit("ea");
+    setNewItemPrice(0);
     toast({ title: "Item Added", description: `Added to library.` });
   };
 
@@ -375,69 +371,102 @@ export default function TemplatesPage() {
                       </AccordionTrigger>
                       <AccordionContent className="pb-6">
                         <div className="space-y-8">
-                          {groups.map((group, gIdx) => (
-                            <div key={group.subName || gIdx} className="space-y-4">
-                              {group.subName && (
-                                <div className="flex items-center gap-2 mb-1">
-                                  <ChevronRight className="w-3 h-3 text-primary" />
-                                  <h4 className="text-sm font-bold tracking-tight text-foreground">{group.subName}</h4>
-                                </div>
-                              )}
-                              <div className="hidden md:grid grid-cols-[1fr_100px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
-                                <div>Service Description</div>
-                                <div className="pl-2">Unit</div>
-                                <div className="pl-2">Standard Price</div>
-                                <div></div>
-                              </div>
-                              <div className="space-y-4 md:space-y-2">
-                                {group.items.map((item) => (
-                                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_100px_120px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-lg md:border-none md:p-0 bg-background/30 md:bg-transparent">
-                                    <div className="relative">
-                                      <Input 
-                                        value={item.description} 
-                                        onChange={(e) => handleUpdateCommonItem(item, 'description', e.target.value)} 
-                                        className={cn("h-9 text-sm bg-background/50 border-none focus-visible:ring-1", item.isHardCoded && "opacity-80 font-medium cursor-not-allowed")}
-                                        readOnly={item.isHardCoded}
-                                        placeholder="Item description (required)..."
-                                      />
-                                      {item.isHardCoded && <Lock className="w-3 h-3 absolute right-3 top-3 text-muted-foreground/50" />}
-                                    </div>
-                                    <div className="grid grid-cols-2 md:contents gap-3">
-                                      <div className="space-y-1 md:space-y-0">
-                                        <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Unit</Label>
-                                        <Input value={item.unit || ""} onChange={(e) => handleUpdateCommonItem(item, 'unit', e.target.value)} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1" placeholder="unit" />
-                                      </div>
-                                      <div className="space-y-1 md:space-y-0">
-                                        <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Price</Label>
-                                        <Input type="number" step="0.01" value={item.defaultUnitPrice} onChange={(e) => handleUpdateCommonItem(item, 'defaultUnitPrice', Number(e.target.value))} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1 px-2" placeholder="0.00" />
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-center md:justify-end">
-                                      {item.id.startsWith('h-') ? (
-                                        customItems?.find(ci => ci.id === item.id) ? (
-                                          <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8 hover:bg-muted" title="Reset to standard price" onClick={() => handleRemoveCommonItem(item)}>
-                                            <RotateCcw className="w-4 h-4" />
-                                          </Button>
-                                        ) : <div className="w-8 h-8"></div>
-                                      ) : (
-                                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveCommonItem(item)}>
-                                          <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                      )}
-                                    </div>
+                          {groups.map((group, gIdx) => {
+                            const groupKey = group.subName ? `${category} - ${group.subName}` : category;
+                            return (
+                              <div key={group.subName || gIdx} className="space-y-4">
+                                {group.subName && (
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <ChevronRight className="w-3 h-3 text-primary" />
+                                    <h4 className="text-sm font-bold tracking-tight text-foreground">{group.subName}</h4>
                                   </div>
-                                ))}
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="w-full border border-dashed text-muted-foreground h-12 md:h-10 hover:bg-background/80 hover:text-primary transition-colors mt-2" 
-                                  onClick={() => handleOpenAddItemDialog(group.subName ? `${category} - ${group.subName}` : category)}
-                                >
-                                  <Plus className="w-4 h-4 mr-2" /> Add Custom Item
-                                </Button>
+                                )}
+                                <div className="hidden md:grid grid-cols-[1fr_100px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                                  <div>Service Description</div>
+                                  <div className="pl-2">Unit</div>
+                                  <div className="pl-2">Standard Price</div>
+                                  <div></div>
+                                </div>
+                                <div className="space-y-4 md:space-y-2">
+                                  {group.items.map((item) => (
+                                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_100px_120px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-lg md:border-none md:p-0 bg-background/30 md:bg-transparent">
+                                      <div className="relative">
+                                        <Input 
+                                          value={item.description} 
+                                          onChange={(e) => handleUpdateCommonItem(item, 'description', e.target.value)} 
+                                          className={cn("h-9 text-sm bg-background/50 border-none focus-visible:ring-1", item.isHardCoded && "opacity-80 font-medium cursor-not-allowed")}
+                                          readOnly={item.isHardCoded}
+                                          placeholder="Item description (required)..."
+                                        />
+                                        {item.isHardCoded && <Lock className="w-3 h-3 absolute right-3 top-3 text-muted-foreground/50" />}
+                                      </div>
+                                      <div className="grid grid-cols-2 md:contents gap-3">
+                                        <div className="space-y-1 md:space-y-0">
+                                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Unit</Label>
+                                          <Input value={item.unit || ""} onChange={(e) => handleUpdateCommonItem(item, 'unit', e.target.value)} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1" placeholder="unit" />
+                                        </div>
+                                        <div className="space-y-1 md:space-y-0">
+                                          <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Price</Label>
+                                          <Input type="number" step="0.01" value={item.defaultUnitPrice} onChange={(e) => handleUpdateCommonItem(item, 'defaultUnitPrice', Number(e.target.value))} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1 px-2" placeholder="0.00" />
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-center md:justify-end">
+                                        {item.id.startsWith('h-') ? (
+                                          customItems?.find(ci => ci.id === item.id) ? (
+                                            <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8 hover:bg-muted" title="Reset to standard price" onClick={() => handleRemoveCommonItem(item)}>
+                                              <RotateCcw className="w-4 h-4" />
+                                            </Button>
+                                          ) : <div className="w-8 h-8"></div>
+                                        ) : (
+                                          <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveCommonItem(item)}>
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  {/* Inline Add Item Row */}
+                                  {activeAddingCategory === groupKey ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-[1fr_100px_120px_40px] gap-3 md:gap-4 items-start md:items-center border p-4 rounded-lg md:border-none md:p-0 bg-primary/5">
+                                      <Input 
+                                        autoFocus
+                                        value={newItemDescription}
+                                        onChange={(e) => setNewItemDescription(e.target.value)}
+                                        onBlur={handleConfirmAddItem}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleConfirmAddItem()}
+                                        className="h-9 text-sm border-primary/30"
+                                        placeholder="Enter service description..."
+                                      />
+                                      <div className="grid grid-cols-2 md:contents gap-3">
+                                        <Input value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} className="h-9 text-sm" placeholder="unit" />
+                                        <Input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(Number(e.target.value))} className="h-9 text-sm" placeholder="0.00" />
+                                      </div>
+                                      <div className="flex justify-center md:justify-end">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setActiveAddingCategory(null)}>
+                                          <X className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="w-full border border-dashed text-muted-foreground h-12 md:h-10 hover:bg-background/80 hover:text-primary transition-colors mt-2" 
+                                      onClick={() => {
+                                        setActiveAddingCategory(groupKey);
+                                        setNewItemDescription("");
+                                        setNewItemUnit("ea");
+                                        setNewItemPrice(0);
+                                      }}
+                                    >
+                                      <Plus className="w-4 h-4 mr-2" /> Add Custom Item
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
@@ -497,40 +526,6 @@ export default function TemplatesPage() {
           </div>
         </TabsContent>
       </Tabs>
-
-      <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
-          <DialogHeader><DialogTitle>Add Custom Item to Library</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Description (Required)</Label>
-              <Input 
-                placeholder="e.g. Premium Hardware Upgrade" 
-                value={newItemDescription} 
-                onChange={(e) => setNewItemDescription(e.target.value)} 
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Standard Unit</Label>
-                <Input value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)} placeholder="ea" />
-              </div>
-              <div className="space-y-2">
-                <Label>Standard Price</Label>
-                <Input type="number" value={newItemPrice} onChange={(e) => setNewItemPrice(Number(e.target.value))} placeholder="0.00" />
-              </div>
-            </div>
-            <div className="pt-2">
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Category</Label>
-              <p className="text-sm font-medium text-primary">{newItemCategory}</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddItemDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleConfirmAddItem} disabled={!newItemDescription.trim()}>Add to Library</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
