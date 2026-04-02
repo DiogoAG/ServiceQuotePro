@@ -34,7 +34,7 @@ export default function QuotesListPage() {
   }, [db, user]);
 
   const { data: quotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
-  const { data: clients } = useCollection<Client>(clientsRef);
+  const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
 
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
 
@@ -49,7 +49,7 @@ export default function QuotesListPage() {
     setQuoteToDelete(null);
   };
 
-  if (quotesLoading) {
+  if (quotesLoading || clientsLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

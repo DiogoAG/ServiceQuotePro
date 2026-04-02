@@ -9,6 +9,7 @@ import { Plus, FileText, Users, DollarSign, Clock, ArrowUpRight, History, Loader
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Quote, Client } from "@/lib/types";
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -27,8 +28,8 @@ export default function DashboardPage() {
     );
   }, [db, user]);
 
-  const { data: quotes, isLoading: quotesLoading } = useCollection(quotesRef);
-  const { data: clients, isLoading: clientsLoading } = useCollection(clientsRef);
+  const { data: quotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
+  const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
 
   const recentQuotes = quotes?.slice(0, 5) || [];
   
