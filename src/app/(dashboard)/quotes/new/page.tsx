@@ -9,6 +9,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { Loader2 } from "lucide-react";
+
+// Default profile for new users who haven't configured settings yet
+const DEFAULT_PROFILE: BusinessProfile = {
+  businessName: "My Service Business",
+  licenseNumber: "Pending Configuration",
+  defaultTaxRate: 0,
+  defaultLaborRate: 75,
+  offeredServices: ["General Contracting"],
+  quoteTerms: "Payment is due within 15 days of completion. All materials guaranteed to be as specified."
+};
 
 function NewQuoteContent() {
   const router = useRouter();
@@ -37,8 +48,8 @@ function NewQuoteContent() {
     return collection(db, "contractorProfiles", user.uid, "templates");
   }, [db, user]);
 
-  const { data: profile } = useDoc<BusinessProfile>(profileRef);
-  const { data: clients } = useCollection<Client>(clientsRef);
+  const { data: profile, isLoading: profileLoading } = useDoc<BusinessProfile>(profileRef);
+  const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
   const { data: quotes } = useCollection<Quote>(quotesRef);
   const { data: userTemplates } = useCollection<QuoteTemplate>(templatesRef);
 
@@ -88,7 +99,19 @@ function NewQuoteContent() {
     router.push(`/quotes/${newQuote.id}`);
   };
 
-  if (!profile || !clients) return <div className="p-8 text-center">Initializing builder...</div>;
+  // If we are actually loading from Firestore, show a spinner
+  if (profileLoading || clientsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <p className="text-muted-foreground font-medium animate-pulse">Preparing your workspace...</p>
+      </div>
+    );
+  }
+
+  // Use the fetched profile or the fallback default if it doesn't exist
+  const activeProfile = profile || DEFAULT_PROFILE;
+  const activeClients = clients || [];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -103,8 +126,8 @@ function NewQuoteContent() {
       
       <QuoteBuilder 
         key={duplicateId || 'new'}
-        initialClients={clients} 
-        initialProfile={profile} 
+        initialClients={activeClients} 
+        initialProfile={activeProfile} 
         onSave={handleSaveQuote}
         preSelectedClientId={preSelectedClientId || undefined}
         duplicateSource={duplicateSource}
@@ -115,7 +138,11 @@ function NewQuoteContent() {
 
 export default function NewQuotePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading builder...</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    }>
       <NewQuoteContent />
     </Suspense>
   );
