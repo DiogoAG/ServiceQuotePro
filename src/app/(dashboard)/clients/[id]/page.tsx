@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState, use } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Client, Quote } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,9 +17,9 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@
 import { collection, doc, query, where, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
-export default function ClientDetailsPage(props: { params: Promise<{ id: string }> }) {
-  const params = use(props.params);
-  const id = params.id;
+export default function ClientDetailsPage() {
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();

@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState, Suspense, use } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { QuoteBuilder } from "@/components/quote-builder";
 import { getHardcodedTemplates } from "@/lib/store";
 import { Client, BusinessProfile, Quote, QuoteTemplate } from "@/lib/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Loader2 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 
 // Default profile for new users who haven't configured settings yet
 const DEFAULT_PROFILE: BusinessProfile = {
@@ -22,15 +21,12 @@ const DEFAULT_PROFILE: BusinessProfile = {
   quoteTerms: "Payment is due within 15 days of completion. All materials guaranteed to be as specified."
 };
 
-function NewQuoteContent(props: { searchParamsPromise: Promise<any> }) {
+function NewQuoteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
-
-  // Unwrap searchParams promise to satisfy Next 15 suspension requirements if needed
-  use(props.searchParamsPromise);
 
   const profileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -140,14 +136,14 @@ function NewQuoteContent(props: { searchParamsPromise: Promise<any> }) {
   );
 }
 
-export default function NewQuotePage(props: { searchParams: Promise<any> }) {
+export default function NewQuotePage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
       </div>
     }>
-      <NewQuoteContent searchParamsPromise={props.searchParams} />
+      <NewQuoteContent />
     </Suspense>
   );
 }

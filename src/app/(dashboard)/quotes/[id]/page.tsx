@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useState } from "react";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,9 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 
-export default function QuoteSummaryPage(props: { params: Promise<{ id: string }> }) {
-  const params = use(props.params);
-  const id = params.id;
+export default function QuoteSummaryPage() {
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
