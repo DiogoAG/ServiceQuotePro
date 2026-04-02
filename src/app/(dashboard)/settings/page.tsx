@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -104,7 +103,7 @@ export default function SettingsPage() {
           <CardContent className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Business Name</Label>
-              <Input value={form.businessName} onChange={(e) => setForm({...form, businessName: e.target.value})} placeholder="e.g. Pro Painting LLC" />
+              <Input value={form.businessName} onChange={(e) => setForm({...form, businessName: e.target.value})} placeholder="e.g. Pro Contractor Services" />
             </div>
             <div className="space-y-2">
               <Label>Contractor License</Label>
