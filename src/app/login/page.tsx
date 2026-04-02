@@ -81,10 +81,23 @@ export default function LoginPage() {
     initiateGoogleSignIn(auth)
       .catch((error: any) => {
         setIsLoading(false);
+        
         // Handle user cancellation gracefully
         if (error.code === 'auth/popup-closed-by-user') {
           return;
         }
+
+        // Handle unauthorized domain specifically
+        if (error.code === 'auth/unauthorized-domain') {
+          const domain = window.location.hostname;
+          toast({
+            title: "Domain Not Authorized",
+            description: `Please add '${domain}' to your Authorized Domains in the Firebase Console (Authentication > Settings).`,
+            variant: "destructive"
+          });
+          return;
+        }
+
         toast({
           title: "Google Sign In Failed",
           description: error.message,
