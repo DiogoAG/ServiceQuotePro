@@ -7,7 +7,7 @@ import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { getQuotes, getClients, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Share2, ChevronLeft, Building2, User } from "lucide-react";
+import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -123,7 +123,6 @@ export default function QuoteSummaryPage() {
               <div className="space-y-1 text-xs sm:text-base">
                 <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Date:</span> {new Date(quote.date).toLocaleDateString()}</p>
                 <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Quote #:</span> {quote.id.slice(0, 8).toUpperCase()}</p>
-                <p className="sm:hidden text-muted-foreground pt-1">License: {profile.licenseNumber}</p>
               </div>
             </div>
           </div>
@@ -136,7 +135,19 @@ export default function QuoteSummaryPage() {
               </div>
               <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
-                <p className="text-xs sm:text-sm">License: {profile.licenseNumber}</p>
+                {profile.address && (
+                  <p className="flex items-start gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    {profile.address}
+                  </p>
+                )}
+                {profile.phone && (
+                  <p className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 shrink-0" />
+                    {profile.phone}
+                  </p>
+                )}
+                <p className="text-xs opacity-70">License: {profile.licenseNumber}</p>
               </div>
             </div>
             <div className="space-y-3 sm:space-y-4">
@@ -145,9 +156,9 @@ export default function QuoteSummaryPage() {
               </div>
               <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{client.name}</p>
-                <p className="text-xs sm:text-sm">{client.address}</p>
-                {client.phone && <p className="text-xs sm:text-sm">{client.phone}</p>}
-                <p className="text-xs sm:text-sm">{client.email}</p>
+                <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {client.address}</p>
+                {client.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 shrink-0" /> {client.phone}</p>}
+                <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 shrink-0" /> {client.email}</p>
               </div>
             </div>
           </div>

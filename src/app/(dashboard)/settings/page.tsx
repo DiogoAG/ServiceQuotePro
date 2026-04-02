@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Building, Palette, FileText, Loader2, Upload, X } from "lucide-react";
+import { Save, Building, Palette, FileText, Loader2, Upload, X, Phone, MapPin } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function SettingsPage() {
@@ -27,6 +28,8 @@ export default function SettingsPage() {
   const [form, setForm] = useState({
     businessName: "",
     licenseNumber: "",
+    address: "",
+    phone: "",
     logoUrl: "",
     defaultTaxRate: 0,
     defaultLaborRate: 0,
@@ -38,6 +41,8 @@ export default function SettingsPage() {
       setForm({
         businessName: profile.businessName || "",
         licenseNumber: profile.licenseNumber || "",
+        address: profile.address || "",
+        phone: profile.phone || "",
         logoUrl: profile.logoUrl || "",
         defaultTaxRate: profile.defaultTaxRate || 0,
         defaultLaborRate: profile.defaultLaborRate || 0,
@@ -127,6 +132,32 @@ export default function SettingsPage() {
                   onChange={(e) => setForm({...form, licenseNumber: e.target.value})}
                   placeholder="e.g. LIC-12345678"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Business Phone</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="phone" 
+                    value={form.phone} 
+                    onChange={(e) => setForm({...form, phone: e.target.value})}
+                    placeholder="e.g. 555-0100"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Business Address</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="address" 
+                    value={form.address} 
+                    onChange={(e) => setForm({...form, address: e.target.value})}
+                    placeholder="e.g. 123 Main St, Suite 400"
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
