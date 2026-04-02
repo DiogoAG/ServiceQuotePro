@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X, Loader2, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X, Loader2, ChevronsDownUp, ChevronsUpDown, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -61,8 +61,21 @@ export default function TemplatesPage() {
 
   const hardcodedItems = getHardcodedItems();
 
+  // Merge logic: Prioritize user-specific custom items (overrides) over hardcoded defaults
   const allItems = useMemo(() => {
-    return [...hardcodedItems, ...(customItems || [])];
+    const customMap = new Map((customItems || []).map(i => [i.id, i]));
+    
+    // Get all hardcoded items, but use the custom override if it exists
+    const mergedHardcoded = hardcodedItems.map(h => {
+      const custom = customMap.get(h.id);
+      return custom ? { ...h, ...custom, isHardCoded: false, isOverride: true } : h;
+    });
+
+    // Add entirely new custom items (those without an 'h-' ID or not in hardcoded list)
+    const hardcodedIds = new Set(hardcodedItems.map(h => h.id));
+    const newCustom = (customItems || []).filter(c => !hardcodedIds.has(c.id));
+
+    return [...mergedHardcoded, ...newCustom];
   }, [customItems]);
 
   useEffect(() => {
@@ -88,17 +101,31 @@ export default function TemplatesPage() {
     setDocumentNonBlocking(docRef, newItem, { merge: true });
   };
 
-  const handleUpdateCommonItem = (id: string, field: keyof CommonItem, value: any) => {
+  const handleUpdateCommonItem = (item: CommonItem, field: keyof CommonItem, value: any) => {
     if (!user) return;
-    const docRef = doc(db, "contractorProfiles", user.uid, "customItems", id);
-    setDocumentNonBlocking(docRef, { [field]: value }, { merge: true });
+    const docRef = doc(db, "contractorProfiles", user.uid, "customItems", item.id);
+    
+    // If it's a hardcoded item being edited for the first time, we need to save the full object as an override
+    const isEditingOriginalHardcoded = item.id.startsWith('h-') && !customItems?.find(ci => ci.id === item.id);
+    
+    if (isEditingOriginalHardcoded) {
+      const fullData = { ...item, [field]: value, isHardCoded: false };
+      setDocumentNonBlocking(docRef, fullData, { merge: true });
+    } else {
+      setDocumentNonBlocking(docRef, { [field]: value }, { merge: true });
+    }
   };
 
-  const handleRemoveCommonItem = (id: string) => {
+  const handleRemoveCommonItem = (item: CommonItem) => {
     if (!user) return;
-    const docRef = doc(db, "contractorProfiles", user.uid, "customItems", id);
+    const docRef = doc(db, "contractorProfiles", user.uid, "customItems", item.id);
     deleteDocumentNonBlocking(docRef);
-    toast({ title: "Item Removed" });
+    
+    if (item.id.startsWith('h-')) {
+      toast({ title: "Reset to Default", description: "The item has been restored to its standard rate." });
+    } else {
+      toast({ title: "Item Removed" });
+    }
   };
 
   const handleRemoveTemplate = (id: string) => {
@@ -294,7 +321,7 @@ export default function TemplatesPage() {
                                     <div className="relative">
                                       <Input 
                                         value={item.description} 
-                                        onChange={(e) => handleUpdateCommonItem(item.id, 'description', e.target.value)} 
+                                        onChange={(e) => handleUpdateCommonItem(item, 'description', e.target.value)} 
                                         className={cn("h-9 text-sm bg-background/50 border-none focus-visible:ring-1", item.isHardCoded && "opacity-80 font-medium cursor-not-allowed")}
                                         readOnly={item.isHardCoded}
                                         placeholder="New item description..."
@@ -304,20 +331,26 @@ export default function TemplatesPage() {
                                     <div className="grid grid-cols-2 md:contents gap-3">
                                       <div className="space-y-1 md:space-y-0">
                                         <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Unit</Label>
-                                        <Input value={item.unit || ""} onChange={(e) => handleUpdateCommonItem(item.id, 'unit', e.target.value)} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1" placeholder="unit" readOnly={item.isHardCoded} />
+                                        <Input value={item.unit || ""} onChange={(e) => handleUpdateCommonItem(item, 'unit', e.target.value)} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1" placeholder="unit" />
                                       </div>
                                       <div className="space-y-1 md:space-y-0">
                                         <Label className="md:hidden text-[9px] uppercase text-muted-foreground">Price</Label>
-                                        <Input type="number" step="1.0" value={item.defaultUnitPrice} onChange={(e) => handleUpdateCommonItem(item.id, 'defaultUnitPrice', Number(e.target.value))} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1 px-2" placeholder="0.00" readOnly={item.isHardCoded} />
+                                        <Input type="number" step="0.01" value={item.defaultUnitPrice} onChange={(e) => handleUpdateCommonItem(item, 'defaultUnitPrice', Number(e.target.value))} className="h-9 text-sm bg-background/50 border-none focus-visible:ring-1 px-2" placeholder="0.00" />
                                       </div>
                                     </div>
                                     <div className="flex justify-center md:justify-end">
-                                      {!item.isHardCoded ? (
-                                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveCommonItem(item.id)}>
+                                      {item.id.startsWith('h-') ? (
+                                        customItems?.find(ci => ci.id === item.id) ? (
+                                          <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8 hover:bg-muted" title="Reset to standard price" onClick={() => handleRemoveCommonItem(item)}>
+                                            <RotateCcw className="w-4 h-4" />
+                                          </Button>
+                                        ) : (
+                                          <div className="w-8 h-8"></div>
+                                        )
+                                      ) : (
+                                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveCommonItem(item)}>
                                           <Trash2 className="w-4 h-4" />
                                         </Button>
-                                      ) : (
-                                        <div className="hidden md:flex justify-center"><div className="w-8 h-8"></div></div>
                                       )}
                                     </div>
                                   </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -43,15 +42,26 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const { data: customItems } = useCollection<CommonItem>(customItemsRef);
   const { data: userTemplates } = useCollection<QuoteTemplate>(templatesRef);
 
+  // Merge logic for library items (same as TemplatesPage)
   const allLibraryItems = useMemo(() => {
-    return [...getHardcodedItems(), ...(customItems || [])];
+    const hardcodedItems = getHardcodedItems();
+    const customMap = new Map((customItems || []).map(i => [i.id, i]));
+    
+    const mergedHardcoded = hardcodedItems.map(h => {
+      const custom = customMap.get(h.id);
+      return custom ? { ...h, ...custom, isHardCoded: false } : h;
+    });
+
+    const hardcodedIds = new Set(hardcodedItems.map(h => h.id));
+    const newCustom = (customItems || []).filter(c => !hardcodedIds.has(c.id));
+
+    return [...mergedHardcoded, ...newCustom];
   }, [customItems]);
 
   const allAvailableTemplates = useMemo(() => {
     return [...getHardcodedTemplates(), ...(userTemplates || [])];
   }, [userTemplates]);
 
-  // Use the prop clients but allow local additions for immediate feedback
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
   
