@@ -610,7 +610,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="bg-muted/30 py-3"><CardTitle className="text-sm font-bold uppercase tracking-wider">Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="hidden md:grid grid-cols-[30px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 px-2 text-[10px] font-bold uppercase text-muted-foreground border-b pb-2">
+                <div className="hidden md:grid grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 px-2 text-[10px] font-bold uppercase text-muted-foreground border-b pb-2">
                   <div></div><div>Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-2">
@@ -618,7 +618,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <div 
                       key={item.id} 
                       className={cn(
-                        "grid grid-cols-1 md:grid-cols-[30px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity",
+                        "grid grid-cols-1 md:grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity",
                         draggedItemIndex === idx ? "opacity-40" : "opacity-100"
                       )}
                       draggable
@@ -627,7 +627,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       onDrop={(e) => handleDrop(e, idx)}
                     >
                       <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary transition-colors">
-                        <GripVertical className="w-4 h-4" />
+                        <GripVertical className="w-3.5 h-3.5" />
                       </div>
                       <div className="relative">
                         <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="h-8 text-xs pr-8" placeholder="Service description..." />
