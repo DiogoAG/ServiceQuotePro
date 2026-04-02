@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X, Loader2, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -169,6 +168,14 @@ export default function TemplatesPage() {
     });
   }, [profile]);
 
+  const handleExpandAll = () => {
+    setExpandedCategories([...SERVICE_CATEGORIES]);
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedCategories([]);
+  };
+
   if (itemsLoading || templatesLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
 
   return (
@@ -198,14 +205,36 @@ export default function TemplatesPage() {
         <TabsContent value="common-items" className="space-y-6">
           <Card className="border-none shadow-sm">
             <CardHeader className="pb-4 px-4 sm:px-6">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search standard items..." 
-                  value={searchItem} 
-                  onChange={(e) => setSearchItem(e.target.value)} 
-                  className="pl-10 h-11 bg-muted/30 border-none" 
-                />
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div className="relative w-full md:max-w-md">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search standard items..." 
+                    value={searchItem} 
+                    onChange={(e) => setSearchItem(e.target.value)} 
+                    className="pl-10 h-11 bg-muted/30 border-none" 
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs gap-2" 
+                    onClick={handleExpandAll}
+                  >
+                    <ChevronsUpDown className="w-3.5 h-3.5" />
+                    Expand All
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs gap-2" 
+                    onClick={handleCollapseAll}
+                  >
+                    <ChevronsDownUp className="w-3.5 h-3.5" />
+                    Collapse All
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="px-4 sm:px-6">
