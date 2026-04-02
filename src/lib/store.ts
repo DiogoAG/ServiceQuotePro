@@ -188,7 +188,7 @@ export const getHardcodedItems = (): CommonItem[] => [
 export const getHardcodedTemplates = (): QuoteTemplate[] => [
   {
     id: 't-paint-1',
-    name: 'Standard Living Room Refresh',
+    name: 'Living Room Refresh',
     serviceCategory: 'Painting',
     isHardCoded: true,
     items: [
@@ -198,6 +198,115 @@ export const getHardcodedTemplates = (): QuoteTemplate[] => [
       { description: 'Drywall Repair', unit: 'hr', quantity: 2, unitPrice: 85, total: 170 }
     ],
     scopeDescription: 'Full preparation and painting of living room walls and ceiling.'
+  },
+  {
+    id: 't-gc-1',
+    name: 'Kitchen Remodel Base',
+    serviceCategory: 'General Contracting',
+    isHardCoded: true,
+    items: [
+      { description: 'Project Management', unit: 'hr', quantity: 20, unitPrice: 125, total: 2500 },
+      { description: 'Light Demolition', unit: 'hr', quantity: 16, unitPrice: 85, total: 1360 },
+      { description: 'Drywall Hanging & Taping', unit: 'sq ft', quantity: 300, unitPrice: 3.25, total: 975 },
+      { description: 'Flooring Installation', unit: 'sq ft', quantity: 150, unitPrice: 5.5, total: 825 }
+    ],
+    scopeDescription: 'Baseline scope for a residential kitchen remodel including demolition, drywall, and flooring.'
+  },
+  {
+    id: 't-elec-1',
+    name: '200A Service Upgrade',
+    serviceCategory: 'Electrical',
+    isHardCoded: true,
+    items: [
+      { description: 'Main Service Panel Installation', unit: 'ea', quantity: 1, unitPrice: 2800, total: 2800 },
+      { description: 'Full System Safety Inspection', unit: 'ea', quantity: 1, unitPrice: 250, total: 250 },
+      { description: 'Electrical Troubleshooting', unit: 'hr', quantity: 2, unitPrice: 110, total: 220 }
+    ],
+    scopeDescription: 'Upgrade of existing residential electrical service to 200 Amps with new panel and safety inspection.'
+  },
+  {
+    id: 't-plum-1',
+    name: 'Whole House Repipe',
+    serviceCategory: 'Plumbing',
+    isHardCoded: true,
+    items: [
+      { description: 'Whole House Repipe', unit: 'ea', quantity: 1, unitPrice: 8500, total: 8500 },
+      { description: 'Main Water Line Installation', unit: 'ea', quantity: 1, unitPrice: 2500, total: 2500 },
+      { description: 'Leak Detection & Repair', unit: 'hr', quantity: 2, unitPrice: 125, total: 250 }
+    ],
+    scopeDescription: 'Full replacement of existing water supply piping throughout the residence.'
+  },
+  {
+    id: 't-hvac-1',
+    name: 'Full HVAC System Replacement',
+    serviceCategory: 'HVAC',
+    isHardCoded: true,
+    items: [
+      { description: 'AC Condenser Unit Installation', unit: 'ea', quantity: 1, unitPrice: 4200, total: 4200 },
+      { description: 'Gas Furnace Installation', unit: 'ea', quantity: 1, unitPrice: 4500, total: 4500 },
+      { description: 'Smart Thermostat Installation', unit: 'ea', quantity: 1, unitPrice: 150, total: 150 },
+      { description: 'Annual System Diagnostic', unit: 'ea', quantity: 1, unitPrice: 185, total: 185 }
+    ],
+    scopeDescription: 'Replacement of split-system AC condenser and furnace, including controls.'
+  },
+  {
+    id: 't-land-1',
+    name: 'Standard Paver Patio',
+    serviceCategory: 'Landscaping',
+    isHardCoded: true,
+    items: [
+      { description: 'Paver Patio Construction', unit: 'sq ft', quantity: 200, unitPrice: 25, total: 5000 },
+      { description: 'Final Grading & Soil Preparation', unit: 'sq ft', quantity: 300, unitPrice: 1.5, total: 450 },
+      { description: 'Landscape Lighting (per fixture)', unit: 'ea', quantity: 4, unitPrice: 150, total: 600 }
+    ],
+    scopeDescription: 'Excavation, grading, and installation of 200 sq ft paver patio with accent lighting.'
+  },
+  {
+    id: 't-roof-1',
+    name: 'Asphalt Shingle Roof',
+    serviceCategory: 'Roofing',
+    isHardCoded: true,
+    items: [
+      { description: 'Asphalt Shingle Roof (New)', unit: 'sq', quantity: 25, unitPrice: 475, total: 11875 },
+      { description: 'Full Roof Tear-Off Fee', unit: 'sq', quantity: 25, unitPrice: 150, total: 3750 },
+      { description: 'Ridge Vent Installation', unit: 'linear ft', quantity: 40, unitPrice: 18, total: 720 }
+    ],
+    scopeDescription: 'Complete roof replacement including removal of existing shingles and installation of new architectural shingles.'
+  },
+  {
+    id: 't-carp-1',
+    name: 'Custom Built-in Unit',
+    serviceCategory: 'Carpentry',
+    isHardCoded: true,
+    items: [
+      { description: 'Custom Built-In Unit', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
+      { description: 'Finish Carpentry', unit: 'hr', quantity: 8, unitPrice: 85, total: 680 },
+      { description: 'Crown Molding Installation', unit: 'linear ft', quantity: 20, unitPrice: 12.5, total: 250 }
+    ],
+    scopeDescription: 'Design and construction of custom built-in cabinetry with finish trim.'
+  },
+  {
+    id: 't-clean-1',
+    name: 'Deep Clean / Move-Out',
+    serviceCategory: 'Cleaning',
+    isHardCoded: true,
+    items: [
+      { description: 'Move-In / Move-Out Deep Clean', unit: 'sq ft', quantity: 2000, unitPrice: 0.45, total: 900 },
+      { description: 'Carpet Steam Cleaning', unit: 'room', quantity: 3, unitPrice: 75, total: 225 },
+      { description: 'Professional Window Cleaning', unit: 'pane', quantity: 10, unitPrice: 15, total: 150 }
+    ],
+    scopeDescription: 'Top-to-bottom deep sanitation service for a vacant residence.'
+  },
+  {
+    id: 't-other-1',
+    name: 'Handyman Service Call',
+    serviceCategory: 'Other',
+    isHardCoded: true,
+    items: [
+      { description: 'General Handyman Labor', unit: 'hr', quantity: 4, unitPrice: 75, total: 300 },
+      { description: 'Furniture Assembly', unit: 'hr', quantity: 2, unitPrice: 65, total: 130 }
+    ],
+    scopeDescription: 'Half-day handyman visit for miscellaneous household repairs and assembly.'
   }
 ];
 
