@@ -310,8 +310,24 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Service Category</Label>
                 <Select value={serviceCategory} onValueChange={setServiceCategory}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{SERVICE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="flex items-center gap-2">
+                    <SelectValue />
+                    {initialProfile.offeredServices?.includes(serviceCategory) && (
+                      <Star className="w-3.5 h-3.5 fill-primary text-primary" />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c}>
+                        <div className="flex items-center gap-2">
+                          {c}
+                          {initialProfile.offeredServices?.includes(c) && (
+                            <Star className="w-3 h-3 fill-primary text-primary" />
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </CardContent>
