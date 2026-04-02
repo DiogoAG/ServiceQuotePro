@@ -1,9 +1,10 @@
-
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 import { 
   LayoutDashboard, 
   FileText, 
@@ -37,7 +38,14 @@ interface DashboardNavProps {
 
 export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push("/login");
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -130,7 +138,11 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
             </Button>
           )}
           
-          <Button variant="ghost" className={cn("w-full justify-start gap-3 text-muted-foreground hover:text-destructive", isFolded ? "justify-center px-0" : "")}>
+          <Button 
+            variant="ghost" 
+            className={cn("w-full justify-start gap-3 text-muted-foreground hover:text-destructive", isFolded ? "justify-center px-0" : "")}
+            onClick={handleSignOut}
+          >
             <LogOut className="w-5 h-5 shrink-0" />
             {!isFolded && <span>Sign Out</span>}
           </Button>

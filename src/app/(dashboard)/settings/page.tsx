@@ -1,68 +1,72 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
-import { BusinessProfile, SERVICE_CATEGORIES } from "@/lib/types";
-import { getBusinessProfile, saveBusinessProfile } from "@/lib/store";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Building, Briefcase, Palette, FileText } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Save, Building, Palette, FileText, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-
-// Helper to strictly truncate digits beyond 2 decimals as user types
-const truncateToTwoDecimals = (value: string) => {
-  if (!value) return "";
-  const parts = value.split('.');
-  if (parts.length > 1 && parts[1].length > 2) {
-    return `${parts[0]}.${parts[1].slice(0, 2)}`;
-  }
-  return value;
-};
-
-// Helper for rounding for final calculations
-const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const [profile, setProfile] = useState<BusinessProfile>({
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const profileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, "contractorProfiles", user.uid);
+  }, [db, user]);
+
+  const { data: profile, isLoading } = useDoc(profileRef);
+
+  const [form, setForm] = useState({
     businessName: "",
     licenseNumber: "",
     logoUrl: "",
     defaultTaxRate: 0,
     defaultLaborRate: 0,
-    offeredServices: [],
     quoteTerms: ""
   });
 
   useEffect(() => {
-    setProfile(getBusinessProfile());
-  }, []);
+    if (profile) {
+      setForm({
+        businessName: profile.businessName || "",
+        licenseNumber: profile.licenseNumber || "",
+        logoUrl: profile.logoUrl || "",
+        defaultTaxRate: profile.defaultTaxRate || 0,
+        defaultLaborRate: profile.defaultLaborRate || 0,
+        quoteTerms: profile.quoteTerms || ""
+      });
+    }
+  }, [profile]);
 
   const handleSave = () => {
-    const normalizedProfile = {
-      ...profile,
-      defaultTaxRate: roundToCent(profile.defaultTaxRate),
-      defaultLaborRate: roundToCent(profile.defaultLaborRate),
-      offeredServices: profile.offeredServices || []
+    if (!profileRef || !user) return;
+
+    const data = {
+      ...form,
+      id: user.uid,
+      updatedAt: new Date().toISOString(),
+      createdAt: profile?.createdAt || new Date().toISOString()
     };
-    saveBusinessProfile(normalizedProfile);
-    setProfile(normalizedProfile);
+
+    setDocumentNonBlocking(profileRef, data, { merge: true });
     toast({ title: "Profile Saved", description: "Your business settings have been updated." });
   };
 
-  const toggleService = (service: string) => {
-    setProfile(prev => {
-      const current = prev.offeredServices || [];
-      const updated = current.includes(service)
-        ? current.filter(s => s !== service)
-        : [...current, service];
-      return { ...prev, offeredServices: updated };
-    });
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -86,8 +90,8 @@ export default function SettingsPage() {
                 <Label htmlFor="bizName">Business Name</Label>
                 <Input 
                   id="bizName" 
-                  value={profile.businessName} 
-                  onChange={(e) => setProfile({...profile, businessName: e.target.value})}
+                  value={form.businessName} 
+                  onChange={(e) => setForm({...form, businessName: e.target.value})}
                   placeholder="e.g. Pro Painting LLC"
                 />
               </div>
@@ -95,8 +99,8 @@ export default function SettingsPage() {
                 <Label htmlFor="license">Contractor License Number</Label>
                 <Input 
                   id="license" 
-                  value={profile.licenseNumber} 
-                  onChange={(e) => setProfile({...profile, licenseNumber: e.target.value})}
+                  value={form.licenseNumber} 
+                  onChange={(e) => setForm({...form, licenseNumber: e.target.value})}
                   placeholder="e.g. LIC-12345678"
                 />
               </div>
@@ -118,18 +122,17 @@ export default function SettingsPage() {
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <Input 
                   id="logoUrl" 
-                  value={profile.logoUrl} 
-                  onChange={(e) => setProfile({...profile, logoUrl: e.target.value})}
+                  value={form.logoUrl} 
+                  onChange={(e) => setForm({...form, logoUrl: e.target.value})}
                   placeholder="https://example.com/logo.png"
                   className="flex-1"
                 />
-                {profile.logoUrl && (
+                {form.logoUrl && (
                   <div className="w-16 h-16 rounded-lg border bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                    <img src={profile.logoUrl} alt="Logo Preview" className="max-w-full max-h-full object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                    <img src={form.logoUrl} alt="Logo Preview" className="max-w-full max-h-full object-contain" />
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground">Enter a direct image link (PNG or JPG recommended).</p>
             </div>
           </CardContent>
         </Card>
@@ -147,73 +150,11 @@ export default function SettingsPage() {
               <Label htmlFor="quoteTerms">Terms & Conditions</Label>
               <Textarea 
                 id="quoteTerms" 
-                value={profile.quoteTerms} 
-                onChange={(e) => setProfile({...profile, quoteTerms: e.target.value})}
+                value={form.quoteTerms} 
+                onChange={(e) => setForm({...form, quoteTerms: e.target.value})}
                 placeholder="e.g. Valid for 30 days. Payment due upon completion..."
                 className="min-h-[120px] text-sm"
               />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" />
-              <CardTitle>Services Offered</CardTitle>
-            </div>
-            <CardDescription>Select the categories of services your business provides.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {SERVICE_CATEGORIES.map((category) => (
-                <div key={category} className="flex items-center space-x-3 p-3 rounded-lg border bg-card hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => toggleService(category)}>
-                  <Checkbox 
-                    id={`service-${category}`} 
-                    checked={(profile.offeredServices || []).includes(category)}
-                    onCheckedChange={() => toggleService(category)}
-                  />
-                  <label 
-                    htmlFor={`service-${category}`}
-                    className="text-sm font-medium leading-none cursor-pointer select-none"
-                  >
-                    {category}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Default Rates & Taxes</CardTitle>
-            <CardDescription>Set global defaults to speed up quote creation.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="taxRate">Default Tax Rate (%)</Label>
-                <Input 
-                  id="taxRate" 
-                  type="number"
-                  step="1.0"
-                  value={profile.defaultTaxRate} 
-                  onChange={(e) => setProfile({...profile, defaultTaxRate: truncateToTwoDecimals(e.target.value) as any})}
-                  className="px-3"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="laborRate">Default Labor Rate ($/hour)</Label>
-                <Input 
-                  id="laborRate" 
-                  type="number"
-                  step="1.0"
-                  value={profile.defaultLaborRate} 
-                  onChange={(e) => setProfile({...profile, defaultLaborRate: truncateToTwoDecimals(e.target.value) as any})}
-                  className="px-3"
-                />
-              </div>
             </div>
           </CardContent>
         </Card>
