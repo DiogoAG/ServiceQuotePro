@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -633,22 +632,41 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="border-b bg-muted/20 py-4 px-4 sm:px-6"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
               <div className="space-y-4">
-                <div className="hidden md:grid grid-cols-[1fr_70px_65px_65px_75px_90px_90px_40px] gap-2 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
-                  <div>Item Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price ($)</div><div className="text-right">Total</div><div></div>
+                {/* Desktop Header: Redesigned for compactness */}
+                <div className="hidden md:grid grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-1.5 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-tight border-b pb-2">
+                  <div>Item Description</div>
+                  <div className="text-center">Unit</div>
+                  <div className="text-center">L</div>
+                  <div className="text-center">W</div>
+                  <div className="text-center">Qty</div>
+                  <div className="text-center">Price ($)</div>
+                  <div className="text-right">Total</div>
+                  <div></div>
                 </div>
                 
-                <div className="space-y-4 md:space-y-3">
+                <div className="space-y-4 md:space-y-1.5">
                   {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_70px_65px_65px_75px_90px_90px_40px] gap-2 md:gap-2 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none">
+                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 md:gap-1.5 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none hover:bg-muted/10 transition-colors">
+                      {/* Mobile Label */}
                       <div className="md:hidden flex justify-between items-center mb-1">
                         <span className="text-[10px] font-black text-primary/40 uppercase tracking-widest">Line Item</span>
                         <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
                       </div>
 
+                      {/* Description: Maximized Width */}
                       <div className="relative">
-                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-10 h-10 md:h-9 text-sm rounded-lg" />
+                        <Input 
+                          value={item.description || ""} 
+                          onChange={(e) => updateItem(item.id, 'description', e.target.value)} 
+                          placeholder="Item description..." 
+                          className="pr-10 h-10 md:h-8 text-sm md:text-xs rounded-lg md:rounded-md bg-background" 
+                        />
                         <Popover>
-                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-1 top-1.5 md:top-1 h-7 w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="absolute right-1 top-1.5 md:top-0.5 h-7 w-7 md:h-7 md:w-7 text-muted-foreground hover:text-primary">
+                              <BookOpen className="w-3.5 h-3.5" />
+                            </Button>
+                          </PopoverTrigger>
                           <PopoverContent className="w-80 p-2" align="start">
                             <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
                             <ScrollArea className="h-72">
@@ -673,30 +691,31 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         </Popover>
                       </div>
 
-                      <div className="grid grid-cols-2 md:contents gap-2 md:gap-2">
+                      {/* Numeric Inputs: Compact Layout */}
+                      <div className="grid grid-cols-2 md:contents gap-2 md:gap-1.5">
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Unit</Label>
-                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-10 md:h-9 text-xs rounded-lg px-1" />
+                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-10 md:h-8 text-xs rounded-lg md:rounded-md px-1 bg-background text-center" />
                         </div>
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Length</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.length || ""} onChange={(e) => updateItem(item.id, 'length', e.target.value)} placeholder="L" />
+                          <Input type="number" step="1.0" className="h-10 md:h-8 text-xs px-1 rounded-lg md:rounded-md bg-background text-center" value={item.length || ""} onChange={(e) => updateItem(item.id, 'length', e.target.value)} placeholder="L" />
                         </div>
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Width</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.width || ""} onChange={(e) => updateItem(item.id, 'width', e.target.value)} placeholder="W" />
+                          <Input type="number" step="1.0" className="h-10 md:h-8 text-xs px-1 rounded-lg md:rounded-md bg-background text-center" value={item.width || ""} onChange={(e) => updateItem(item.id, 'width', e.target.value)} placeholder="W" />
                         </div>
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Qty</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
+                          <Input type="number" step="1.0" className="h-10 md:h-8 text-xs px-1 rounded-lg md:rounded-md bg-background text-center font-medium" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
                         </div>
                         <div className="space-y-1.5 md:space-y-0">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Price ($)</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
+                          <Input type="number" step="1.0" className="h-10 md:h-8 text-xs px-1 rounded-lg md:rounded-md bg-background text-center font-medium" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
                         </div>
                         <div className="flex flex-col md:block items-end justify-center bg-primary/5 md:bg-transparent p-2 md:p-0 rounded-lg">
                           <Label className="md:hidden text-[9px] uppercase font-bold text-primary mb-1">Total</Label>
-                          <div className="text-right font-black md:font-medium text-xs text-primary md:text-foreground overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          <div className="text-right font-black md:font-bold text-xs text-primary md:text-foreground overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>
                       </div>
 
@@ -704,8 +723,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     </div>
                   ))}
                 </div>
-                <div className="pt-4 flex justify-start border-t">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-12 sm:h-10 px-4 font-bold hover:bg-primary/5 w-full md:w-auto rounded-xl sm:rounded-md"><Plus className="w-5 h-5 sm:w-4 sm:h-4" /> Add Another Item</Button>
+                <div className="pt-2 flex justify-start border-t">
+                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-10 px-4 font-bold hover:bg-primary/5 w-full md:w-auto rounded-xl sm:rounded-md"><Plus className="w-5 h-5 sm:w-4 sm:h-4" /> Add Another Item</Button>
                 </div>
               </div>
 
@@ -713,7 +732,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
                   <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
                 </div>
-                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4" />
+                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4 shadow-inner" />
               </div>
             </CardContent>
           </Card>
