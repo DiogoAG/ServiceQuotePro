@@ -8,17 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Building, Palette, FileText, Upload, X, Phone, MapPin, CheckCircle2, Loader2 } from "lucide-react";
+import { Save, Building, Palette, FileText, Upload, X, Phone, MapPin, CheckCircle2, Loader2, ShieldCheck, Mail, Fingerprint } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { Badge } from "@/components/ui/badge";
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const db = useFirestore();
 
   const profileRef = useMemoFirebase(() => {
@@ -26,7 +27,7 @@ export default function SettingsPage() {
     return doc(db, "contractorProfiles", user.uid);
   }, [db, user]);
 
-  const { data: profile, isLoading } = useDoc<BusinessProfile>(profileRef);
+  const { data: profile, isLoading: isProfileLoading } = useDoc<BusinessProfile>(profileRef);
 
   const [form, setForm] = useState<BusinessProfile>({
     businessName: "",
@@ -84,16 +85,62 @@ export default function SettingsPage() {
     setForm({ ...form, offeredServices: updated });
   };
 
-  if (isLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
+  const getProviderLabel = () => {
+    if (!user) return "N/A";
+    const providerId = user.providerData[0]?.providerId;
+    if (providerId === 'google.com') return 'Google Account';
+    if (providerId === 'password') return 'Email & Password';
+    if (user.isAnonymous) return 'Guest Session';
+    return 'Standard Account';
+  };
+
+  if (isProfileLoading || isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Business Profile</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">Configure your business details and professional branding.</p>
       </div>
 
       <div className="grid gap-8">
+        {/* Account & Security Section */}
+        <Card className="border-primary/10 shadow-sm overflow-hidden">
+          <CardHeader className="bg-muted/30 pb-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              <CardTitle className="text-lg">Account & Security</CardTitle>
+            </div>
+            <CardDescription>Manage your authentication and login status.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="text-xs uppercase font-bold tracking-wider text-muted-foreground">Login Email</Label>
+              <div className="flex items-center gap-2 px-3 h-10 bg-muted/50 rounded-md border text-sm text-muted-foreground">
+                <Mail className="w-4 h-4" />
+                {user?.email || "No email associated (Guest)"}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase font-bold tracking-wider text-muted-foreground">Sign-In Method</Label>
+              <div className="flex items-center justify-between px-3 h-10 bg-muted/50 rounded-md border">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Fingerprint className="w-4 h-4" />
+                  {getProviderLabel()}
+                </div>
+                <Badge variant="secondary" className="text-[10px] uppercase font-bold h-5">Verified</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Business Information */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -122,6 +169,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Services Offered */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -152,6 +200,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Branding */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -188,6 +237,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Standard Quote Terms */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -206,8 +256,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} size="lg" className="gap-2 shadow-md">
+        <div className="flex justify-end pt-4">
+          <Button onClick={handleSave} size="lg" className="gap-2 shadow-lg shadow-primary/20">
             <Save className="w-5 h-5" /> Save All Settings
           </Button>
         </div>
