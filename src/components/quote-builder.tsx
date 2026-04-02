@@ -182,10 +182,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return;
     }
 
-    // Filter out completely empty items
     const filteredItems = items.filter(i => i.description.trim() !== "");
     
-    // Safety check: Don't allow saving an empty quote
     if (filteredItems.length === 0 && Number(laborHours) <= 0 && Number(materialCosts) <= 0) {
       toast({ title: "Empty Quote", description: "Please add at least one line item or specify labor/material costs.", variant: "destructive" });
       return;
@@ -226,6 +224,31 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       return 0;
     });
   }, [allLibraryItems, initialProfile]);
+
+  const handleCreateAndSelectClient = () => {
+    if (!newClientName || !newClientEmail || !user) return;
+    const id = uuidv4();
+    const newClient: Client = { 
+      id, 
+      name: newClientName, 
+      email: newClientEmail, 
+      phone: "", 
+      address: "" 
+    };
+
+    const clientRef = doc(db, "contractorProfiles", user.uid, "clients", id);
+    setDocumentNonBlocking(clientRef, {
+      ...newClient,
+      contractorId: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    setClients(prev => [...prev, newClient]);
+    setClientId(id);
+    setIsNewClientDialogOpen(false);
+    toast({ title: "Client Created & Pre-selected" });
+  };
 
   return (
     <div className="space-y-8">
@@ -491,15 +514,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewClientDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => {
-              if (!newClientName || !newClientEmail) return;
-              const id = uuidv4();
-              const newClient = { id, name: newClientName, email: newClientEmail, phone: "", address: "" };
-              setClients([...clients, newClient]);
-              setClientId(id);
-              setIsNewClientDialogOpen(false);
-              toast({ title: "Client Pre-selected" });
-            }}>Create & Pre-select</Button>
+            <Button onClick={handleCreateAndSelectClient}>Create & Pre-select</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

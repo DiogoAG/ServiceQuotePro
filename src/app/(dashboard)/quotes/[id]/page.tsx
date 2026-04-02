@@ -1,5 +1,7 @@
+
 "use client";
 
+import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useState } from "react";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
@@ -12,6 +14,15 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
+
+const DEFAULT_PROFILE: BusinessProfile = {
+  businessName: "My Service Business",
+  licenseNumber: "Pending Configuration",
+  defaultTaxRate: 0,
+  defaultLaborRate: 75,
+  offeredServices: ["General Contracting"],
+  quoteTerms: "Payment is due within 15 days of completion. All materials guaranteed to be as specified."
+};
 
 export default function QuoteSummaryPage() {
   const params = useParams();
@@ -32,7 +43,7 @@ export default function QuoteSummaryPage() {
   }, [db, user]);
 
   const { data: quote, isLoading: quoteLoading } = useDoc<Quote>(quoteRef);
-  const { data: profile, isLoading: profileLoading } = useDoc<BusinessProfile>(profileRef);
+  const { data: profileData, isLoading: profileLoading } = useDoc<BusinessProfile>(profileRef);
 
   const clientRef = useMemoFirebase(() => {
     if (!user || !quote?.clientId) return null;
@@ -40,6 +51,8 @@ export default function QuoteSummaryPage() {
   }, [db, user, quote?.clientId]);
 
   const { data: client, isLoading: clientLoading } = useDoc<Client>(clientRef);
+
+  const profile = profileData || DEFAULT_PROFILE;
 
   const handleShare = async () => {
     if (!quote || !profile) return;
@@ -64,13 +77,18 @@ export default function QuoteSummaryPage() {
   };
 
   if (quoteLoading || profileLoading || clientLoading) {
-    return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse">Generating professional view...</p>
+      </div>
+    );
   }
 
-  if (!quote || !profile || !client) {
+  if (!quote) {
     return (
       <div className="text-center py-20 space-y-4">
-        <p className="text-muted-foreground">Quote not found or error loading details.</p>
+        <p className="text-muted-foreground">Quote not found. It may have been deleted.</p>
         <Button onClick={() => router.push('/quotes')}>Back to Quotes</Button>
       </div>
     );
@@ -156,10 +174,10 @@ export default function QuoteSummaryPage() {
                 <User className="w-3.5 h-3.5" /> Prepared For
               </div>
               <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
-                <p className="font-bold text-black text-base">{client.name}</p>
-                <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5" /> {client.address}</p>
-                {client.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {client.phone}</p>}
-                <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {client.email}</p>
+                <p className="font-bold text-black text-base">{client?.name || 'Valued Client'}</p>
+                {client?.address && <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5" /> {client.address}</p>}
+                {client?.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {client.phone}</p>}
+                {client?.email && <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {client.email}</p>}
               </div>
             </div>
           </div>
@@ -197,7 +215,7 @@ export default function QuoteSummaryPage() {
                         <TableCell className="text-right font-medium text-sm">${Number(item.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     ))}
-                    {quote.laborHours > 0 && (
+                    {(Number(quote.laborHours) || 0) > 0 && (
                       <TableRow>
                         <TableCell className="text-sm py-3">Labor Hours</TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">hr</TableCell>
@@ -206,7 +224,7 @@ export default function QuoteSummaryPage() {
                         <TableCell className="text-right font-medium text-sm">${(Number(quote.laborHours) * Number(quote.laborRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                     )}
-                    {quote.materialCosts > 0 && (
+                    {(Number(quote.materialCosts) || 0) > 0 && (
                       <TableRow>
                         <TableCell colSpan={2} className="text-sm py-3">Materials & Equipment</TableCell>
                         <TableCell className="text-right text-sm">1</TableCell>
