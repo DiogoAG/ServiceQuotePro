@@ -70,7 +70,6 @@
     display: none !important;
   }
   
-  /* Hiding default browser headers/footers by zeroing margin */
   @page {
     margin: 0;
     size: auto;
@@ -78,25 +77,28 @@
 
   body {
     background: white !important;
-    padding: 1.5cm !important; /* Add professional padding back to the document */
+    padding: 1.5cm !important;
     margin: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     min-height: auto !important;
+    height: auto !important;
   }
 
-  /* Reset layout shifts for print */
-  .md\:ml-64, .md\:ml-20, main {
-    margin-left: 0 !important;
+  /* Reset all layout shifts and padding from the web view */
+  main, .md\:ml-64, .md\:ml-20, .transition-all {
+    margin: 0 !important;
     padding: 0 !important;
-  }
-  
-  .min-h-screen {
-    min-height: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    position: static !important;
+    transform: none !important;
+    transition: none !important;
+    overflow: visible !important;
   }
 
-  /* Hide potential browser added elements */
-  header, footer, nav, aside {
+  /* Hide potential browser added elements and nav/header wrappers */
+  header, footer, nav, aside, [role="navigation"] {
     display: none !important;
   }
 
@@ -106,6 +108,8 @@
     box-shadow: none !important;
     border-radius: 0 !important;
     background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Ensure text is black for maximum readability on paper */

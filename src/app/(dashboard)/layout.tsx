@@ -37,8 +37,9 @@ export default function DashboardLayout({
       </div>
       <main className={cn(
         "flex-1 transition-all duration-300 p-4 md:p-8 lg:p-12 overflow-y-auto",
+        "print:m-0 print:p-0 print:overflow-visible print:transition-none",
         isFolded ? "md:ml-20" : "md:ml-64",
-        "print:m-0 print:p-0 print:overflow-visible"
+        "print:ml-0"
       )}>
         {children}
       </main>

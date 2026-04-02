@@ -57,26 +57,16 @@ export default function QuoteSummaryPage() {
 
     const publicUrl = `${window.location.origin}/view/${user.uid}/${quote.id}`;
 
-    const shareData = {
-      title: `${profile.businessName} - Professional Quote`,
-      text: `View my quote for ${quote.serviceCategory} services. Total: $${quote.grandTotal.toLocaleString()}`,
-      url: publicUrl,
-    };
-
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(publicUrl);
-        toast({
-          title: "Public Link Copied",
-          description: "A client-viewable link has been copied to your clipboard.",
-        });
-      }
+      await navigator.clipboard.writeText(publicUrl);
+      toast({
+        title: "Link Copied",
+        description: "A client-viewable link has been copied to your clipboard.",
+      });
     } catch (err) {
       toast({
         title: "Share Failed",
-        description: "Could not share the link. Please copy the URL manually.",
+        description: "Could not copy the link. Please copy the URL manually.",
         variant: "destructive"
       });
     }
@@ -101,7 +91,7 @@ export default function QuoteSummaryPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 pb-24 sm:pb-12">
+    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 print:m-0 pb-24 sm:pb-12 print:pb-0">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 no-print px-1">
         <Button variant="ghost" className="gap-2 self-start sm:self-center h-9" onClick={() => router.back()}>
           <ChevronLeft className="w-4 h-4" />
