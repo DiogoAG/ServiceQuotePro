@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -18,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { ToastAction } from "@/components/ui/toast";
 
 const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
@@ -59,22 +61,23 @@ export default function TemplatesPage() {
   const [searchTemplate, setSearchTemplate] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
+  // Undo System State
+  const [lastDeleted, setLastDeleted] = useState<{
+    type: 'item' | 'template';
+    data: any;
+    path: string;
+  } | null>(null);
+
   const hardcodedItems = getHardcodedItems();
 
-  // Merge logic: Prioritize user-specific custom items (overrides) over hardcoded defaults
   const allItems = useMemo(() => {
     const customMap = new Map((customItems || []).map(i => [i.id, i]));
-    
-    // Get all hardcoded items, but use the custom override if it exists
     const mergedHardcoded = hardcodedItems.map(h => {
       const custom = customMap.get(h.id);
       return custom ? { ...h, ...custom, isHardCoded: false, isOverride: true } : h;
     });
-
-    // Add entirely new custom items (those without an 'h-' ID or not in hardcoded list)
     const hardcodedIds = new Set(hardcodedItems.map(h => h.id));
     const newCustom = (customItems || []).filter(c => !hardcodedIds.has(c.id));
-
     return [...mergedHardcoded, ...newCustom];
   }, [customItems]);
 
@@ -85,6 +88,27 @@ export default function TemplatesPage() {
       setExpandedCategories(SERVICE_CATEGORIES);
     }
   }, [profile]);
+
+  // Undo Function
+  const handleUndo = useCallback(() => {
+    if (!lastDeleted || !user) return;
+    const docRef = doc(db, lastDeleted.path);
+    setDocumentNonBlocking(docRef, lastDeleted.data, { merge: true });
+    setLastDeleted(null);
+    toast({ title: "Restored", description: "The deletion has been undone." });
+  }, [lastDeleted, user, db, toast]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo]);
 
   const handleAddCommonItem = (category: string) => {
     if (!user) return;
@@ -104,10 +128,7 @@ export default function TemplatesPage() {
   const handleUpdateCommonItem = (item: CommonItem, field: keyof CommonItem, value: any) => {
     if (!user) return;
     const docRef = doc(db, "contractorProfiles", user.uid, "customItems", item.id);
-    
-    // If it's a hardcoded item being edited for the first time, we need to save the full object as an override
     const isEditingOriginalHardcoded = item.id.startsWith('h-') && !customItems?.find(ci => ci.id === item.id);
-    
     if (isEditingOriginalHardcoded) {
       const fullData = { ...item, [field]: value, isHardCoded: false };
       setDocumentNonBlocking(docRef, fullData, { merge: true });
@@ -118,21 +139,29 @@ export default function TemplatesPage() {
 
   const handleRemoveCommonItem = (item: CommonItem) => {
     if (!user) return;
-    const docRef = doc(db, "contractorProfiles", user.uid, "customItems", item.id);
+    const path = `contractorProfiles/${user.uid}/customItems/${item.id}`;
+    setLastDeleted({ type: 'item', data: item, path });
+    const docRef = doc(db, path);
     deleteDocumentNonBlocking(docRef);
     
-    if (item.id.startsWith('h-')) {
-      toast({ title: "Reset to Default", description: "The item has been restored to its standard rate." });
-    } else {
-      toast({ title: "Item Removed" });
-    }
+    toast({ 
+      title: item.id.startsWith('h-') ? "Reset to Default" : "Item Removed", 
+      description: "Undo with Ctrl+Z",
+      action: <ToastAction altText="Undo" onClick={handleUndo}>Undo</ToastAction>
+    });
   };
 
-  const handleRemoveTemplate = (id: string) => {
+  const handleRemoveTemplate = (template: QuoteTemplate) => {
     if (!user) return;
-    const docRef = doc(db, "contractorProfiles", user.uid, "templates", id);
+    const path = `contractorProfiles/${user.uid}/templates/${template.id}`;
+    setLastDeleted({ type: 'template', data: template, path });
+    const docRef = doc(db, path);
     deleteDocumentNonBlocking(docRef);
-    toast({ title: "Template Removed" });
+    toast({ 
+      title: "Template Removed", 
+      description: "Undo with Ctrl+Z",
+      action: <ToastAction altText="Undo" onClick={handleUndo}>Undo</ToastAction>
+    });
   };
 
   const filteredItems = useMemo(() => {
@@ -147,18 +176,14 @@ export default function TemplatesPage() {
   const filteredTemplates = useMemo(() => {
     const search = searchTemplate.toLowerCase();
     const offered = profile?.offeredServices || [];
-    
     const all = [...getHardcodedTemplates(), ...(userTemplates || [])];
-
     const filtered = all.filter(t => {
       const matchesName = t.name.toLowerCase().includes(search);
       const matchesCategory = t.serviceCategory.toLowerCase().includes(search);
       const matchesScope = (t.scopeDescription || "").toLowerCase().includes(search);
       const matchesItems = t.items.some(item => (item.description || "").toLowerCase().includes(search));
-      
       return matchesName || matchesCategory || matchesScope || matchesItems;
     });
-
     return [...filtered].sort((a, b) => {
       const aIsOffered = offered.includes(a.serviceCategory);
       const bIsOffered = offered.includes(b.serviceCategory);
@@ -170,7 +195,6 @@ export default function TemplatesPage() {
 
   const getItemsForCategory = useCallback((category: string) => {
     const isSearching = searchItem.trim().length > 0;
-    
     if (SERVICE_SUBCATEGORIES[category]) {
       return SERVICE_SUBCATEGORIES[category].map(sub => ({
         subName: sub,
@@ -180,7 +204,6 @@ export default function TemplatesPage() {
         return true;
       });
     }
-    
     const items = filteredItems.filter(i => i.category === category);
     if (isSearching) {
       return items.length > 0 ? [{ subName: null, items }] : [];
@@ -199,13 +222,8 @@ export default function TemplatesPage() {
     });
   }, [profile]);
 
-  const handleExpandAll = () => {
-    setExpandedCategories([...SERVICE_CATEGORIES]);
-  };
-
-  const handleCollapseAll = () => {
-    setExpandedCategories([]);
-  };
+  const handleExpandAll = () => setExpandedCategories([...SERVICE_CATEGORIES]);
+  const handleCollapseAll = () => setExpandedCategories([]);
 
   if (itemsLoading || templatesLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
 
@@ -247,46 +265,24 @@ export default function TemplatesPage() {
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs gap-2" 
-                    onClick={handleExpandAll}
-                  >
-                    <ChevronsUpDown className="w-3.5 h-3.5" />
-                    Expand All
+                  <Button variant="ghost" size="sm" className="text-xs gap-2" onClick={handleExpandAll}>
+                    <ChevronsUpDown className="w-3.5 h-3.5" /> Expand All
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs gap-2" 
-                    onClick={handleCollapseAll}
-                  >
-                    <ChevronsDownUp className="w-3.5 h-3.5" />
-                    Collapse All
+                  <Button variant="ghost" size="sm" className="text-xs gap-2" onClick={handleCollapseAll}>
+                    <ChevronsDownUp className="w-3.5 h-3.5" /> Collapse All
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="px-4 sm:px-6">
-              <Accordion 
-                type="multiple" 
-                value={expandedCategories} 
-                onValueChange={setExpandedCategories}
-                className="space-y-4"
-              >
+              <Accordion type="multiple" value={expandedCategories} onValueChange={setExpandedCategories} className="space-y-4">
                 {sortedCategories.map(category => {
                   const groups = getItemsForCategory(category);
                   const isOffered = profile?.offeredServices?.includes(category);
                   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0);
-                  
                   if (totalItems === 0 && searchItem.trim().length > 0) return null;
-
                   return (
-                    <AccordionItem key={category} value={category} className={cn(
-                      "border rounded-xl overflow-hidden px-3 sm:px-4",
-                      isOffered ? "border-primary/20 bg-primary/5" : ""
-                    )}>
+                    <AccordionItem key={category} value={category} className={cn("border rounded-xl overflow-hidden px-3 sm:px-4", isOffered ? "border-primary/20 bg-primary/5" : "")}>
                       <AccordionTrigger className="hover:no-underline py-4 text-left">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                           <span className="font-bold text-sm sm:text-base">{category}</span>
@@ -304,20 +300,15 @@ export default function TemplatesPage() {
                                   <h4 className="text-sm font-bold tracking-tight text-foreground">{group.subName}</h4>
                                 </div>
                               )}
-                              
                               <div className="hidden md:grid grid-cols-[1fr_100px_120px_40px] gap-4 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
                                 <div>Service Description</div>
                                 <div className="pl-2">Unit</div>
                                 <div className="pl-2">Standard Price</div>
                                 <div></div>
                               </div>
-
                               <div className="space-y-4 md:space-y-2">
                                 {group.items.map((item) => (
                                   <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_100px_120px_40px] gap-3 md:gap-4 items-start md:items-center group relative border p-4 rounded-lg md:border-none md:p-0 bg-background/30 md:bg-transparent">
-                                    <div className="md:hidden flex justify-between items-center mb-1">
-                                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Item Detail</span>
-                                    </div>
                                     <div className="relative">
                                       <Input 
                                         value={item.description} 
@@ -344,9 +335,7 @@ export default function TemplatesPage() {
                                           <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8 hover:bg-muted" title="Reset to standard price" onClick={() => handleRemoveCommonItem(item)}>
                                             <RotateCcw className="w-4 h-4" />
                                           </Button>
-                                        ) : (
-                                          <div className="w-8 h-8"></div>
-                                        )
+                                        ) : <div className="w-8 h-8"></div>
                                       ) : (
                                         <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveCommonItem(item)}>
                                           <Trash2 className="w-4 h-4" />
@@ -355,12 +344,7 @@ export default function TemplatesPage() {
                                     </div>
                                   </div>
                                 ))}
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="w-full border border-dashed text-muted-foreground h-12 md:h-10 hover:bg-background/80 hover:text-primary transition-colors mt-2" 
-                                  onClick={() => handleAddCommonItem(group.subName ? `${category} - ${group.subName}` : category)}
-                                >
+                                <Button variant="ghost" size="sm" className="w-full border border-dashed text-muted-foreground h-12 md:h-10 hover:bg-background/80 hover:text-primary transition-colors mt-2" onClick={() => handleAddCommonItem(group.subName ? `${category} - ${group.subName}` : category)}>
                                   <Plus className="w-4 h-4 mr-2" /> Add Custom Item
                                 </Button>
                               </div>
@@ -381,24 +365,15 @@ export default function TemplatesPage() {
             <CardHeader className="pb-4 px-4 sm:px-6">
               <div className="relative w-full md:max-w-md">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search templates by name, category, or item..." 
-                  value={searchTemplate} 
-                  onChange={(e) => setSearchTemplate(e.target.value)} 
-                  className="pl-10 h-11 bg-muted/30 border-none" 
-                />
+                <Input placeholder="Search templates..." value={searchTemplate} onChange={(e) => setSearchTemplate(e.target.value)} className="pl-10 h-11 bg-muted/30 border-none" />
               </div>
             </CardHeader>
           </Card>
-          
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {filteredTemplates.map((template) => {
               const isOffered = profile?.offeredServices?.includes(template.serviceCategory);
               return (
-                <Card key={template.id} className={cn(
-                  "relative group overflow-hidden transition-all shadow-sm hover:shadow-md",
-                  isOffered ? "border-primary/20 hover:border-primary/40" : "border-primary/10 hover:border-primary/30"
-                )}>
+                <Card key={template.id} className={cn("relative group overflow-hidden transition-all shadow-sm hover:shadow-md", isOffered ? "border-primary/20 hover:border-primary/40" : "border-primary/10 hover:border-primary/30")}>
                   <CardHeader className={cn("p-5 pb-2", isOffered ? "bg-primary/5" : "bg-muted/20")}>
                     <div className="flex items-start justify-between">
                       <div>
@@ -406,15 +381,10 @@ export default function TemplatesPage() {
                           <h3 className="font-bold text-lg">{template.name}</h3>
                           {isOffered && <Star className="w-3.5 h-3.5 fill-primary text-primary" />}
                         </div>
-                        <Badge variant="outline" className={cn(
-                          "text-[9px] uppercase tracking-tighter bg-background gap-1",
-                          isOffered && "border-primary/30 text-primary font-bold"
-                        )}>
-                          {template.serviceCategory}
-                        </Badge>
+                        <Badge variant="outline" className={cn("text-[9px] uppercase tracking-tighter bg-background gap-1", isOffered && "border-primary/30 text-primary font-bold")}>{template.serviceCategory}</Badge>
                       </div>
                       {!template.isHardCoded && (
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveTemplate(template.id)}>
+                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveTemplate(template)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
@@ -428,9 +398,6 @@ export default function TemplatesPage() {
                           <span className="font-bold shrink-0">${item.unitPrice.toLocaleString()}</span>
                         </div>
                       ))}
-                      {template.items.length > 3 && (
-                        <p className="text-[10px] text-center text-muted-foreground pt-1">+ {template.items.length - 3} more items</p>
-                      )}
                     </div>
                     <Link href={`/quotes/new?duplicateId=${template.id}`} className="block">
                       <Button className={cn("w-full shadow-sm", isOffered ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")} variant={isOffered ? "default" : "secondary"}>Use This Template</Button>

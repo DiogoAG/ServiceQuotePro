@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2 } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { ToastAction } from "@/components/ui/toast";
 
 type QuoteBuilderProps = {
   initialClients: Client[];
@@ -63,6 +64,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
+
+  // Undo History State
+  const [history, setHistory] = useState<QuoteItem[][]>([]);
 
   // Initial Data Restoration Logic
   const draft = getDraftQuote();
@@ -130,9 +134,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   // Save draft on change
   useEffect(() => {
-    // We don't save a draft if we are in "Duplicate/Template" mode to avoid overwriting a generic draft
-    // unless the user starts making changes. For simplicity, we save unless duplicateSource is active 
-    // and unchanged, but the safest is to save current state.
     const currentDraft: QuoteDraft = {
       clientId,
       serviceCategory,
@@ -146,6 +147,27 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     };
     saveDraftQuote(currentDraft);
   }, [clientId, serviceCategory, items, laborHours, laborRate, materialCosts, taxRate, notes, scopeDescription]);
+
+  // Undo Logic
+  const undo = useCallback(() => {
+    if (history.length === 0) return;
+    const previous = history[history.length - 1];
+    setItems(previous);
+    setHistory(prev => prev.slice(0, -1));
+    toast({ title: "Action Undone", description: "The item list has been restored." });
+  }, [history, toast]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo]);
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
@@ -189,6 +211,21 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       }
       return item;
     }));
+  };
+
+  const deleteItem = (id: string) => {
+    if (items.length <= 1) return;
+    setHistory(prev => [...prev, items]);
+    setItems(prev => prev.filter(i => i.id !== id));
+    toast({
+      title: "Line Item Removed",
+      description: "Click undo or press Ctrl+Z to restore.",
+      action: (
+        <ToastAction altText="Undo" onClick={undo}>
+          Undo
+        </ToastAction>
+      ),
+    });
   };
 
   const applyLibraryItem = (rowId: string, libItem: CommonItem) => {
@@ -266,7 +303,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       notes
     };
     
-    // Success: Clear the draft
     clearDraftQuote();
     onSave(finalQuote);
   };
@@ -518,7 +554,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       <Input type="number" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} className="h-8 text-xs text-center px-1" />
                       <div className="text-right text-xs font-bold px-1">${item.total.toLocaleString()}</div>
                       <div className="flex justify-end">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setItems(items.length > 1 ? items.filter(i => i.id !== item.id) : items)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteItem(item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                       </div>
                     </div>
                   ))}
