@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X, Loader2, ChevronsDownUp, ChevronsUpDown, RotateCcw } from "lucide-react";
+import { Plus, Trash2, BookOpen, Copy, Search, ChevronRight, Lock, Undo2, ChevronDown, ChevronUp, Star, X, Loader2, ChevronsDownUp, ChevronsUpDown, RotateCcw, Redo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
@@ -31,6 +30,12 @@ const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance"],
   "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Exterior Carpentry", "Repair"],
   "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Waste Services"]
+};
+
+type HistoryAction = {
+  type: 'item' | 'template';
+  data: any;
+  path: string;
 };
 
 export default function TemplatesPage() {
@@ -61,12 +66,9 @@ export default function TemplatesPage() {
   const [searchTemplate, setSearchTemplate] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
-  // Undo System State
-  const [lastDeleted, setLastDeleted] = useState<{
-    type: 'item' | 'template';
-    data: any;
-    path: string;
-  } | null>(null);
+  // Undo/Redo System State
+  const [undoStack, setUndoStack] = useState<HistoryAction[]>([]);
+  const [redoStack, setRedoStack] = useState<HistoryAction[]>([]);
 
   const hardcodedItems = getHardcodedItems();
 
@@ -91,24 +93,59 @@ export default function TemplatesPage() {
 
   // Undo Function
   const handleUndo = useCallback(() => {
-    if (!lastDeleted || !user) return;
-    const docRef = doc(db, lastDeleted.path);
-    setDocumentNonBlocking(docRef, lastDeleted.data, { merge: true });
-    setLastDeleted(null);
-    toast({ title: "Restored", description: "The deletion has been undone." });
-  }, [lastDeleted, user, db, toast]);
+    if (undoStack.length === 0 || !user) return;
+    
+    const action = undoStack[undoStack.length - 1];
+    const docRef = doc(db, action.path);
+    
+    // Restore the data
+    setDocumentNonBlocking(docRef, action.data, { merge: true });
+    
+    // Move to redo stack
+    setRedoStack(prev => [...prev, action]);
+    setUndoStack(prev => prev.slice(0, -1));
+    
+    toast({ title: "Restored", description: "Deletion has been undone." });
+  }, [undoStack, user, db, toast]);
+
+  // Redo Function
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !user) return;
+    
+    const action = redoStack[redoStack.length - 1];
+    const docRef = doc(db, action.path);
+    
+    // Re-delete the document
+    deleteDocumentNonBlocking(docRef);
+    
+    // Move back to undo stack
+    setUndoStack(prev => [...prev, action]);
+    setRedoStack(prev => prev.slice(0, -1));
+    
+    toast({ title: "Action Redone", description: "Item removed again." });
+  }, [redoStack, user, db, toast]);
 
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        handleUndo();
+      if ((e.ctrlKey || e.metaKey)) {
+        if (e.key === 'z') {
+          if (e.shiftKey) {
+            e.preventDefault();
+            handleRedo();
+          } else {
+            e.preventDefault();
+            handleUndo();
+          }
+        } else if (e.key === 'y') {
+          e.preventDefault();
+          handleRedo();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo]);
+  }, [handleUndo, handleRedo]);
 
   const handleAddCommonItem = (category: string) => {
     if (!user) return;
@@ -116,19 +153,32 @@ export default function TemplatesPage() {
     const newItem: CommonItem = { 
       id, 
       category, 
-      description: "", 
-      unit: "",
+      description: "New Item", // Ensure it has a description at creation
+      unit: "ea",
       defaultUnitPrice: 0,
       isHardCoded: false
     };
     const docRef = doc(db, "contractorProfiles", user.uid, "customItems", id);
     setDocumentNonBlocking(docRef, newItem, { merge: true });
+    toast({ title: "Item Added", description: `Added to ${category}` });
   };
 
   const handleUpdateCommonItem = (item: CommonItem, field: keyof CommonItem, value: any) => {
     if (!user) return;
+
+    // Validation: Description cannot be empty
+    if (field === 'description' && (!value || value.trim() === "")) {
+      toast({ 
+        title: "Required Field", 
+        description: "Service description cannot be empty.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const docRef = doc(db, "contractorProfiles", user.uid, "customItems", item.id);
     const isEditingOriginalHardcoded = item.id.startsWith('h-') && !customItems?.find(ci => ci.id === item.id);
+    
     if (isEditingOriginalHardcoded) {
       const fullData = { ...item, [field]: value, isHardCoded: false };
       setDocumentNonBlocking(docRef, fullData, { merge: true });
@@ -140,7 +190,11 @@ export default function TemplatesPage() {
   const handleRemoveCommonItem = (item: CommonItem) => {
     if (!user) return;
     const path = `contractorProfiles/${user.uid}/customItems/${item.id}`;
-    setLastDeleted({ type: 'item', data: item, path });
+    
+    const action: HistoryAction = { type: 'item', data: item, path };
+    setUndoStack(prev => [...prev, action]);
+    setRedoStack([]); // Clear redo on new action
+    
     const docRef = doc(db, path);
     deleteDocumentNonBlocking(docRef);
     
@@ -154,9 +208,14 @@ export default function TemplatesPage() {
   const handleRemoveTemplate = (template: QuoteTemplate) => {
     if (!user) return;
     const path = `contractorProfiles/${user.uid}/templates/${template.id}`;
-    setLastDeleted({ type: 'template', data: template, path });
+    
+    const action: HistoryAction = { type: 'template', data: template, path };
+    setUndoStack(prev => [...prev, action]);
+    setRedoStack([]); // Clear redo on new action
+    
     const docRef = doc(db, path);
     deleteDocumentNonBlocking(docRef);
+    
     toast({ 
       title: "Template Removed", 
       description: "Undo with Ctrl+Z",
@@ -234,11 +293,23 @@ export default function TemplatesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Templates & Items</h1>
           <p className="text-muted-foreground text-sm">Manage your professional service library.</p>
         </div>
-        <Link href="/quotes/new">
-          <Button variant="outline" className="gap-2 shadow-sm w-full md:w-auto">
-            <Plus className="w-4 h-4" /> New Quote / Template
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {undoStack.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleUndo} className="hidden sm:flex gap-2">
+              <Undo2 className="w-4 h-4" /> Undo
+            </Button>
+          )}
+          {redoStack.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleRedo} className="hidden sm:flex gap-2">
+              <Redo2 className="w-4 h-4" /> Redo
+            </Button>
+          )}
+          <Link href="/quotes/new">
+            <Button variant="outline" className="gap-2 shadow-sm w-full md:w-auto">
+              <Plus className="w-4 h-4" /> New Quote / Template
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs defaultValue="common-items" className="space-y-6">
@@ -315,7 +386,7 @@ export default function TemplatesPage() {
                                         onChange={(e) => handleUpdateCommonItem(item, 'description', e.target.value)} 
                                         className={cn("h-9 text-sm bg-background/50 border-none focus-visible:ring-1", item.isHardCoded && "opacity-80 font-medium cursor-not-allowed")}
                                         readOnly={item.isHardCoded}
-                                        placeholder="New item description..."
+                                        placeholder="Item description (required)..."
                                       />
                                       {item.isHardCoded && <Lock className="w-3 h-3 absolute right-3 top-3 text-muted-foreground/50" />}
                                     </div>

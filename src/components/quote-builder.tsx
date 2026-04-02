@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -9,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2 } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2 } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -96,7 +95,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       })) as QuoteItem[];
     }
     if (!duplicateSource && draft?.items && draft.items.length > 0) return draft.items;
-    return [{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }];
+    return [{ id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }];
   });
 
   const [laborHours, setLaborHours] = useState<number | string>(() => {
@@ -135,8 +134,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return "";
   });
 
-  // Undo History State
-  const [history, setHistory] = useState<HistoryState[]>([]);
+  // Undo/Redo History State
+  const [undoStack, setUndoStack] = useState<HistoryState[]>([]);
+  const [redoStack, setRedoStack] = useState<HistoryState[]>([]);
 
   // Save draft on change
   useEffect(() => {
@@ -156,28 +156,57 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   // Undo Logic
   const undo = useCallback(() => {
-    if (history.length === 0) return;
-    const previous = history[history.length - 1];
+    if (undoStack.length === 0) return;
     
+    // Save current state to redo stack
+    setRedoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    
+    const previous = undoStack[undoStack.length - 1];
     setItems(previous.items);
     setServiceCategory(previous.serviceCategory);
     setScopeDescription(previous.scopeDescription);
     
-    setHistory(prev => prev.slice(0, -1));
+    setUndoStack(prev => prev.slice(0, -1));
     toast({ title: "Action Undone", description: "The previous state has been restored." });
-  }, [history, toast]);
+  }, [undoStack, items, serviceCategory, scopeDescription, toast]);
+
+  // Redo Logic
+  const redo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    
+    // Save current state to undo stack
+    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    
+    const next = redoStack[redoStack.length - 1];
+    setItems(next.items);
+    setServiceCategory(next.serviceCategory);
+    setScopeDescription(next.scopeDescription);
+    
+    setRedoStack(prev => prev.slice(0, -1));
+    toast({ title: "Action Redone", description: "Changes have been reapplied." });
+  }, [redoStack, items, serviceCategory, scopeDescription, toast]);
 
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        undo();
+      if ((e.ctrlKey || e.metaKey)) {
+        if (e.key === 'z') {
+          if (e.shiftKey) {
+            e.preventDefault();
+            redo();
+          } else {
+            e.preventDefault();
+            undo();
+          }
+        } else if (e.key === 'y') {
+          e.preventDefault();
+          redo();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo]);
+  }, [undo, redo]);
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
@@ -226,13 +255,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const deleteItem = (id: string) => {
     if (items.length <= 1) return;
     
-    // Capture full current state before deletion
-    setHistory(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    // Capture state before deletion
+    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    setRedoStack([]); // Clear redo stack on new action
     
     setItems(prev => prev.filter(i => i.id !== id));
     toast({
       title: "Line Item Removed",
-      description: "Click undo or press Ctrl+Z to restore.",
+      description: "Undo with Ctrl+Z",
       action: (
         <ToastAction altText="Undo" onClick={undo}>
           Undo
@@ -248,7 +278,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         return {
           ...item,
           description: libItem.description,
-          unit: libItem.unit || "",
+          unit: libItem.unit || "ea",
           unitPrice: libItem.defaultUnitPrice,
           total: roundToCent(qty * libItem.defaultUnitPrice)
         };
@@ -259,8 +289,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const applyTemplate = (template: QuoteTemplate) => {
-    // Capture current state before template application
-    setHistory(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    // Capture state before template application
+    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    setRedoStack([]); // Clear redo stack on new action
     
     setServiceCategory(template.serviceCategory);
     setScopeDescription(template.scopeDescription);
@@ -397,7 +428,21 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-primary/10">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
-              <CardTitle className="text-lg">Configuration</CardTitle>
+              <div className="flex items-center gap-4">
+                <CardTitle className="text-lg">Configuration</CardTitle>
+                <div className="flex gap-1">
+                  {undoStack.length > 0 && (
+                    <Button variant="ghost" size="icon" onClick={undo} className="h-7 w-7" title="Undo (Ctrl+Z)">
+                      <Undo2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {redoStack.length > 0 && (
+                    <Button variant="ghost" size="icon" onClick={redo} className="h-7 w-7" title="Redo (Ctrl+Y)">
+                      <Redo2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                   <DialogTrigger asChild>
@@ -584,7 +629,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     </div>
                   ))}
                 </div>
-                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all" onClick={() => setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }])}>
+                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all" onClick={() => setItems([...items, { id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }])}>
                   <Plus className="w-4 h-4" /> Add Line Item
                 </Button>
               </div>
