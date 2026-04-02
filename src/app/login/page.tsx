@@ -46,7 +46,7 @@ export default function LoginPage() {
         setIsLoading(false);
         toast({
           title: "Sign In Failed",
-          description: error.message,
+          description: error.message || "Invalid credentials. Please try again.",
           variant: "destructive"
         });
       });
@@ -71,7 +71,7 @@ export default function LoginPage() {
         setIsLoading(false);
         toast({
           title: "Sign Up Failed",
-          description: error.message,
+          description: error.message || "Could not create account.",
           variant: "destructive"
         });
       });

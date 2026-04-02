@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -57,7 +58,7 @@ export default function QuoteSummaryPage() {
 
     const shareData = {
       title: `${profile.businessName} - Professional Quote`,
-      text: `View my quote for ${quote.serviceCategory} services.`,
+      text: `View my quote for ${quote.serviceCategory} services. Total: $${quote.grandTotal.toLocaleString()}`,
       url: window.location.href,
     };
 
@@ -68,7 +69,7 @@ export default function QuoteSummaryPage() {
         await navigator.clipboard.writeText(window.location.href);
         toast({
           title: "Link Copied",
-          description: "Quote link has been copied to your clipboard.",
+          description: "Professional quote link has been copied to your clipboard.",
         });
       }
     } catch (err) {
