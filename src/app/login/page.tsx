@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,19 +35,54 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email || !password) return;
     setIsLoading(true);
-    initiateEmailSignIn(auth, email, password);
+    
+    initiateEmailSignIn(auth, email, password)
+      .catch((error: any) => {
+        setIsLoading(false);
+        toast({
+          title: "Sign In Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      });
   };
 
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+
+    if (password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
-    initiateEmailSignUp(auth, email, password);
+    initiateEmailSignUp(auth, email, password)
+      .catch((error: any) => {
+        setIsLoading(false);
+        toast({
+          title: "Sign Up Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      });
   };
 
   const handleAnonymousSignIn = () => {
     setIsLoading(true);
-    initiateAnonymousSignIn(auth);
+    initiateAnonymousSignIn(auth)
+      .catch((error: any) => {
+        setIsLoading(false);
+        toast({
+          title: "Guest Access Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      });
   };
 
   if (isUserLoading) {
