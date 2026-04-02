@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
@@ -51,7 +50,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return [...getHardcodedTemplates(), ...(userTemplates || [])];
   }, [userTemplates]);
 
-  const [clients, setClients] = useState<Client[]>(initialClients);
+  // Use the prop clients but allow local additions for immediate feedback
+  const [localClients, setLocalClients] = useState<Client[]>([]);
+  const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
   
   const [clientId, setClientId] = useState<string>(
     preSelectedClientId || 
@@ -98,6 +99,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientAddress, setNewClientAddress] = useState("");
 
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null);
 
@@ -226,14 +229,17 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   }, [allLibraryItems, initialProfile]);
 
   const handleCreateAndSelectClient = () => {
-    if (!newClientName || !newClientEmail || !user) return;
+    if (!newClientName || !newClientEmail || !user) {
+      toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
+      return;
+    }
     const id = uuidv4();
     const newClient: Client = { 
       id, 
       name: newClientName, 
       email: newClientEmail, 
-      phone: "", 
-      address: "" 
+      phone: newClientPhone, 
+      address: newClientAddress 
     };
 
     const clientRef = doc(db, "contractorProfiles", user.uid, "clients", id);
@@ -244,10 +250,17 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       updatedAt: serverTimestamp()
     }, { merge: true });
 
-    setClients(prev => [...prev, newClient]);
+    setLocalClients(prev => [...prev, newClient]);
     setClientId(id);
     setIsNewClientDialogOpen(false);
-    toast({ title: "Client Created & Pre-selected" });
+    
+    // Reset form
+    setNewClientName("");
+    setNewClientEmail("");
+    setNewClientPhone("");
+    setNewClientAddress("");
+    
+    toast({ title: "Client Created", description: `${newClientName} has been added and selected.` });
   };
 
   return (
@@ -510,6 +523,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <div className="space-y-2">
               <Label>Email Address</Label>
               <Input type="email" placeholder="jane@example.com" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number</Label>
+              <Input placeholder="e.g. 555-0100" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input placeholder="e.g. 123 Main St" value={newClientAddress} onChange={(e) => setNewClientAddress(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
