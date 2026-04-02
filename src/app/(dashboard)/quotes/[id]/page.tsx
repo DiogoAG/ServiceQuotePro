@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { use, useState } from "react";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 
-export default function QuoteSummaryPage() {
-  const { id } = useParams();
+export default function QuoteSummaryPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
@@ -22,7 +22,7 @@ export default function QuoteSummaryPage() {
 
   const quoteRef = useMemoFirebase(() => {
     if (!user || !id) return null;
-    return doc(db, "contractorProfiles", user.uid, "quotes", id as string);
+    return doc(db, "contractorProfiles", user.uid, "quotes", id);
   }, [db, user, id]);
 
   const profileRef = useMemoFirebase(() => {

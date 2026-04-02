@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, use } from "react";
 import { Client, Quote } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,8 +17,8 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@
 import { collection, doc, query, where, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
-export default function ClientDetailsPage() {
-  const { id } = useParams();
+export default function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
@@ -26,7 +26,7 @@ export default function ClientDetailsPage() {
 
   const clientRef = useMemoFirebase(() => {
     if (!user || !id) return null;
-    return doc(db, "contractorProfiles", user.uid, "clients", id as string);
+    return doc(db, "contractorProfiles", user.uid, "clients", id);
   }, [db, user, id]);
 
   const quotesRef = useMemoFirebase(() => {
@@ -61,7 +61,7 @@ export default function ClientDetailsPage() {
       return;
     }
 
-    const docRef = doc(db, "contractorProfiles", user.uid, "clients", id as string);
+    const docRef = doc(db, "contractorProfiles", user.uid, "clients", id);
     setDocumentNonBlocking(docRef, {
       name: formName,
       email: formEmail,
