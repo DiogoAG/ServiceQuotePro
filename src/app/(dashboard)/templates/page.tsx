@@ -123,10 +123,14 @@ export default function TemplatesPage() {
     
     const all = [...getHardcodedTemplates(), ...(userTemplates || [])];
 
-    const filtered = all.filter(t => 
-      t.name.toLowerCase().includes(search) || 
-      t.serviceCategory.toLowerCase().includes(search)
-    );
+    const filtered = all.filter(t => {
+      const matchesName = t.name.toLowerCase().includes(search);
+      const matchesCategory = t.serviceCategory.toLowerCase().includes(search);
+      const matchesScope = (t.scopeDescription || "").toLowerCase().includes(search);
+      const matchesItems = t.items.some(item => (item.description || "").toLowerCase().includes(search));
+      
+      return matchesName || matchesCategory || matchesScope || matchesItems;
+    });
 
     return [...filtered].sort((a, b) => {
       const aIsOffered = offered.includes(a.serviceCategory);
@@ -345,7 +349,7 @@ export default function TemplatesPage() {
               <div className="relative w-full md:max-w-md">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search templates..." 
+                  placeholder="Search templates by name, category, or item..." 
                   value={searchTemplate} 
                   onChange={(e) => setSearchTemplate(e.target.value)} 
                   className="pl-10 h-11 bg-muted/30 border-none" 
