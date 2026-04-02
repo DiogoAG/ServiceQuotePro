@@ -274,6 +274,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     toast({ title: "Client Created", description: `${newClientName} has been added and selected.` });
   };
 
+  const filteredClients = useMemo(() => {
+    const search = clientSearch.toLowerCase().trim();
+    if (!search) return clients;
+    return clients.filter(c => 
+      c.name.toLowerCase().includes(search) || 
+      c.email.toLowerCase().includes(search)
+    );
+  }, [clients, clientSearch]);
+
   return (
     <div className="space-y-8">
       <div className="grid gap-8 lg:grid-cols-3">
@@ -333,10 +342,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Client</Label>
                 {selectedClient ? (
-                  <div className="flex items-center justify-between px-3 h-10 border rounded-lg bg-primary/5 border-primary/20">
+                  <div className="flex items-center justify-between px-3 h-12 border rounded-lg bg-primary/5 border-primary/20">
                     <div className="truncate flex-1">
                       <p className="font-bold text-[13px] leading-tight truncate">{selectedClient.name}</p>
-                      <p className="text-[9px] text-muted-foreground truncate">{selectedClient.email}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</p>
                     </div>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 -mr-1" onClick={() => setClientId("")}>
                       <X className="w-4 h-4" />
@@ -347,16 +356,34 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <PopoverTrigger asChild>
                       <div className="relative">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search or select client..." className="pl-9 h-10" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
+                        <Input placeholder="Search name or email..." className="pl-9 h-10" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
                       </div>
                     </PopoverTrigger>
                     <PopoverContent className="p-0 w-full" style={{ width: 'var(--radix-popover-trigger-width)' }}>
                       <ScrollArea className="max-h-64">
                         <div className="p-1">
-                          {clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(c => (
-                            <Button key={c.id} variant="ghost" className="w-full justify-start text-sm" onClick={() => { setClientId(c.id); setIsClientPopoverOpen(false); }}>{c.name}</Button>
+                          {filteredClients.map(c => (
+                            <Button 
+                              key={c.id} 
+                              variant="ghost" 
+                              className="w-full justify-start h-auto py-2 px-3 hover:bg-muted" 
+                              onClick={() => { setClientId(c.id); setIsClientPopoverOpen(false); }}
+                            >
+                              <div className="flex items-center gap-3 overflow-hidden w-full">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                                  {c.name.charAt(0)}
+                                </div>
+                                <div className="flex flex-col leading-tight overflow-hidden text-left">
+                                  <span className="text-sm font-semibold truncate">{c.name}</span>
+                                  <span className="text-[10px] text-muted-foreground truncate">{c.email}</span>
+                                </div>
+                              </div>
+                            </Button>
                           ))}
-                          <Button variant="ghost" className="w-full text-primary font-bold justify-start gap-2 border-t mt-1 rounded-none" onClick={() => setIsNewClientDialogOpen(true)}>
+                          {filteredClients.length === 0 && (
+                            <div className="p-4 text-center text-xs text-muted-foreground">No matches found.</div>
+                          )}
+                          <Button variant="ghost" className="w-full text-primary font-bold justify-start gap-2 border-t mt-1 rounded-none h-11" onClick={() => setIsNewClientDialogOpen(true)}>
                             <UserPlus className="w-4 h-4" /> Add New Client
                           </Button>
                         </div>
@@ -506,7 +533,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
 
               <Button size="lg" className="w-full h-14 text-lg font-black gap-2 shadow-lg hover:scale-[1.02] transition-transform active:scale-95" onClick={handleSaveQuote}>
-                <Save className="w-5 h-5" /> Save Final Quote
+                <Save className="w-5 h-5" /> Save
               </Button>
               
               <div className="pt-4 space-y-3">
