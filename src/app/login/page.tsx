@@ -82,6 +82,10 @@ export default function LoginPage() {
     initiateGoogleSignIn(auth)
       .catch((error: any) => {
         setIsLoading(false);
+        // Handle user cancellation gracefully
+        if (error.code === 'auth/popup-closed-by-user') {
+          return;
+        }
         toast({
           title: "Google Sign In Failed",
           description: error.message,
