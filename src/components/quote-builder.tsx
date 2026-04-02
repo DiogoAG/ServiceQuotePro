@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, Star, DollarSign, Loader2 } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { getHardcodedItems, getHardcodedTemplates, QuoteDraft } from "@/lib/store";
+import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -63,44 +63,90 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
-  
-  const [clientId, setClientId] = useState<string>(
-    preSelectedClientId || 
-    (duplicateSource && 'clientId' in duplicateSource ? (duplicateSource as Quote).clientId : "")
-  );
-  
-  const [serviceCategory, setServiceCategory] = useState<string>(
-    duplicateSource?.serviceCategory || initialProfile.offeredServices?.[0] || "General Contracting"
-  );
-  
-  const [items, setItems] = useState<QuoteItem[]>(
-    duplicateSource?.items.map(i => ({ 
-      ...i, 
-      id: uuidv4(),
-      total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
-    })) as QuoteItem[] || 
-    [{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }]
-  );
 
-  const [laborHours, setLaborHours] = useState<number | string>(
-    duplicateSource && 'laborHours' in duplicateSource ? (duplicateSource as Quote).laborHours : 0
-  );
+  // Initial Data Restoration Logic
+  const draft = getDraftQuote();
   
-  const [laborRate, setLaborRate] = useState<number | string>(
-    duplicateSource && 'laborRate' in duplicateSource ? (duplicateSource as Quote).laborRate : initialProfile.defaultLaborRate
-  );
+  const [clientId, setClientId] = useState<string>(() => {
+    if (preSelectedClientId) return preSelectedClientId;
+    if (duplicateSource && 'clientId' in duplicateSource) return (duplicateSource as Quote).clientId;
+    if (!duplicateSource && draft?.clientId) return draft.clientId;
+    return "";
+  });
   
-  const [materialCosts, setMaterialCosts] = useState<number | string>(
-    duplicateSource && 'materialCosts' in duplicateSource ? (duplicateSource as Quote).materialCosts : 0
-  );
+  const [serviceCategory, setServiceCategory] = useState<string>(() => {
+    if (duplicateSource?.serviceCategory) return duplicateSource.serviceCategory;
+    if (!duplicateSource && draft?.serviceCategory) return draft.serviceCategory;
+    return initialProfile.offeredServices?.[0] || "General Contracting";
+  });
   
-  const [taxRate, setTaxRate] = useState<number | string>(
-    duplicateSource && 'taxRate' in duplicateSource ? (duplicateSource as Quote).taxRate : initialProfile.defaultTaxRate
-  );
+  const [items, setItems] = useState<QuoteItem[]>(() => {
+    if (duplicateSource?.items) {
+      return duplicateSource.items.map(i => ({ 
+        ...i, 
+        id: uuidv4(),
+        total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+      })) as QuoteItem[];
+    }
+    if (!duplicateSource && draft?.items && draft.items.length > 0) return draft.items;
+    return [{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }];
+  });
+
+  const [laborHours, setLaborHours] = useState<number | string>(() => {
+    if (duplicateSource && 'laborHours' in duplicateSource) return (duplicateSource as Quote).laborHours;
+    if (!duplicateSource && draft?.laborHours !== undefined) return draft.laborHours;
+    return 0;
+  });
   
-  const [notes, setNotes] = useState(duplicateSource && 'notes' in duplicateSource ? (duplicateSource as Quote).notes : "");
-  const [scopeDescription, setScopeDescription] = useState(duplicateSource?.scopeDescription || "");
+  const [laborRate, setLaborRate] = useState<number | string>(() => {
+    if (duplicateSource && 'laborRate' in duplicateSource) return (duplicateSource as Quote).laborRate;
+    if (!duplicateSource && draft?.laborRate !== undefined) return draft.laborRate;
+    return initialProfile.defaultLaborRate;
+  });
   
+  const [materialCosts, setMaterialCosts] = useState<number | string>(() => {
+    if (duplicateSource && 'materialCosts' in duplicateSource) return (duplicateSource as Quote).materialCosts;
+    if (!duplicateSource && draft?.materialCosts !== undefined) return draft.materialCosts;
+    return 0;
+  });
+  
+  const [taxRate, setTaxRate] = useState<number | string>(() => {
+    if (duplicateSource && 'taxRate' in duplicateSource) return (duplicateSource as Quote).taxRate;
+    if (!duplicateSource && draft?.taxRate !== undefined) return draft.taxRate;
+    return initialProfile.defaultTaxRate;
+  });
+  
+  const [notes, setNotes] = useState(() => {
+    if (duplicateSource && 'notes' in duplicateSource) return (duplicateSource as Quote).notes;
+    if (!duplicateSource && draft?.notes) return draft.notes;
+    return "";
+  });
+
+  const [scopeDescription, setScopeDescription] = useState(() => {
+    if (duplicateSource?.scopeDescription) return duplicateSource.scopeDescription;
+    if (!duplicateSource && draft?.scopeDescription) return draft.scopeDescription;
+    return "";
+  });
+
+  // Save draft on change
+  useEffect(() => {
+    // We don't save a draft if we are in "Duplicate/Template" mode to avoid overwriting a generic draft
+    // unless the user starts making changes. For simplicity, we save unless duplicateSource is active 
+    // and unchanged, but the safest is to save current state.
+    const currentDraft: QuoteDraft = {
+      clientId,
+      serviceCategory,
+      items,
+      laborHours,
+      laborRate,
+      materialCosts,
+      taxRate,
+      notes,
+      scopeDescription
+    };
+    saveDraftQuote(currentDraft);
+  }, [clientId, serviceCategory, items, laborHours, laborRate, materialCosts, taxRate, notes, scopeDescription]);
+
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
@@ -219,6 +265,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       grandTotal: totals.grandTotal,
       notes
     };
+    
+    // Success: Clear the draft
+    clearDraftQuote();
     onSave(finalQuote);
   };
 

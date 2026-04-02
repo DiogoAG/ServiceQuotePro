@@ -314,10 +314,10 @@ export type QuoteDraft = {
   clientId: string;
   serviceCategory: string;
   items: QuoteItem[];
-  laborHours: number;
-  laborRate: number;
-  materialCosts: number;
-  taxRate: number;
+  laborHours: number | string;
+  laborRate: number | string;
+  materialCosts: number | string;
+  taxRate: number | string;
   notes: string;
   scopeDescription: string;
 };
