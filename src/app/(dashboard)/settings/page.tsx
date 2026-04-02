@@ -43,7 +43,8 @@ export default function SettingsPage() {
     if (profile) {
       setForm({
         ...profile,
-        offeredServices: profile.offeredServices || []
+        offeredServices: profile.offeredServices || [],
+        quoteTerms: profile.quoteTerms || ""
       });
     }
   }, [profile]);
@@ -156,6 +157,7 @@ export default function SettingsPage() {
               <Palette className="w-5 h-5 text-primary" />
               <CardTitle>Branding</CardTitle>
             </div>
+            <CardDescription>Visual identity for your professional quotes.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Label>Company Logo</Label>
@@ -182,6 +184,24 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">Max size: 1MB.</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <CardTitle>Standard Quote Terms</CardTitle>
+            </div>
+            <CardDescription>Default terms and conditions that appear at the bottom of every quote.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea 
+              value={form.quoteTerms} 
+              onChange={(e) => setForm({...form, quoteTerms: e.target.value})} 
+              placeholder="e.g. Payment is due within 15 days of completion. All materials guaranteed to be as specified." 
+              className="min-h-[150px] leading-relaxed"
+            />
           </CardContent>
         </Card>
 
