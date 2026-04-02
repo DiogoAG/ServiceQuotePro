@@ -21,11 +21,12 @@ const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
   "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
   "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
-  "HVAC": ["Cooling Systems", "Air Distribution", "Controls", "Indoor Air Quality", "Maintenance & Service"],
-  "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
+  "HVAC": ["Cooling Systems", "Heating Systems", "Air Distribution", "Controls", "Indoor Air Quality", "Maintenance & Service"],
+  "Landscaping": ["Site Development", "Softscape", "Hardscape", "Outdoor Features", "Irrigation", "Maintenance"],
   "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
-  "Roofing": ["Roof Systems", "Components", "Drainage", "Repair & Maintenance"],
-  "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Exterior Carpentry", "Repair"]
+  "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance"],
+  "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Exterior Carpentry", "Repair"],
+  "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Waste Services"]
 };
 
 // Strict 2-decimal truncation helper (no rounding)
