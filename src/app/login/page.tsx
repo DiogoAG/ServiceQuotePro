@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -218,7 +217,7 @@ export default function LoginPage() {
                   </div>
                   <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20" disabled={isLoading}>
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
-                    Sign In to Dashboard
+                    Sign In
                   </Button>
                 </form>
               </TabsContent>
@@ -257,7 +256,7 @@ export default function LoginPage() {
                   </div>
                   <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20" disabled={isLoading}>
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                    Create Contractor Account
+                    Sign Up
                   </Button>
                 </form>
               </TabsContent>
