@@ -120,7 +120,7 @@ export default function QuoteSummaryPage() {
             onClick={handleShare}
           >
             <Share2 className="w-4 h-4" />
-            Share with Client
+            Share
           </Button>
         </div>
       </div>
