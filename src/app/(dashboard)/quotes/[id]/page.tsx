@@ -6,7 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock } from "lucide-react";
+import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -54,22 +54,25 @@ export default function QuoteSummaryPage() {
   const profile = profileData || DEFAULT_PROFILE;
 
   const handleShare = async () => {
-    if (!quote || !profile) return;
+    if (!quote || !profile || !user) return;
+
+    // Use a dedicated public view URL
+    const publicUrl = `${window.location.origin}/view/${user.uid}/${quote.id}`;
 
     const shareData = {
       title: `${profile.businessName} - Professional Quote`,
       text: `View my quote for ${quote.serviceCategory} services. Total: $${quote.grandTotal.toLocaleString()}`,
-      url: window.location.href,
+      url: publicUrl,
     };
 
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(publicUrl);
         toast({
-          title: "Link Copied",
-          description: "Professional quote link has been copied to your clipboard.",
+          title: "Public Link Copied",
+          description: "A client-viewable link has been copied to your clipboard.",
         });
       }
     } catch (err) {
@@ -117,7 +120,7 @@ export default function QuoteSummaryPage() {
             onClick={handleShare}
           >
             <Share2 className="w-4 h-4" />
-            Share
+            Share with Client
           </Button>
         </div>
       </div>
@@ -171,6 +174,7 @@ export default function QuoteSummaryPage() {
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
                 {profile.address && <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5" />{profile.address}</p>}
                 {profile.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{profile.phone}</p>}
+                {profile.email && <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{profile.email}</p>}
                 <p className="text-xs opacity-70">License: {profile.licenseNumber}</p>
               </div>
             </div>
