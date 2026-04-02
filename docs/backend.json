@@ -39,6 +39,11 @@
           "type": "number",
           "description": "The default hourly labor rate used for calculations in new quotes."
         },
+        "offeredServices": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Categories of services this contractor provides."
+        },
         "quoteTerms": {
           "type": "string",
           "description": "Default terms and conditions displayed on quotes."
@@ -182,6 +187,31 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "CommonItem": {
+      "title": "CommonItem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "unit": { "type": "string" },
+        "defaultUnitPrice": { "type": "number" },
+        "isHardCoded": { "type": "boolean" }
+      },
+      "required": ["id", "description", "category", "defaultUnitPrice"]
+    },
+    "QuoteTemplate": {
+      "title": "QuoteTemplate",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "serviceCategory": { "type": "string" },
+        "items": { "type": "array" },
+        "scopeDescription": { "type": "string" }
+      },
+      "required": ["id", "name", "serviceCategory"]
     }
   },
   "auth": {
@@ -245,6 +275,30 @@
               "name": "quoteId",
               "description": "The unique quote ID."
             }
+          ]
+        }
+      },
+      {
+        "path": "/contractorProfiles/{contractorId}/customItems/{itemId}",
+        "definition": {
+          "entityName": "CommonItem",
+          "schema": { "$ref": "#/backend/entities/CommonItem" },
+          "description": "Custom service items created by the contractor.",
+          "params": [
+            { "name": "contractorId", "description": "The owner's UID." },
+            { "name": "itemId", "description": "Unique item ID." }
+          ]
+        }
+      },
+      {
+        "path": "/contractorProfiles/{contractorId}/templates/{templateId}",
+        "definition": {
+          "entityName": "QuoteTemplate",
+          "schema": { "$ref": "#/backend/entities/QuoteTemplate" },
+          "description": "Reusable quote templates created by the contractor.",
+          "params": [
+            { "name": "contractorId", "description": "The owner's UID." },
+            { "name": "templateId", "description": "Unique template ID." }
           ]
         }
       }
