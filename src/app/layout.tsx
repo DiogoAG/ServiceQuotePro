@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'ServiceQuotePro - Professional Contractor Quotes',
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className="font-body antialiased selection:bg-accent/30">
         {children}
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
