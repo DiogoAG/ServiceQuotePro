@@ -5,8 +5,8 @@ import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -100,7 +100,7 @@ export default function QuoteSummaryPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 pb-24 sm:pb-8">
+    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 pb-24 sm:pb-12">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 no-print px-1">
         <Button variant="ghost" className="gap-2 self-start sm:self-center h-9" onClick={() => router.back()}>
           <ChevronLeft className="w-4 h-4" />
@@ -271,6 +271,29 @@ export default function QuoteSummaryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Internal Notes - Hidden from Print */}
+      {quote.notes && (
+        <Card className="no-print border-primary/20 bg-primary/5 mx-1 sm:mx-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2">
+              <StickyNote className="w-5 h-5 text-primary" />
+              <CardTitle className="text-lg">Internal Contractor Notes</CardTitle>
+            </div>
+            <Badge variant="outline" className="gap-1 bg-white text-[10px] font-bold text-primary border-primary/20">
+              <Lock className="w-3 h-3" /> Contractor Only
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap italic">
+              {quote.notes}
+            </p>
+            <p className="text-[10px] text-muted-foreground/50 mt-4 uppercase tracking-widest font-bold">
+              These notes are private and will not appear on the shared quote or PDF.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
