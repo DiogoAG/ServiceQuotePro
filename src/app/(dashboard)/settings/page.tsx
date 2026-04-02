@@ -1,21 +1,32 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { BusinessProfile, SERVICE_CATEGORIES } from "@/lib/types";
-import { getBusinessProfile, saveBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Building, Palette, FileText, Upload, X, Phone, MapPin, CheckCircle2 } from "lucide-react";
+import { Save, Building, Palette, FileText, Upload, X, Phone, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc, serverTimestamp } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const profileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, "contractorProfiles", user.uid);
+  }, [db, user]);
+
+  const { data: profile, isLoading } = useDoc<BusinessProfile>(profileRef);
+
   const [form, setForm] = useState<BusinessProfile>({
     businessName: "",
     licenseNumber: "",
@@ -29,11 +40,21 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    setForm(getBusinessProfile());
-  }, []);
+    if (profile) {
+      setForm(profile);
+    }
+  }, [profile]);
 
   const handleSave = () => {
-    saveBusinessProfile(form);
+    if (!user) return;
+    const docRef = doc(db, "contractorProfiles", user.uid);
+    setDocumentNonBlocking(docRef, {
+      ...form,
+      id: user.uid,
+      updatedAt: serverTimestamp(),
+      ...(profile ? {} : { createdAt: serverTimestamp() })
+    }, { merge: true });
+    
     toast({ title: "Settings Saved", description: "Your professional profile has been updated." });
   };
 
@@ -57,6 +78,8 @@ export default function SettingsPage() {
       : [...current, service];
     setForm({ ...form, offeredServices: updated });
   };
+
+  if (isLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
@@ -108,7 +131,7 @@ export default function SettingsPage() {
               <CheckCircle2 className="w-5 h-5 text-primary" />
               <CardTitle>Services Offered</CardTitle>
             </div>
-            <CardDescription>Select the services you specialize in to prioritize your library.</CardDescription>
+            <CardDescription>Select the services you specialize in.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -170,7 +193,7 @@ export default function SettingsPage() {
                       <Upload className="w-4 h-4" /> Upload Logo File
                     </Label>
                     <input id="logoUpload" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                    <p className="text-[10px] text-muted-foreground">Supports JPG, PNG, or SVG. Max file size: 1MB.</p>
+                    <p className="text-[10px] text-muted-foreground">Max file size: 1MB.</p>
                   </div>
                 </div>
               </div>

@@ -1,40 +1,44 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
-import { getQuotes, getClients, getBusinessProfile } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail } from "lucide-react";
-import Link from "next/link";
+import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 export default function QuoteSummaryPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useUser();
+  const db = useFirestore();
   const { toast } = useToast();
-  const [quote, setQuote] = useState<Quote | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
 
-  useEffect(() => {
-    const quotes = getQuotes();
-    const foundQuote = quotes.find(q => q.id === id);
-    if (!foundQuote) {
-      router.push('/quotes');
-      return;
-    }
-    setQuote(foundQuote);
-    setProfile(getBusinessProfile());
-    
-    const clients = getClients();
-    setClient(clients.find(c => c.id === foundQuote.clientId) || null);
-  }, [id, router]);
+  const quoteRef = useMemoFirebase(() => {
+    if (!user || !id) return null;
+    return doc(db, "contractorProfiles", user.uid, "quotes", id as string);
+  }, [db, user, id]);
+
+  const profileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(db, "contractorProfiles", user.uid);
+  }, [db, user]);
+
+  const { data: quote, isLoading: quoteLoading } = useDoc<Quote>(quoteRef);
+  const { data: profile, isLoading: profileLoading } = useDoc<BusinessProfile>(profileRef);
+
+  const clientRef = useMemoFirebase(() => {
+    if (!user || !quote?.clientId) return null;
+    return doc(db, "contractorProfiles", user.uid, "clients", quote.clientId);
+  }, [db, user, quote?.clientId]);
+
+  const { data: client, isLoading: clientLoading } = useDoc<Client>(clientRef);
 
   const handleShare = async () => {
     if (!quote || !profile) return;
@@ -55,16 +59,24 @@ export default function QuoteSummaryPage() {
           description: "Quote link has been copied to your clipboard.",
         });
       }
-    } catch (err) {
-      // User cancelled or browser denied share
-    }
+    } catch (err) {}
   };
 
-  if (!quote || !profile || !client) return null;
+  if (quoteLoading || profileLoading || clientLoading) {
+    return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
+  }
+
+  if (!quote || !profile || !client) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">Quote not found or error loading details.</p>
+        <Button onClick={() => router.push('/quotes')}>Back to Quotes</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 pb-24 sm:pb-8">
-      {/* Navigation & Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 no-print px-1">
         <Button variant="ghost" className="gap-2 self-start sm:self-center h-9" onClick={() => router.back()}>
           <ChevronLeft className="w-4 h-4" />
@@ -88,7 +100,6 @@ export default function QuoteSummaryPage() {
 
       <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border-none overflow-hidden mx-1 sm:mx-0">
         <CardContent className="p-4 sm:p-12 space-y-8 sm:space-y-12">
-          {/* Header Section */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 sm:gap-8 border-b pb-6 sm:pb-8">
             <div className="space-y-4 w-full sm:w-auto">
               <div className="flex items-center gap-4">
@@ -127,7 +138,6 @@ export default function QuoteSummaryPage() {
             </div>
           </div>
 
-          {/* Billing Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12">
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2 text-primary font-bold uppercase text-[10px] sm:text-xs tracking-widest border-b sm:border-none pb-1 sm:pb-0">
@@ -135,18 +145,8 @@ export default function QuoteSummaryPage() {
               </div>
               <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
-                {profile.address && (
-                  <p className="flex items-start gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    {profile.address}
-                  </p>
-                )}
-                {profile.phone && (
-                  <p className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 shrink-0" />
-                    {profile.phone}
-                  </p>
-                )}
+                {profile.address && <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5" />{profile.address}</p>}
+                {profile.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{profile.phone}</p>}
                 <p className="text-xs opacity-70">License: {profile.licenseNumber}</p>
               </div>
             </div>
@@ -156,14 +156,13 @@ export default function QuoteSummaryPage() {
               </div>
               <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{client.name}</p>
-                <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {client.address}</p>
-                {client.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 shrink-0" /> {client.phone}</p>}
-                <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 shrink-0" /> {client.email}</p>
+                <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5" /> {client.address}</p>
+                {client.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {client.phone}</p>}
+                <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {client.email}</p>
               </div>
             </div>
           </div>
 
-          {/* Work Scope Section */}
           <div className="space-y-3 sm:space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Proposed Scope of Work</h3>
             <div className="text-sm sm:text-base leading-relaxed text-gray-700 whitespace-pre-wrap italic sm:not-italic">
@@ -171,7 +170,6 @@ export default function QuoteSummaryPage() {
             </div>
           </div>
 
-          {/* Line Items Table */}
           <div className="space-y-3 sm:space-y-4">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Service Items</h3>
             <div className="rounded-md border overflow-hidden">
@@ -191,11 +189,6 @@ export default function QuoteSummaryPage() {
                       <TableRow key={item.id}>
                         <TableCell className="text-sm py-3">
                           <div className="font-medium">{item.description}</div>
-                          {(item.length || item.width) && (
-                            <div className="text-[10px] text-muted-foreground mt-0.5">
-                              Dim: {item.length || '0'} x {item.width || '0'}
-                            </div>
-                          )}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">{item.unit || '-'}</TableCell>
                         <TableCell className="text-right text-sm">{item.quantity}</TableCell>
@@ -227,7 +220,6 @@ export default function QuoteSummaryPage() {
             </div>
           </div>
 
-          {/* Totals Section */}
           <div className="flex justify-end pt-4 sm:pt-8">
             <div className="w-full sm:w-80 space-y-3">
               <div className="flex justify-between text-sm">
@@ -245,7 +237,6 @@ export default function QuoteSummaryPage() {
             </div>
           </div>
 
-          {/* Footer Info */}
           <div className="border-t pt-8 sm:pt-12 text-center">
             <p className="text-sm font-medium">Thank you for considering {profile.businessName}!</p>
             {profile.quoteTerms && (

@@ -1,62 +1,61 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { Quote, Client } from "@/lib/types";
-import { getQuotes, getClients, saveQuotes } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Undo2, Calendar, User, DollarSign, ArrowRight } from "lucide-react";
+import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Calendar, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy, doc } from "firebase/firestore";
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function QuotesListPage() {
   const { toast } = useToast();
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const quotesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, "contractorProfiles", user.uid, "quotes"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
+
+  const clientsRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(db, "contractorProfiles", user.uid, "clients");
+  }, [db, user]);
+
+  const { data: quotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
+  const { data: clients } = useCollection<Client>(clientsRef);
+
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
 
-  useEffect(() => {
-    setQuotes(getQuotes());
-    setClients(getClients());
-  }, []);
-
   const handleDelete = () => {
-    if (!quoteToDelete) return;
-    const qId = quoteToDelete.id;
-    const qName = quoteToDelete.serviceCategory;
-    const updated = quotes.filter(q => q.id !== qId);
-    
-    setQuotes(updated);
-    saveQuotes(updated);
-
+    if (!quoteToDelete || !user) return;
+    const docRef = doc(db, "contractorProfiles", user.uid, "quotes", quoteToDelete.id);
+    deleteDocumentNonBlocking(docRef);
     toast({
       title: "Quote Deleted",
-      description: `${qName} quote has been removed.`,
-      action: (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => {
-            const currentQuotes = getQuotes();
-            const restored = [...currentQuotes, quoteToDelete];
-            setQuotes(restored);
-            saveQuotes(restored);
-            toast({ title: "Restored", description: "The quote has been restored." });
-          }}
-        >
-          <Undo2 className="w-4 h-4 mr-2" /> Undo
-        </Button>
-      )
+      description: `The quote has been removed.`,
     });
     setQuoteToDelete(null);
   };
 
-  const sortedQuotes = [...quotes].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  if (quotesLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-20">
@@ -75,9 +74,9 @@ export default function QuotesListPage() {
 
       {/* Mobile Quote Cards */}
       <div className="grid gap-4 md:hidden">
-        {sortedQuotes.length > 0 ? (
-          sortedQuotes.map((quote) => {
-            const client = clients.find(c => c.id === quote.clientId);
+        {quotes && quotes.length > 0 ? (
+          quotes.map((quote) => {
+            const client = clients?.find(c => c.id === quote.clientId);
             return (
               <Card key={quote.id} className="overflow-hidden border-primary/10 shadow-sm active:bg-accent/5 transition-colors">
                 <CardContent className="p-5 space-y-4">
@@ -163,9 +162,9 @@ export default function QuotesListPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedQuotes.length > 0 ? (
-              sortedQuotes.map((quote) => {
-                const client = clients.find(c => c.id === quote.clientId);
+            {quotes && quotes.length > 0 ? (
+              quotes.map((quote) => {
+                const client = clients?.find(c => c.id === quote.clientId);
                 return (
                   <TableRow key={quote.id} className="group cursor-pointer hover:bg-muted/50 transition-colors">
                     <TableCell className="text-xs font-medium">
@@ -244,7 +243,7 @@ export default function QuotesListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl">Delete this quote?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>. You can undo this action immediately after.
+              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">

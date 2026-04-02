@@ -32,8 +32,8 @@ export default function DashboardPage() {
 
   const recentQuotes = quotes?.slice(0, 5) || [];
   
-  const totalValue = quotes?.reduce((acc, q) => acc + (q.totalAmount || 0), 0) || 0;
-  const pendingQuotes = quotes?.filter(q => q.status === 'Draft' || q.status === 'Sent').length || 0;
+  const totalValue = quotes?.reduce((acc, q) => acc + (q.grandTotal || 0), 0) || 0;
+  const pendingQuotes = quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0;
 
   if (quotesLoading || clientsLoading) {
     return (
@@ -128,14 +128,14 @@ export default function DashboardPage() {
                         <TableRow key={quote.id} className="cursor-pointer group hover:bg-muted/50 transition-colors">
                           <TableCell className="font-medium p-3 sm:p-4">
                             <Link href={`/quotes/${quote.id}`} className="block">
-                              <p className="text-sm font-bold sm:font-medium group-hover:text-primary transition-colors">{client?.firstName} {client?.lastName || 'Unknown Client'}</p>
-                              <p className="text-[10px] text-muted-foreground sm:hidden">{quote.title}</p>
+                              <p className="text-sm font-bold sm:font-medium group-hover:text-primary transition-colors">{client?.name || 'Unknown Client'}</p>
+                              <p className="text-[10px] text-muted-foreground sm:hidden">{quote.serviceCategory}</p>
                             </Link>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <Link href={`/quotes/${quote.id}`}>
                               <Badge 
-                                variant={quote.status === 'Accepted' ? 'default' : quote.status === 'Rejected' ? 'destructive' : 'secondary'}
+                                variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}
                                 className="text-[10px]"
                               >
                                 {quote.status}
@@ -144,7 +144,7 @@ export default function DashboardPage() {
                           </TableCell>
                           <TableCell className="text-right font-bold sm:font-medium p-3 sm:p-4">
                             <Link href={`/quotes/${quote.id}`}>
-                              ${(quote.totalAmount || 0).toLocaleString()}
+                              ${(quote.grandTotal || 0).toLocaleString()}
                               <div className="sm:hidden mt-1">
                                 <Badge variant="secondary" className="text-[8px] h-4 px-1">{quote.status}</Badge>
                               </div>
@@ -183,10 +183,10 @@ export default function DashboardPage() {
                   className="flex items-center gap-4 border-b pb-3 pt-3 first:pt-0 last:border-0 last:pb-0 group hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors"
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
-                    {client.firstName.charAt(0)}
+                    {(client.name || '?').charAt(0)}
                   </div>
                   <div className="flex-1 space-y-0.5 min-w-0">
-                    <p className="text-sm font-bold leading-none group-hover:text-primary transition-colors truncate">{client.firstName} {client.lastName}</p>
+                    <p className="text-sm font-bold leading-none group-hover:text-primary transition-colors truncate">{client.name}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{client.email}</p>
                   </div>
                   <ArrowUpRight className="w-4 h-4 text-primary opacity-30 group-hover:opacity-100 transition-all shrink-0" />
