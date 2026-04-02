@@ -22,7 +22,7 @@ import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/no
 const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
   "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
-  "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
+  "Plumbing": ["Water Supply Systems", "Water Heating", "Drainage Systems", "Fixtures & Appliances", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
   "HVAC": ["Cooling Systems", "Heating Systems", "Air Distribution", "Controls", "Indoor Air Quality", "Maintenance & Service"],
   "Landscaping": ["Site Development", "Softscape", "Hardscape", "Outdoor Features", "Irrigation", "Maintenance"],
   "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
@@ -340,40 +340,68 @@ export default function TemplatesPage() {
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">
+          <Card className="border-none shadow-sm mb-6">
+            <CardHeader className="pb-4 px-4 sm:px-6">
+              <div className="relative w-full md:max-w-md">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search templates..." 
+                  value={searchTemplate} 
+                  onChange={(e) => setSearchTemplate(e.target.value)} 
+                  className="pl-10 h-11 bg-muted/30 border-none" 
+                />
+              </div>
+            </CardHeader>
+          </Card>
+          
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-            {filteredTemplates.map((template) => (
-              <Card key={template.id} className="relative group overflow-hidden border-primary/10 hover:border-primary/30 transition-all shadow-sm hover:shadow-md">
-                <CardHeader className="p-5 pb-2 bg-muted/20">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg">{template.name}</h3>
-                      <Badge variant="outline" className="text-[9px] uppercase tracking-tighter bg-background">{template.serviceCategory}</Badge>
-                    </div>
-                    {!template.isHardCoded && (
-                      <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveTemplate(template.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 pt-4 space-y-4">
-                  <div className="space-y-2">
-                    {template.items.slice(0, 3).map((item, idx) => (
-                      <div key={idx} className="text-xs flex justify-between items-center py-1 border-b border-muted last:border-0">
-                        <span className="truncate pr-4 text-muted-foreground">{item.description}</span>
-                        <span className="font-bold shrink-0">${item.unitPrice.toLocaleString()}</span>
+            {filteredTemplates.map((template) => {
+              const isOffered = profile?.offeredServices?.includes(template.serviceCategory);
+              return (
+                <Card key={template.id} className={cn(
+                  "relative group overflow-hidden transition-all shadow-sm hover:shadow-md",
+                  isOffered ? "border-primary/20 hover:border-primary/40" : "border-primary/10 hover:border-primary/30"
+                )}>
+                  <CardHeader className={cn("p-5 pb-2", isOffered ? "bg-primary/5" : "bg-muted/20")}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-lg">{template.name}</h3>
+                          {isOffered && <Star className="w-3.5 h-3.5 fill-primary text-primary" />}
+                        </div>
+                        <Badge variant="outline" className={cn(
+                          "text-[9px] uppercase tracking-tighter bg-background gap-1",
+                          isOffered && "border-primary/30 text-primary font-bold"
+                        )}>
+                          {template.serviceCategory}
+                        </Badge>
                       </div>
-                    ))}
-                    {template.items.length > 3 && (
-                      <p className="text-[10px] text-center text-muted-foreground pt-1">+ {template.items.length - 3} more items</p>
-                    )}
-                  </div>
-                  <Link href={`/quotes/new?duplicateId=${template.id}`} className="block">
-                    <Button className="w-full shadow-sm" variant="secondary">Use This Template</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+                      {!template.isHardCoded && (
+                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" onClick={() => handleRemoveTemplate(template.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-5 pt-4 space-y-4">
+                    <div className="space-y-2">
+                      {template.items.slice(0, 3).map((item, idx) => (
+                        <div key={idx} className="text-xs flex justify-between items-center py-1 border-b border-muted last:border-0">
+                          <span className="truncate pr-4 text-muted-foreground">{item.description}</span>
+                          <span className="font-bold shrink-0">${item.unitPrice.toLocaleString()}</span>
+                        </div>
+                      ))}
+                      {template.items.length > 3 && (
+                        <p className="text-[10px] text-center text-muted-foreground pt-1">+ {template.items.length - 3} more items</p>
+                      )}
+                    </div>
+                    <Link href={`/quotes/new?duplicateId=${template.id}`} className="block">
+                      <Button className={cn("w-full shadow-sm", isOffered ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")} variant={isOffered ? "default" : "secondary"}>Use This Template</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>
