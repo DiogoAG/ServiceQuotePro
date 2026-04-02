@@ -42,7 +42,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const { data: customItems } = useCollection<CommonItem>(customItemsRef);
   const { data: userTemplates } = useCollection<QuoteTemplate>(templatesRef);
 
-  // Merge logic for library items (same as TemplatesPage)
   const allLibraryItems = useMemo(() => {
     const hardcodedItems = getHardcodedItems();
     const customMap = new Map((customItems || []).map(i => [i.id, i]));
@@ -265,7 +264,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     setClientId(id);
     setIsNewClientDialogOpen(false);
     
-    // Reset form
     setNewClientName("");
     setNewClientEmail("");
     setNewClientPhone("");
@@ -360,8 +358,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
                     <PopoverTrigger asChild>
                       <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search name or email..." className="pl-9 h-10" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
+                        <Search className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search name or email..." className="pl-9 h-12" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
                       </div>
                     </PopoverTrigger>
                     <PopoverContent className="p-0 w-full" style={{ width: 'var(--radix-popover-trigger-width)' }}>
@@ -400,7 +398,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Service Category</Label>
                 <Select value={serviceCategory} onValueChange={setServiceCategory}>
-                  <SelectTrigger className="flex items-center gap-2 h-10">
+                  <SelectTrigger className="flex items-center gap-2 h-12">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
