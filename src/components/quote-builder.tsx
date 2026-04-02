@@ -30,6 +30,12 @@ type QuoteBuilderProps = {
   duplicateSource?: Quote | QuoteTemplate;
 };
 
+type HistoryState = {
+  items: QuoteItem[];
+  serviceCategory: string;
+  scopeDescription: string;
+};
+
 const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
 
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
@@ -64,9 +70,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
-
-  // Undo History State
-  const [history, setHistory] = useState<QuoteItem[][]>([]);
 
   // Initial Data Restoration Logic
   const draft = getDraftQuote();
@@ -132,6 +135,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return "";
   });
 
+  // Undo History State
+  const [history, setHistory] = useState<HistoryState[]>([]);
+
   // Save draft on change
   useEffect(() => {
     const currentDraft: QuoteDraft = {
@@ -152,9 +158,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const undo = useCallback(() => {
     if (history.length === 0) return;
     const previous = history[history.length - 1];
-    setItems(previous);
+    
+    setItems(previous.items);
+    setServiceCategory(previous.serviceCategory);
+    setScopeDescription(previous.scopeDescription);
+    
     setHistory(prev => prev.slice(0, -1));
-    toast({ title: "Action Undone", description: "The item list has been restored." });
+    toast({ title: "Action Undone", description: "The previous state has been restored." });
   }, [history, toast]);
 
   // Keyboard Shortcuts
@@ -215,7 +225,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const deleteItem = (id: string) => {
     if (items.length <= 1) return;
-    setHistory(prev => [...prev, items]);
+    
+    // Capture full current state before deletion
+    setHistory(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    
     setItems(prev => prev.filter(i => i.id !== id));
     toast({
       title: "Line Item Removed",
@@ -246,6 +259,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   };
 
   const applyTemplate = (template: QuoteTemplate) => {
+    // Capture current state before template application
+    setHistory(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    
     setServiceCategory(template.serviceCategory);
     setScopeDescription(template.scopeDescription);
     setItems(template.items.map(i => ({ 
@@ -253,7 +269,16 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       id: uuidv4(), 
       total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0)) 
     })) as QuoteItem[]);
-    toast({ title: "Template Applied", description: `Loaded scope for ${template.name}` });
+    
+    toast({ 
+      title: "Template Applied", 
+      description: `Loaded scope for ${template.name}`,
+      action: (
+        <ToastAction altText="Undo" onClick={undo}>
+          Undo
+        </ToastAction>
+      ),
+    });
   };
 
   const handleSaveAsTemplate = () => {
