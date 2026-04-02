@@ -101,18 +101,6 @@ export const getTemplates = (): QuoteTemplate[] => {
         { description: 'Shower Head & Valve Kit', unit: 'ea', quantity: 1, unitPrice: 450, total: 450 }
       ],
       scopeDescription: 'Removal and replacement of existing master bathroom faucets, toilet, and shower trim. Includes testing for leaks.'
-    },
-    {
-      id: 't-hvac-1',
-      name: 'Central AC System Replacement',
-      serviceCategory: 'HVAC',
-      isHardCoded: true,
-      items: [
-        { description: '15 SEER Condenser Unit', unit: 'ea', quantity: 1, unitPrice: 4200, total: 4200 },
-        { description: 'Matching Evaporator Coil', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
-        { description: 'Lineset & Accessories', unit: 'flat', quantity: 1, unitPrice: 450, total: 450 }
-      ],
-      scopeDescription: 'Complete removal of old AC unit and installation of new high-efficiency 15 SEER system. Includes new lineset and refrigerant.'
     }
   ];
 
@@ -135,11 +123,40 @@ export const getCommonItems = (): CommonItem[] => {
   if (typeof window === 'undefined') return [];
   
   const hardCodedItems: CommonItem[] = [
-    { id: 'h-1', category: 'Painting - Interior', description: 'Paint Walls (2 coats)', unit: 'sq ft', defaultUnitPrice: 2.50, isHardCoded: true },
-    { id: 'h-2', category: 'Painting - Interior', description: 'Paint Ceiling', unit: 'sq ft', defaultUnitPrice: 1.75, isHardCoded: true },
-    { id: 'h-3', category: 'Painting - Prep', description: 'Wall Sanding & Prep', unit: 'hr', defaultUnitPrice: 65.00, isHardCoded: true },
-    { id: 'h-4', category: 'Electrical - Devices', description: 'Standard Outlet Replace', unit: 'ea', defaultUnitPrice: 45.00, isHardCoded: true },
-    { id: 'h-5', category: 'Plumbing - Fixtures', description: 'Kitchen Faucet Install', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
+    // Painting
+    { id: 'h-p-1', category: 'Painting - Interior Painting', description: 'Wall Painting (2 coats)', unit: 'sq ft', defaultUnitPrice: 2.75, isHardCoded: true },
+    { id: 'h-p-2', category: 'Painting - Interior Painting', description: 'Ceiling Painting', unit: 'sq ft', defaultUnitPrice: 2.25, isHardCoded: true },
+    { id: 'h-p-3', category: 'Painting - Surface Preparation', description: 'Wall Patching & Sanding', unit: 'hr', defaultUnitPrice: 65.00, isHardCoded: true },
+    
+    // Electrical
+    { id: 'h-e-1', category: 'Electrical - Wiring & Devices', description: 'Standard Outlet Replacement', unit: 'ea', defaultUnitPrice: 45.00, isHardCoded: true },
+    { id: 'h-e-2', category: 'Electrical - Lighting Systems', description: 'Recessed LED Pot Light Install', unit: 'ea', defaultUnitPrice: 145.00, isHardCoded: true },
+    { id: 'h-e-3', category: 'Electrical - Power Distribution', description: 'Dedicated 20A Circuit (New)', unit: 'ea', defaultUnitPrice: 325.00, isHardCoded: true },
+    
+    // Plumbing
+    { id: 'h-pl-1', category: 'Plumbing - Fixtures & Appliances', description: 'Kitchen Faucet Installation', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
+    { id: 'h-pl-2', category: 'Plumbing - Fixtures & Appliances', description: 'Toilet Replacement (Standard)', unit: 'ea', defaultUnitPrice: 275.00, isHardCoded: true },
+    { id: 'h-pl-3', category: 'Plumbing - Maintenance & Repair', description: 'Drain Snaking / Unclogging', unit: 'hr', defaultUnitPrice: 150.00, isHardCoded: true },
+    
+    // HVAC
+    { id: 'h-hv-1', category: 'HVAC - Maintenance & Service', description: 'Annual AC Inspection & Clean', unit: 'flat', defaultUnitPrice: 125.00, isHardCoded: true },
+    { id: 'h-hv-2', category: 'HVAC - Controls', description: 'Smart Thermostat Installation', unit: 'ea', defaultUnitPrice: 110.00, isHardCoded: true },
+    
+    // Landscaping
+    { id: 'h-l-1', category: 'Landscaping - Maintenance', description: 'Lawn Mowing & Edging', unit: 'sq ft', defaultUnitPrice: 0.15, isHardCoded: true },
+    { id: 'h-l-2', category: 'Landscaping - Softscape', description: 'Mulch Delivery & Spreading', unit: 'cu yd', defaultUnitPrice: 95.00, isHardCoded: true },
+    
+    // Roofing
+    { id: 'h-r-1', category: 'Roofing - Repair & Maintenance', description: 'Standard Shingle Repair', unit: 'flat', defaultUnitPrice: 350.00, isHardCoded: true },
+    { id: 'h-r-2', category: 'Roofing - Drainage', description: 'Gutter Cleaning (1-story)', unit: 'linear ft', defaultUnitPrice: 1.75, isHardCoded: true },
+
+    // Carpentry
+    { id: 'h-c-1', category: 'Carpentry - Finish Carpentry', description: 'Baseboard Installation', unit: 'linear ft', defaultUnitPrice: 4.50, isHardCoded: true },
+    { id: 'h-c-2', category: 'Carpentry - Finish Carpentry', description: 'Crown Molding Install', unit: 'linear ft', defaultUnitPrice: 8.50, isHardCoded: true },
+
+    // Cleaning
+    { id: 'h-cl-1', category: 'Cleaning - General Cleaning', description: 'Standard Residential Clean', unit: 'sq ft', defaultUnitPrice: 0.20, isHardCoded: true },
+    { id: 'h-cl-2', category: 'Cleaning - Deep Cleaning', description: 'Move-In / Move-Out Deep Clean', unit: 'sq ft', defaultUnitPrice: 0.45, isHardCoded: true }
   ];
 
   const stored = localStorage.getItem(COMMON_ITEMS_KEY);
