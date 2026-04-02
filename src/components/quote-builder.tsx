@@ -100,6 +100,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
 
+  // Track which row's library popover is open
+  const [openLibraryId, setOpenLibraryId] = useState<string | null>(null);
+
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
 
   const calculateTotals = useCallback(() => {
@@ -116,7 +119,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const totals = calculateTotals();
 
   const updateItem = (id: string, field: keyof QuoteItem, value: any) => {
-    setItems(items.map(item => {
+    setItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
         if (field === 'length' || field === 'width') {
@@ -129,6 +132,22 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       }
       return item;
     }));
+  };
+
+  const applyLibraryItem = (rowId: string, libItem: CommonItem) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === rowId) {
+        return {
+          ...item,
+          description: libItem.description,
+          unit: libItem.unit || "",
+          unitPrice: libItem.defaultUnitPrice,
+          total: roundToCent((Number(item.quantity) || 1) * libItem.defaultUnitPrice)
+        };
+      }
+      return item;
+    }));
+    setOpenLibraryId(null);
   };
 
   const applyTemplate = (template: QuoteTemplate) => {
@@ -310,7 +329,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group">
                       <div className="relative">
                         <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="h-8 text-xs pr-8" placeholder="Service description..." />
-                        <Popover>
+                        <Popover open={openLibraryId === item.id} onOpenChange={(open) => setOpenLibraryId(open ? item.id : null)}>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-primary">
                               <BookOpen className="w-3.5 h-3.5" />
@@ -324,11 +343,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                                   <div key={cat} className="mb-3">
                                     <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1">{cat}</p>
                                     {libItems.map(li => (
-                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => {
-                                        updateItem(item.id, 'description', li.description);
-                                        updateItem(item.id, 'unit', li.unit || "");
-                                        updateItem(item.id, 'unitPrice', li.defaultUnitPrice);
-                                      }}>
+                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => applyLibraryItem(item.id, li)}>
                                         <span className="truncate pr-2">{li.description}</span>
                                         <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
                                       </Button>
