@@ -285,7 +285,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <LayoutTemplate className="w-3.5 h-3.5" /> Save Template
+                      <LayoutTemplate className="w-3.5 h-3.5" /> Save
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -300,7 +300,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
-                      <Copy className="w-3.5 h-3.5" /> Load Template
+                      <Copy className="w-3.5 h-3.5" /> Load
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-72 p-0" align="end">
