@@ -275,12 +275,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Client</Label>
                 {selectedClient ? (
-                  <div className="flex items-center justify-between p-2 border rounded-lg bg-primary/5 border-primary/20">
-                    <div className="truncate">
-                      <p className="font-bold text-sm leading-tight">{selectedClient.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{selectedClient.email}</p>
+                  <div className="flex items-center justify-between px-3 h-10 border rounded-lg bg-primary/5 border-primary/20">
+                    <div className="truncate flex-1">
+                      <p className="font-bold text-[13px] leading-tight truncate">{selectedClient.name}</p>
+                      <p className="text-[9px] text-muted-foreground truncate">{selectedClient.email}</p>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setClientId("")}><X className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 -mr-1" onClick={() => setClientId("")}>
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
                 ) : (
                   <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
