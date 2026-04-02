@@ -312,9 +312,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Select value={serviceCategory} onValueChange={setServiceCategory}>
                   <SelectTrigger className="flex items-center gap-2">
                     <SelectValue />
-                    {initialProfile.offeredServices?.includes(serviceCategory) && (
-                      <Star className="w-3.5 h-3.5 fill-primary text-primary" />
-                    )}
                   </SelectTrigger>
                   <SelectContent>
                     {SERVICE_CATEGORIES.map(c => (
