@@ -343,9 +343,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 <Label>Client</Label>
                 {selectedClient ? (
                   <div className="flex items-center justify-between px-3 h-12 border rounded-lg bg-primary/5 border-primary/20">
-                    <div className="truncate flex-1">
-                      <p className="font-bold text-[13px] leading-tight truncate">{selectedClient.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</p>
+                    <div className="flex items-center gap-3 truncate flex-1">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                        {selectedClient.name.charAt(0)}
+                      </div>
+                      <div className="truncate">
+                        <p className="font-bold text-[13px] leading-tight truncate">{selectedClient.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</p>
+                      </div>
                     </div>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 -mr-1" onClick={() => setClientId("")}>
                       <X className="w-4 h-4" />
