@@ -1,9 +1,7 @@
-
 "use client";
 
 import * as React from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,9 +22,9 @@ const DEFAULT_PROFILE: BusinessProfile = {
   quoteTerms: "Payment is due within 15 days of completion. All materials guaranteed to be as specified."
 };
 
-export default function QuoteSummaryPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function QuoteSummaryPage(props: { params: Promise<{ id: string }> }) {
+  const params = React.use(props.params);
+  const id = params.id;
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
@@ -88,7 +86,7 @@ export default function QuoteSummaryPage() {
   if (!quote) {
     return (
       <div className="text-center py-20 space-y-4">
-        <p className="text-muted-foreground">Quote not found. It may have been deleted.</p>
+        <p className="text-muted-foreground">Quote not found or error loading details.</p>
         <Button onClick={() => router.push('/quotes')}>Back to Quotes</Button>
       </div>
     );

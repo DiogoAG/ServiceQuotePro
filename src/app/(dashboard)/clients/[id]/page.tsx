@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Client, Quote } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,9 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@
 import { collection, doc, query, where, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
-export default function ClientDetailsPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function ClientDetailsPage(props: { params: Promise<{ id: string }> }) {
+  const params = React.use(props.params);
+  const id = params.id;
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
@@ -76,7 +77,12 @@ export default function ClientDetailsPage() {
   };
 
   if (clientLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
-  if (!client) return null;
+  if (!client) return (
+    <div className="text-center py-20 space-y-4">
+      <p className="text-muted-foreground">Client not found.</p>
+      <Button onClick={() => router.push('/clients')}>Back to Directory</Button>
+    </div>
+  );
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
