@@ -626,7 +626,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       onDragOver={(e) => handleDragOver(e, idx)}
                       onDrop={(e) => handleDrop(e, idx)}
                     >
-                      <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary transition-colors">
+                      <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary hover:bg-primary/5 hover:ring-1 hover:ring-primary/20 rounded-sm p-0.5 transition-all">
                         <GripVertical className="w-3.5 h-3.5" />
                       </div>
                       <div className="relative">
