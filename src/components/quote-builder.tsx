@@ -36,7 +36,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const { user } = useUser();
   const db = useFirestore();
 
-  // Firestore Data for Item Library and Templates
   const customItemsRef = useMemoFirebase(() => user ? collection(db, "contractorProfiles", user.uid, "customItems") : null, [db, user]);
   const templatesRef = useMemoFirebase(() => user ? collection(db, "contractorProfiles", user.uid, "templates") : null, [db, user]);
   
@@ -53,7 +52,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const [clients, setClients] = useState<Client[]>(initialClients);
   
-  // Initial State derived from profile or duplicate source
   const [clientId, setClientId] = useState<string>(
     preSelectedClientId || 
     (duplicateSource && 'clientId' in duplicateSource ? (duplicateSource as Quote).clientId : "")
@@ -100,7 +98,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
 
-  // Track which row's library popover is open
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null);
 
   const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
@@ -137,12 +134,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const applyLibraryItem = (rowId: string, libItem: CommonItem) => {
     setItems(prev => prev.map(item => {
       if (item.id === rowId) {
+        const qty = Number(item.quantity) || 1;
         return {
           ...item,
           description: libItem.description,
           unit: libItem.unit || "",
           unitPrice: libItem.defaultUnitPrice,
-          total: roundToCent((Number(item.quantity) || 1) * libItem.defaultUnitPrice)
+          total: roundToCent(qty * libItem.defaultUnitPrice)
         };
       }
       return item;
@@ -352,17 +350,23 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             <div className="p-2 border-b bg-muted/50"><p className="text-[10px] font-bold uppercase tracking-widest">Item Library</p></div>
                             <ScrollArea className="h-80">
                               <div className="p-1">
-                                {organizedLibrary.map(([cat, libItems]) => (
-                                  <div key={cat} className="mb-3">
-                                    <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1">{cat}</p>
-                                    {libItems.map(li => (
-                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => applyLibraryItem(item.id, li)}>
-                                        <span className="truncate pr-2">{li.description}</span>
-                                        <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
-                                      </Button>
-                                    ))}
-                                  </div>
-                                ))}
+                                {organizedLibrary.map(([cat, libItems]) => {
+                                  const isOffered = initialProfile.offeredServices?.some(o => cat.startsWith(o));
+                                  return (
+                                    <div key={cat} className="mb-3">
+                                      <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1 flex items-center gap-1.5">
+                                        {cat}
+                                        {isOffered && <Star className="w-2 h-2 fill-primary text-primary" />}
+                                      </p>
+                                      {libItems.map(li => (
+                                        <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => applyLibraryItem(item.id, li)}>
+                                          <span className="truncate pr-2 text-left">{li.description}</span>
+                                          <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </ScrollArea>
                           </PopoverContent>
