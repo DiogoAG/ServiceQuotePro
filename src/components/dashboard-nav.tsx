@@ -140,7 +140,7 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
           
           <Button 
             variant="ghost" 
-            className={cn("w-full justify-start gap-3 text-muted-foreground hover:text-destructive", isFolded ? "justify-center px-0" : "")}
+            className={cn("w-full justify-start gap-3 text-muted-foreground", isFolded ? "justify-center px-0" : "")}
             onClick={handleSignOut}
           >
             <LogOut className="w-5 h-5 shrink-0" />
