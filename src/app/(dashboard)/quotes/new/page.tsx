@@ -22,15 +22,15 @@ const DEFAULT_PROFILE: BusinessProfile = {
   quoteTerms: "Payment is due within 15 days of completion. All materials guaranteed to be as specified."
 };
 
-function NewQuoteContent({ searchParamsPromise }: { searchParamsPromise: Promise<any> }) {
+function NewQuoteContent(props: { searchParamsPromise: Promise<any> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
 
-  // Unwrap searchParams to satisfy Next 15
-  use(searchParamsPromise);
+  // Unwrap searchParams promise to satisfy Next 15 suspension requirements if needed
+  use(props.searchParamsPromise);
 
   const profileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -140,14 +140,14 @@ function NewQuoteContent({ searchParamsPromise }: { searchParamsPromise: Promise
   );
 }
 
-export default function NewQuotePage({ searchParams }: { searchParams: Promise<any> }) {
+export default function NewQuotePage(props: { searchParams: Promise<any> }) {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
       </div>
     }>
-      <NewQuoteContent searchParamsPromise={searchParams} />
+      <NewQuoteContent searchParamsPromise={props.searchParams} />
     </Suspense>
   );
 }

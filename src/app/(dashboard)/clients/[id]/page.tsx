@@ -17,8 +17,9 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@
 import { collection, doc, query, where, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
-export default function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ClientDetailsPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
+  const id = params.id;
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();

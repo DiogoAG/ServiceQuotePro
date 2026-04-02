@@ -13,8 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 
-export default function QuoteSummaryPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function QuoteSummaryPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
+  const id = params.id;
   const router = useRouter();
   const { user } = useUser();
   const db = useFirestore();
