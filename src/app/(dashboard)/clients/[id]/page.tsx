@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -130,7 +129,7 @@ export default function ClientDetailsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="edit-email">Email</Label>
-                        <Input id="edit-email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} />
+                        <Input id="edit-email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="email@company.com" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="edit-phone">Phone Number</Label>

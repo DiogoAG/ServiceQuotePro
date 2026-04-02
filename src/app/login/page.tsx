@@ -64,7 +64,7 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo className="w-12 h-12" iconClassName="w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">ServiceQuotePro</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">ServiceQuotePro</h1>
           <p className="text-muted-foreground">Professional quotes for professional service.</p>
         </div>
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
           </TabsList>
           
           <TabsContent value="login">
-            <Card>
+            <Card className="border-primary/10">
               <CardHeader>
                 <CardTitle>Welcome Back</CardTitle>
                 <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
@@ -83,13 +83,13 @@ export default function LoginPage() {
               <form onSubmit={handleSignIn}>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Work Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="email" 
                         type="email" 
-                        placeholder="m@example.com" 
+                        placeholder="email@company.com" 
                         className="pl-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -104,6 +104,7 @@ export default function LoginPage() {
                       <Input 
                         id="password" 
                         type="password" 
+                        placeholder="••••••••"
                         className="pl-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -113,7 +114,7 @@ export default function LoginPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4">
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
                     Sign In
                   </Button>
@@ -121,7 +122,7 @@ export default function LoginPage() {
                     <div className="absolute inset-0 flex items-center"><span className="w-full border-t"></span></div>
                     <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue as guest</span></div>
                   </div>
-                  <Button type="button" variant="outline" className="w-full" onClick={handleAnonymousSignIn} disabled={isLoading}>
+                  <Button type="button" variant="outline" className="w-full h-11" onClick={handleAnonymousSignIn} disabled={isLoading}>
                     <Ghost className="w-4 h-4 mr-2" /> Anonymous Sign In
                   </Button>
                 </CardFooter>
@@ -130,21 +131,21 @@ export default function LoginPage() {
           </TabsContent>
 
           <TabsContent value="signup">
-            <Card>
+            <Card className="border-primary/10">
               <CardHeader>
                 <CardTitle>Create Account</CardTitle>
-                <CardDescription>Start your 14-day free trial today.</CardDescription>
+                <CardDescription>Start managing your service business today.</CardDescription>
               </CardHeader>
               <form onSubmit={handleSignUp}>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">Work Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input 
                         id="signup-email" 
                         type="email" 
-                        placeholder="m@example.com" 
+                        placeholder="email@company.com" 
                         className="pl-10"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -159,6 +160,7 @@ export default function LoginPage() {
                       <Input 
                         id="signup-password" 
                         type="password" 
+                        placeholder="••••••••"
                         className="pl-10"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -168,7 +170,7 @@ export default function LoginPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
                     Create Account
                   </Button>
