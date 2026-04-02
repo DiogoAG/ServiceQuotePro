@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2 } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -137,6 +137,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   // Undo/Redo History State
   const [undoStack, setUndoStack] = useState<HistoryState[]>([]);
   const [redoStack, setRedoStack] = useState<HistoryState[]>([]);
+
+  // Drag and Drop State
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
   // Save draft on change
   useEffect(() => {
@@ -422,6 +425,36 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     );
   }, [clients, clientSearch]);
 
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedItemIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedItemIndex === null || draggedItemIndex === index) {
+      setDraggedItemIndex(null);
+      return;
+    }
+
+    // Capture state for undo before reordering
+    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
+    setRedoStack([]);
+
+    const newItems = [...items];
+    const draggedItem = newItems[draggedItemIndex];
+    newItems.splice(draggedItemIndex, 1);
+    newItems.splice(index, 0, draggedItem);
+    
+    setItems(newItems);
+    setDraggedItemIndex(null);
+    toast({ title: "Items Reordered", description: "Line items have been rearranged." });
+  };
+
   return (
     <div className="space-y-8">
       <div className="grid gap-8 lg:grid-cols-3">
@@ -577,12 +610,25 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="bg-muted/30 py-3"><CardTitle className="text-sm font-bold uppercase tracking-wider">Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <div className="hidden md:grid grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 px-2 text-[10px] font-bold uppercase text-muted-foreground border-b pb-2">
-                  <div>Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price</div><div className="text-right">Total</div><div></div>
+                <div className="hidden md:grid grid-cols-[30px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 px-2 text-[10px] font-bold uppercase text-muted-foreground border-b pb-2">
+                  <div></div><div>Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-2">
-                  {items.map(item => (
-                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group">
+                  {items.map((item, idx) => (
+                    <div 
+                      key={item.id} 
+                      className={cn(
+                        "grid grid-cols-1 md:grid-cols-[30px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity",
+                        draggedItemIndex === idx ? "opacity-40" : "opacity-100"
+                      )}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={(e) => handleDrop(e, idx)}
+                    >
+                      <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary transition-colors">
+                        <GripVertical className="w-4 h-4" />
+                      </div>
                       <div className="relative">
                         <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="h-8 text-xs pr-8" placeholder="Service description..." />
                         <Popover open={openLibraryId === item.id} onOpenChange={(open) => setOpenLibraryId(open ? item.id : null)}>
