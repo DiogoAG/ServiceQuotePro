@@ -91,7 +91,7 @@ export default function PublicQuoteView() {
           </Button>
         </div>
 
-        <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 overflow-hidden">
+        <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 print:rounded-none overflow-hidden">
           <CardContent className="p-6 sm:p-12 space-y-10 sm:space-y-16">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-8 border-b pb-8 sm:pb-12">
               <div className="space-y-4">
@@ -148,7 +148,7 @@ export default function PublicQuoteView() {
               </div>
             </div>
 
-            <div className="space-y-4 bg-gray-50 p-6 sm:p-8 rounded-2xl border border-gray-100 print:bg-white">
+            <div className="space-y-4 bg-gray-50 p-6 sm:p-8 rounded-2xl border border-gray-100 print:bg-white print:rounded-none">
               <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Proposed Scope of Work</h3>
               <div className="text-sm sm:text-base leading-relaxed text-gray-700 whitespace-pre-wrap">
                 {quote.scopeDescription || "Professional service quote for " + quote.serviceCategory + "."}
@@ -157,7 +157,7 @@ export default function PublicQuoteView() {
 
             <div className="space-y-4">
               <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Service Breakdown</h3>
-              <div className="rounded-xl border overflow-hidden bg-white">
+              <div className="rounded-xl border overflow-hidden bg-white print:rounded-none">
                 <ScrollArea className="w-full">
                   <Table>
                     <TableHeader className="bg-gray-50/50 print:bg-white">
@@ -230,7 +230,7 @@ export default function PublicQuoteView() {
                  <p className="text-xs text-muted-foreground">Please review the details above and reach out with any questions.</p>
               </div>
               {profile.quoteTerms && (
-                <div className="max-w-xl mx-auto p-6 bg-muted/30 rounded-xl print:bg-white print:border">
+                <div className="max-w-xl mx-auto p-6 bg-muted/30 rounded-xl print:bg-white print:border print:rounded-none">
                   <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-2">Terms & Conditions</p>
                   <p className="text-[11px] text-gray-500 leading-relaxed italic whitespace-pre-wrap">
                     {profile.quoteTerms}

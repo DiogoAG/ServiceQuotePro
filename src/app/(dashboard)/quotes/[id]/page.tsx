@@ -113,7 +113,7 @@ export default function QuoteSummaryPage() {
         </div>
       </div>
 
-      <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 overflow-hidden mx-1 sm:mx-0">
+      <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 print:rounded-none overflow-hidden mx-1 sm:mx-0">
         <CardContent className="p-4 sm:p-12 space-y-8 sm:space-y-12">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 sm:gap-8 border-b pb-6 sm:pb-8">
             <div className="space-y-4 w-full sm:w-auto">
@@ -179,7 +179,7 @@ export default function QuoteSummaryPage() {
             </div>
           </div>
 
-          <div className="space-y-3 sm:space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100 print:bg-white">
+          <div className="space-y-3 sm:space-y-4 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100 print:bg-white print:rounded-none">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Proposed Scope of Work</h3>
             <div className="text-sm sm:text-base leading-relaxed text-gray-700 whitespace-pre-wrap italic sm:not-italic">
               {quote.scopeDescription || "No scope description provided."}
@@ -188,7 +188,7 @@ export default function QuoteSummaryPage() {
 
           <div className="space-y-3 sm:space-y-4">
             <h3 className="font-bold uppercase text-[10px] tracking-widest text-primary">Service Items</h3>
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border overflow-hidden print:rounded-none">
               <ScrollArea className="w-full">
                 <Table>
                   <TableHeader className="bg-gray-50 print:bg-white">
