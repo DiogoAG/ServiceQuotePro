@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
@@ -49,16 +48,27 @@ function NewQuoteContent() {
   const duplicateId = searchParams.get('duplicateId');
 
   useEffect(() => {
-    if (duplicateId && (quotes || userTemplates)) {
+    if (duplicateId) {
+      // 1. Check Hardcoded
       const allHardcoded = getHardcodedTemplates();
-      const source = 
-        quotes?.find(q => q.id === duplicateId) || 
-        userTemplates?.find(t => t.id === duplicateId) || 
-        allHardcoded.find(t => t.id === duplicateId);
-        
-      if (source) {
-        setDuplicateSource(source);
+      const hardcoded = allHardcoded.find(t => t.id === duplicateId);
+      if (hardcoded) {
+        setDuplicateSource(hardcoded);
+        return;
       }
+
+      // 2. Check User Data (when loaded)
+      if (quotes || userTemplates) {
+        const source = 
+          quotes?.find(q => q.id === duplicateId) || 
+          userTemplates?.find(t => t.id === duplicateId);
+          
+        if (source) {
+          setDuplicateSource(source);
+        }
+      }
+    } else {
+      setDuplicateSource(undefined);
     }
   }, [duplicateId, quotes, userTemplates]);
 
@@ -84,7 +94,7 @@ function NewQuoteContent() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">
-          {duplicateSource ? "New Quote from Template" : "Create New Quote"}
+          {duplicateSource ? "New Quote from Source" : "Create New Quote"}
         </h1>
         <p className="text-muted-foreground">
           {duplicateSource ? `Starting with pre-configured scope for ${duplicateSource.serviceCategory}` : "Fill in the details below to generate a professional quote."}
@@ -92,6 +102,7 @@ function NewQuoteContent() {
       </div>
       
       <QuoteBuilder 
+        key={duplicateId || 'new'}
         initialClients={clients} 
         initialProfile={profile} 
         onSave={handleSaveQuote}
