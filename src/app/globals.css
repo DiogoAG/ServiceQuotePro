@@ -69,34 +69,34 @@
   .no-print {
     display: none !important;
   }
-  .print-only {
-    display: block !important;
-  }
   
+  /* Hiding default browser headers/footers by zeroing margin */
   @page {
-    margin: 1cm;
+    margin: 0;
     size: auto;
   }
 
   body {
     background: white !important;
-    padding: 0 !important;
+    padding: 1.5cm !important; /* Add professional padding back to the document */
     margin: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    min-height: auto !important;
   }
 
   /* Reset layout shifts for print */
-  .md\:ml-64, .md\:ml-20 {
+  .md\:ml-64, .md\:ml-20, main {
     margin-left: 0 !important;
+    padding: 0 !important;
   }
   
   .min-h-screen {
-    min-h: auto !important;
+    min-height: auto !important;
   }
 
   /* Hide potential browser added elements */
-  header, footer, nav {
+  header, footer, nav, aside {
     display: none !important;
   }
 
@@ -104,9 +104,22 @@
   .card {
     border: 1px solid #e5e7eb !important;
     box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Ensure text is black for maximum readability on paper */
+  h1, h2, h3, h4, p, span, td, th {
+    color: black !important;
   }
 }
 
 .print-only {
   display: none;
+}
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
 }
