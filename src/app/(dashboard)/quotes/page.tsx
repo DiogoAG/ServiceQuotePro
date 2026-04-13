@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useTransition, useCallback } from "react"
 import { Quote, Client } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Calendar, Loader2 } from "lucide-react";
+import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Calendar, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -15,6 +15,19 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebas
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { formatCurrency } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+
+type SortField = "date" | "client" | "service" | "status" | "total";
+type SortDirection = "asc" | "desc";
+
+const STATUS_ORDER: Record<string, number> = {
+  'draft': 1,
+  'sent': 2,
+  'accepted': 3,
+  'invoiced': 4,
+  'paid': 5,
+  'rejected': 6
+};
 
 export default function QuotesListPage() {
   const { toast } = useToast();
@@ -40,6 +53,10 @@ export default function QuotesListPage() {
 
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
+  
+  // Sorting State
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   // Interaction safety valve for this specific page
   useEffect(() => {
@@ -48,17 +65,59 @@ export default function QuotesListPage() {
     }
   }, [quoteToDelete]);
 
-  // Optimization: Pre-calculate a client map for O(1) lookup during render
   const clientMap = useMemo(() => {
     const map = new Map<string, Client>();
     clients?.forEach(c => map.set(c.id, c));
     return map;
   }, [clients]);
 
-  // Filter out quotes that were just deleted optimistically
   const activeQuotes = useMemo(() => {
-    return quotes?.filter(q => !optimisticDeletedIds.has(q.id)) || [];
-  }, [quotes, optimisticDeletedIds]);
+    if (!quotes) return [];
+    
+    // 1. Filter out deleted items
+    const filtered = quotes.filter(q => !optimisticDeletedIds.has(q.id));
+
+    // 2. Sort the list
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "client":
+          const nameA = clientMap.get(a.clientId)?.name || "";
+          const nameB = clientMap.get(b.clientId)?.name || "";
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case "service":
+          comparison = a.serviceCategory.localeCompare(b.serviceCategory);
+          break;
+        case "status":
+          comparison = (STATUS_ORDER[a.status] || 99) - (STATUS_ORDER[b.status] || 99);
+          break;
+        case "total":
+          comparison = (a.grandTotal || 0) - (b.grandTotal || 0);
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [quotes, optimisticDeletedIds, sortField, sortDirection, clientMap]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />;
+    return sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4 text-primary" /> : <ArrowDown className="ml-2 h-4 w-4 text-primary" />;
+  };
 
   const handleDelete = useCallback(() => {
     if (!quoteToDelete || !user) return;
@@ -66,11 +125,8 @@ export default function QuotesListPage() {
     const idToDelete = quoteToDelete.id;
     const category = quoteToDelete.serviceCategory;
 
-    // 1. Signal dialog closure immediately to trigger UI cleanup
     setQuoteToDelete(null);
 
-    // 2. Perform optimistic update after a small delay to let the modal close properly
-    // This prevents "pointer-events: none" from getting stuck on the body
     setTimeout(() => {
       startTransition(() => {
         setOptimisticDeletedIds(prev => {
@@ -80,7 +136,6 @@ export default function QuotesListPage() {
         });
       });
 
-      // 3. Background Firestore Delete
       const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
       deleteDocumentNonBlocking(docRef);
 
@@ -107,7 +162,7 @@ export default function QuotesListPage() {
           <p className="text-muted-foreground">Manage, track, and reuse your service quotes.</p>
         </div>
         <Link href="/quotes/new" className="w-full sm:w-auto">
-          <Button className="gap-2 w-full sm:w-auto h-12 sm:h-10 text-base sm:text-sm">
+          <Button className="gap-2 w-full sm:w-auto h-12 sm:h-10 text-base sm:text-sm shadow-md hover:shadow-lg transition-all">
             <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
             New Quote
           </Button>
@@ -130,7 +185,7 @@ export default function QuotesListPage() {
                       </div>
                       <h3 className="font-black text-lg leading-tight tracking-tight">{quote.serviceCategory}</h3>
                     </div>
-                    <Badge variant={quote.status === 'approved' || quote.status === 'accepted' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
+                    <Badge variant={quote.status === 'approved' || quote.status === 'accepted' || quote.status === 'paid' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
                       {quote.status}
                     </Badge>
                   </div>
@@ -198,11 +253,46 @@ export default function QuotesListPage() {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="font-bold">Date</TableHead>
-              <TableHead className="font-bold">Client</TableHead>
-              <TableHead className="font-bold">Service</TableHead>
-              <TableHead className="font-bold">Status</TableHead>
-              <TableHead className="text-right font-bold">Total</TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("date")}
+              >
+                <div className="flex items-center">
+                  Date <SortIcon field="date" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("client")}
+              >
+                <div className="flex items-center">
+                  Client <SortIcon field="client" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("service")}
+              >
+                <div className="flex items-center">
+                  Service <SortIcon field="service" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("status")}
+              >
+                <div className="flex items-center">
+                  Status <SortIcon field="status" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="text-right font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("total")}
+              >
+                <div className="flex items-center justify-end">
+                  Total <SortIcon field="total" />
+                </div>
+              </TableHead>
               <TableHead className="w-40 text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -227,11 +317,11 @@ export default function QuotesListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={quote.status === 'approved' || quote.status === 'accepted' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
+                      <Badge variant={quote.status === 'approved' || quote.status === 'accepted' || quote.status === 'paid' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
                         {quote.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-black text-primary">
+                    <TableCell className={cn("text-right font-black", sortField === "total" ? "text-primary" : "text-foreground")}>
                       {formatCurrency(quote.grandTotal)}
                     </TableCell>
                     <TableCell className="text-right">
