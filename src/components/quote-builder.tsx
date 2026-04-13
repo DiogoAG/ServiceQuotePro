@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -24,18 +24,157 @@ import { ToastAction } from "@/components/ui/toast";
 import { calculateQuoteTotals, roundToCent } from "@/lib/quote-engine";
 import { QuoteSchema } from "@/lib/validators/quote";
 
+// --- REDUCER TYPES ---
+
+interface QuoteState {
+  clientId: string;
+  serviceCategory: string;
+  items: QuoteItem[];
+  laborHours: number | string;
+  laborRate: number | string;
+  materialCosts: number | string;
+  taxRate: number | string;
+  notes: string;
+  scopeDescription: string;
+}
+
+interface HistoryState {
+  past: QuoteState[];
+  present: QuoteState;
+  future: QuoteState[];
+}
+
+type QuoteAction =
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'SET_FIELD'; field: keyof QuoteState; value: any; snapshot?: boolean }
+  | { type: 'UPDATE_ITEM'; id: string; field: keyof QuoteItem; value: any }
+  | { type: 'ADD_ITEM' }
+  | { type: 'REMOVE_ITEM'; id: string }
+  | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
+  | { type: 'APPLY_TEMPLATE'; template: QuoteTemplate }
+  | { type: 'RESET_DRAFT'; draft: QuoteState };
+
+const HISTORY_LIMIT = 50;
+
+function quoteReducer(state: HistoryState, action: QuoteAction): HistoryState {
+  const { past, present, future } = state;
+
+  const pushToPast = (newState: QuoteState): HistoryState => {
+    const newPast = [...past, present].slice(-HISTORY_LIMIT);
+    return {
+      past: newPast,
+      present: newState,
+      future: []
+    };
+  };
+
+  switch (action.type) {
+    case 'UNDO': {
+      if (past.length === 0) return state;
+      const previous = past[past.length - 1];
+      const newPast = past.slice(0, past.length - 1);
+      return {
+        past: newPast,
+        present: previous,
+        future: [present, ...future]
+      };
+    }
+
+    case 'REDO': {
+      if (future.length === 0) return state;
+      const next = future[0];
+      const newFuture = future.slice(1);
+      return {
+        past: [...past, present],
+        present: next,
+        future: newFuture
+      };
+    }
+
+    case 'SET_FIELD': {
+      const newState = { ...present, [action.field]: action.value };
+      // Some fields like typing in notes shouldn't create a snapshot immediately 
+      // but structural changes or field blurs should.
+      if (action.snapshot) {
+        return pushToPast(newState);
+      }
+      return { ...state, present: newState };
+    }
+
+    case 'ADD_ITEM': {
+      const newItem: QuoteItem = { id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 };
+      const newState = { ...present, items: [...present.items, newItem] };
+      return pushToPast(newState);
+    }
+
+    case 'REMOVE_ITEM': {
+      if (present.items.length <= 1) return state;
+      const newState = { ...present, items: present.items.filter(i => i.id !== action.id) };
+      return pushToPast(newState);
+    }
+
+    case 'UPDATE_ITEM': {
+      const newItems = present.items.map(item => {
+        if (item.id === action.id) {
+          const updated = { ...item, [action.field]: action.value };
+          if (action.field === 'length' || action.field === 'width') {
+            const l = parseFloat(String(updated.length));
+            const w = parseFloat(String(updated.width));
+            if (!isNaN(l) && !isNaN(w)) updated.quantity = roundToCent(l * w);
+          }
+          updated.total = roundToCent((Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0));
+          return updated;
+        }
+        return item;
+      });
+      // We don't push to past on every keystroke for items either, 
+      // but QuoteBuilder UI handles the "snapshot" timing via onBlur if needed.
+      return { ...state, present: { ...present, items: newItems } };
+    }
+
+    case 'REORDER_ITEMS': {
+      const newItems = [...present.items];
+      const [removed] = newItems.splice(action.fromIndex, 1);
+      newItems.splice(action.toIndex, 0, removed);
+      return pushToPast({ ...present, items: newItems });
+    }
+
+    case 'APPLY_TEMPLATE': {
+      const newState: QuoteState = {
+        ...present,
+        serviceCategory: action.template.serviceCategory,
+        scopeDescription: action.template.scopeDescription,
+        items: action.template.items.map(i => ({
+          ...i,
+          id: uuidv4(),
+          total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+        })) as QuoteItem[]
+      };
+      return pushToPast(newState);
+    }
+
+    case 'RESET_DRAFT': {
+      return {
+        past: [],
+        present: action.draft,
+        future: []
+      };
+    }
+
+    default:
+      return state;
+  }
+}
+
+// --- COMPONENT ---
+
 type QuoteBuilderProps = {
   initialClients: Client[];
   initialProfile: BusinessProfile;
   onSave: (quote: Quote) => void;
   preSelectedClientId?: string;
   duplicateSource?: Quote | QuoteTemplate;
-};
-
-type HistoryState = {
-  items: QuoteItem[];
-  serviceCategory: string;
-  scopeDescription: string;
 };
 
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
@@ -71,121 +210,77 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
 
-  const draft = getDraftQuote();
-  
-  const [clientId, setClientId] = useState<string>(() => {
-    if (preSelectedClientId) return preSelectedClientId;
-    if (duplicateSource && 'clientId' in duplicateSource) return (duplicateSource as Quote).clientId;
-    if (!duplicateSource && draft?.clientId) return draft.clientId;
-    return "";
-  });
-  
-  const [serviceCategory, setServiceCategory] = useState<string>(() => {
-    if (duplicateSource?.serviceCategory) return duplicateSource.serviceCategory;
-    if (!duplicateSource && draft?.serviceCategory) return draft.serviceCategory;
-    return initialProfile.offeredServices?.[0] || "General Contracting";
-  });
-  
-  const [items, setItems] = useState<QuoteItem[]>(() => {
-    if (duplicateSource?.items) {
-      return duplicateSource.items.map(i => ({ 
-        ...i, 
-        id: uuidv4(),
-        total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
-      })) as QuoteItem[];
+  // Initial State Logic
+  const initialState: QuoteState = useMemo(() => {
+    const draft = getDraftQuote();
+    if (duplicateSource) {
+      return {
+        clientId: 'clientId' in duplicateSource ? (duplicateSource as Quote).clientId : "",
+        serviceCategory: duplicateSource.serviceCategory,
+        items: duplicateSource.items.map(i => ({ 
+          ...i, 
+          id: uuidv4(),
+          total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+        })) as QuoteItem[],
+        laborHours: 'laborHours' in duplicateSource ? (duplicateSource as Quote).laborHours : 0,
+        laborRate: 'laborRate' in duplicateSource ? (duplicateSource as Quote).laborRate : initialProfile.defaultLaborRate,
+        materialCosts: 'materialCosts' in duplicateSource ? (duplicateSource as Quote).materialCosts : 0,
+        taxRate: 'taxRate' in duplicateSource ? (duplicateSource as Quote).taxRate : initialProfile.defaultTaxRate,
+        notes: 'notes' in duplicateSource ? (duplicateSource as Quote).notes : "",
+        scopeDescription: duplicateSource.scopeDescription || ""
+      };
     }
-    if (!duplicateSource && draft?.items && draft.items.length > 0) return draft.items;
-    return [{ id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }];
-  });
-
-  const [laborHours, setLaborHours] = useState<number | string>(() => {
-    if (duplicateSource && 'laborHours' in duplicateSource) return (duplicateSource as Quote).laborHours;
-    if (!duplicateSource && draft?.laborHours !== undefined) return draft.laborHours;
-    return 0;
-  });
-  
-  const [laborRate, setLaborRate] = useState<number | string>(() => {
-    if (duplicateSource && 'laborRate' in duplicateSource) return (duplicateSource as Quote).laborRate;
-    if (!duplicateSource && draft?.laborRate !== undefined) return draft.laborRate;
-    return initialProfile.defaultLaborRate;
-  });
-  
-  const [materialCosts, setMaterialCosts] = useState<number | string>(() => {
-    if (duplicateSource && 'materialCosts' in duplicateSource) return (duplicateSource as Quote).materialCosts;
-    if (!duplicateSource && draft?.materialCosts !== undefined) return draft.materialCosts;
-    return 0;
-  });
-  
-  const [taxRate, setTaxRate] = useState<number | string>(() => {
-    if (duplicateSource && 'taxRate' in duplicateSource) return (duplicateSource as Quote).taxRate;
-    if (!duplicateSource && draft?.taxRate !== undefined) return draft.taxRate;
-    return initialProfile.defaultTaxRate;
-  });
-  
-  const [notes, setNotes] = useState(() => {
-    if (duplicateSource && 'notes' in duplicateSource) return (duplicateSource as Quote).notes;
-    if (!duplicateSource && draft?.notes) return draft.notes;
-    return "";
-  });
-
-  const [scopeDescription, setScopeDescription] = useState(() => {
-    if (duplicateSource?.scopeDescription) return duplicateSource.scopeDescription;
-    if (!duplicateSource && draft?.scopeDescription) return draft.scopeDescription;
-    return "";
-  });
-
-  const [undoStack, setUndoStack] = useState<HistoryState[]>([]);
-  const [redoStack, setRedoStack] = useState<HistoryState[]>([]);
-  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    const currentDraft: QuoteDraft = {
-      clientId,
-      serviceCategory,
-      items,
-      laborHours,
-      laborRate,
-      materialCosts,
-      taxRate,
-      notes,
-      scopeDescription
+    if (draft) {
+      return {
+        ...draft,
+        clientId: preSelectedClientId || draft.clientId
+      };
+    }
+    return {
+      clientId: preSelectedClientId || "",
+      serviceCategory: initialProfile.offeredServices?.[0] || "General Contracting",
+      items: [{ id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }],
+      laborHours: 0,
+      laborRate: initialProfile.defaultLaborRate,
+      materialCosts: 0,
+      taxRate: initialProfile.defaultTaxRate,
+      notes: "",
+      scopeDescription: ""
     };
-    saveDraftQuote(currentDraft);
-  }, [clientId, serviceCategory, items, laborHours, laborRate, materialCosts, taxRate, notes, scopeDescription]);
+  }, [duplicateSource, initialProfile, preSelectedClientId]);
 
-  const undo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    setRedoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
-    const previous = undoStack[undoStack.length - 1];
-    setItems(previous.items);
-    setServiceCategory(previous.serviceCategory);
-    setScopeDescription(previous.scopeDescription);
-    setUndoStack(prev => prev.slice(0, -1));
-    toast({ title: "Action Undone" });
-  }, [undoStack, items, serviceCategory, scopeDescription, toast]);
+  const [state, dispatch] = useReducer(quoteReducer, {
+    past: [],
+    present: initialState,
+    future: []
+  });
 
-  const redo = useCallback(() => {
-    if (redoStack.length === 0) return;
-    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
-    const next = redoStack[redoStack.length - 1];
-    setItems(next.items);
-    setServiceCategory(next.serviceCategory);
-    setScopeDescription(next.scopeDescription);
-    setRedoStack(prev => prev.slice(0, -1));
-    toast({ title: "Action Redone" });
-  }, [redoStack, items, serviceCategory, scopeDescription, toast]);
+  const { present, past, future } = state;
 
+  // Persist draft
+  useEffect(() => {
+    saveDraftQuote(present);
+  }, [present]);
+
+  // Undo / Redo Shortcut Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey)) {
-        if (e.key === 'z') { e.shiftKey ? redo() : undo(); }
-        else if (e.key === 'y') { redo(); }
+        if (e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) dispatch({ type: 'REDO' });
+          else dispatch({ type: 'UNDO' });
+        } else if (e.key === 'y') {
+          e.preventDefault();
+          dispatch({ type: 'REDO' });
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, []);
 
+  // UI States
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
@@ -196,114 +291,32 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const [newClientPhone, setNewClientPhone] = useState("");
   const [newClientAddress, setNewClientAddress] = useState("");
   const [openLibraryId, setOpenLibraryId] = useState<string | null>(null);
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
-  const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
+  const selectedClient = useMemo(() => clients.find(c => c.id === present.clientId), [clients, present.clientId]);
 
   const totals = useMemo(() => {
     return calculateQuoteTotals({
-      items,
-      laborHours: Number(laborHours) || 0,
-      laborRate: Number(laborRate) || 0,
-      materialCosts: Number(materialCosts) || 0,
-      taxRate: Number(taxRate) || 0
+      items: present.items,
+      laborHours: Number(present.laborHours) || 0,
+      laborRate: Number(present.laborRate) || 0,
+      materialCosts: Number(present.materialCosts) || 0,
+      taxRate: Number(present.taxRate) || 0
     });
-  }, [items, laborHours, laborRate, materialCosts, taxRate]);
-
-  const updateItem = (id: string, field: keyof QuoteItem, value: any) => {
-    setItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [field]: value };
-        if (field === 'length' || field === 'width') {
-          const l = parseFloat(String(updated.length));
-          const w = parseFloat(String(updated.width));
-          if (!isNaN(l) && !isNaN(w)) updated.quantity = roundToCent(l * w);
-        }
-        updated.total = roundToCent((Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0));
-        return updated;
-      }
-      return item;
-    }));
-  };
-
-  const deleteItem = (id: string) => {
-    if (items.length <= 1) return;
-    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
-    setRedoStack([]);
-    setItems(prev => prev.filter(i => i.id !== id));
-    toast({
-      title: "Line Item Removed",
-      description: "Undo with Ctrl+Z",
-      action: <ToastAction altText="Undo" onClick={undo}>Undo</ToastAction>,
-    });
-  };
-
-  const applyLibraryItem = (rowId: string, libItem: CommonItem) => {
-    setItems(prev => prev.map(item => {
-      if (item.id === rowId) {
-        const qty = Number(item.quantity) || 1;
-        return {
-          ...item,
-          description: libItem.description,
-          unit: libItem.unit || "ea",
-          unitPrice: libItem.defaultUnitPrice,
-          total: roundToCent(qty * libItem.defaultUnitPrice)
-        };
-      }
-      return item;
-    }));
-    setOpenLibraryId(null);
-  };
-
-  const applyTemplate = (template: QuoteTemplate) => {
-    setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]);
-    setRedoStack([]);
-    setServiceCategory(template.serviceCategory);
-    setScopeDescription(template.scopeDescription);
-    setItems(template.items.map(i => ({ 
-      ...i, 
-      id: uuidv4(), 
-      total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0)) 
-    })) as QuoteItem[]);
-    toast({ title: "Template Applied" });
-  };
-
-  const handleSaveAsTemplate = () => {
-    if (!user || !newTemplateName.trim()) return;
-    const id = uuidv4();
-    const newTemplate: QuoteTemplate = {
-      id,
-      name: newTemplateName,
-      serviceCategory,
-      items: items.filter(i => i.description.trim() !== "").map(({ id, total, ...rest }) => rest),
-      scopeDescription
-    };
-    const docRef = doc(db, "contractorProfiles", user.uid, "templates", id);
-    setDocumentNonBlocking(docRef, newTemplate, { merge: true });
-    setIsTemplateDialogOpen(false);
-    toast({ title: "Template Saved" });
-  };
+  }, [present.items, present.laborHours, present.laborRate, present.materialCosts, present.taxRate]);
 
   const handleSaveQuote = () => {
-    if (!clientId) {
+    if (!present.clientId) {
       toast({ title: "Client Required", description: "Please select or add a client first.", variant: "destructive" });
       return;
     }
 
-    const filteredItems = items.filter(i => i.description.trim() !== "");
-    const client = clients.find(c => c.id === clientId);
-
-    // Business Logic: Recalculate totals immediately before saving to ensure data integrity
-    const finalTotals = calculateQuoteTotals({
-      items: filteredItems,
-      laborHours: Number(laborHours) || 0,
-      laborRate: Number(laborRate) || 0,
-      materialCosts: Number(materialCosts) || 0,
-      taxRate: Number(taxRate) || 0
-    });
+    const filteredItems = present.items.filter(i => i.description.trim() !== "");
+    const client = clients.find(c => c.id === present.clientId);
 
     const quoteData: any = {
       id: uuidv4(),
-      clientId,
+      clientId: present.clientId,
       clientSnapshot: client ? {
         name: client.name,
         email: client.email,
@@ -312,34 +325,60 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       } : undefined,
       date: new Date().toISOString(),
       status: 'draft',
-      serviceCategory,
+      serviceCategory: present.serviceCategory,
       items: filteredItems,
-      scopeDescription,
-      laborHours: Number(laborHours) || 0,
-      laborRate: Number(laborRate) || 0,
-      materialCosts: Number(materialCosts) || 0,
-      taxRate: Number(taxRate) || 0,
-      taxTotal: finalTotals.taxTotal,
-      subtotal: finalTotals.subtotal,
-      grandTotal: finalTotals.grandTotal,
-      notes
+      scopeDescription: present.scopeDescription,
+      laborHours: Number(present.laborHours) || 0,
+      laborRate: Number(present.laborRate) || 0,
+      materialCosts: Number(present.materialCosts) || 0,
+      taxRate: Number(present.taxRate) || 0,
+      taxTotal: totals.taxTotal,
+      subtotal: totals.subtotal,
+      grandTotal: totals.grandTotal,
+      notes: present.notes
     };
 
-    // Client-side Validation Layer: Use Zod to enforce integrity
     const result = QuoteSchema.safeParse(quoteData);
 
     if (!result.success) {
-      const firstError = result.error.errors[0];
-      toast({
-        title: "Validation Error",
-        description: firstError.message,
-        variant: "destructive"
-      });
+      toast({ title: "Validation Error", description: result.error.errors[0].message, variant: "destructive" });
       return;
     }
     
     clearDraftQuote();
     onSave(result.data as Quote);
+  };
+
+  const handleSaveAsTemplate = () => {
+    if (!user || !newTemplateName.trim()) return;
+    const id = uuidv4();
+    const newTemplate: QuoteTemplate = {
+      id,
+      name: newTemplateName,
+      serviceCategory: present.serviceCategory,
+      items: present.items.filter(i => i.description.trim() !== "").map(({ id, total, ...rest }) => rest),
+      scopeDescription: present.scopeDescription
+    };
+    const docRef = doc(db, "contractorProfiles", user.uid, "templates", id);
+    setDocumentNonBlocking(docRef, newTemplate, { merge: true });
+    setIsTemplateDialogOpen(false);
+    toast({ title: "Template Saved" });
+  };
+
+  const handleCreateAndSelectClient = () => {
+    if (!newClientName || !newClientEmail || !user) {
+      toast({ title: "Required Fields", variant: "destructive" });
+      return;
+    }
+    const id = uuidv4();
+    const newClient: Client = { id, name: newClientName, email: newClientEmail, phone: newClientPhone, address: newClientAddress };
+    const clientRef = doc(db, "contractorProfiles", user.uid, "clients", id);
+    setDocumentNonBlocking(clientRef, { ...newClient, contractorId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    setLocalClients(prev => [...prev, newClient]);
+    dispatch({ type: 'SET_FIELD', field: 'clientId', value: id, snapshot: true });
+    setIsNewClientDialogOpen(false);
+    setNewClientName(""); setNewClientEmail(""); setNewClientPhone(""); setNewClientAddress("");
+    toast({ title: "Client Created" });
   };
 
   const organizedLibrary = useMemo(() => {
@@ -358,27 +397,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     });
   }, [allLibraryItems, initialProfile]);
 
-  const handleCreateAndSelectClient = () => {
-    if (!newClientName || !newClientEmail || !user) {
-      toast({ title: "Required Fields", variant: "destructive" });
-      return;
-    }
-    const id = uuidv4();
-    const newClient: Client = { id, name: newClientName, email: newClientEmail, phone: newClientPhone, address: newClientAddress };
-    const clientRef = doc(db, "contractorProfiles", user.uid, "clients", id);
-    setDocumentNonBlocking(clientRef, { ...newClient, contractorId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
-    setLocalClients(prev => [...prev, newClient]);
-    setClientId(id);
-    setIsNewClientDialogOpen(false);
-    setNewClientName(""); setNewClientEmail(""); setNewClientPhone(""); setNewClientAddress("");
-    toast({ title: "Client Created" });
-  };
-
-  const filteredClients = useMemo(() => {
-    const search = clientSearch.toLowerCase().trim();
-    return search ? clients.filter(c => c.name.toLowerCase().includes(search) || c.email.toLowerCase().includes(search)) : clients;
-  }, [clients, clientSearch]);
-
   return (
     <div className="space-y-8">
       <div className="grid gap-8 lg:grid-cols-3">
@@ -388,8 +406,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="flex items-center gap-4">
                 <CardTitle className="text-lg">Configuration</CardTitle>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={undo} disabled={undoStack.length === 0} className="h-7 w-7"><Undo2 className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" onClick={redo} disabled={redoStack.length === 0} className="h-7 w-7"><Redo2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => dispatch({ type: 'UNDO' })} disabled={past.length === 0} className="h-7 w-7"><Undo2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => dispatch({ type: 'REDO' })} disabled={future.length === 0} className="h-7 w-7"><Redo2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -411,7 +429,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <ScrollArea className="h-72">
                       <div className="p-1">
                         {allAvailableTemplates.map(t => (
-                          <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start gap-0.5" onClick={() => applyTemplate(t)}>
+                          <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start gap-0.5" onClick={() => dispatch({ type: 'APPLY_TEMPLATE', template: t })}>
                             <span className="font-bold">{t.name}</span>
                             <span className="text-[9px] opacity-60 uppercase">{t.serviceCategory}</span>
                           </Button>
@@ -434,7 +452,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <p className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 -mr-1" onClick={() => setClientId("")}><X className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 -mr-1" onClick={() => dispatch({ type: 'SET_FIELD', field: 'clientId', value: '', snapshot: true })}><X className="w-4 h-4" /></Button>
                   </div>
                 ) : (
                   <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
@@ -447,8 +465,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <PopoverContent className="p-0 w-full" style={{ width: 'var(--radix-popover-trigger-width)' }}>
                       <ScrollArea className="max-h-64">
                         <div className="p-1">
-                          {filteredClients.map(c => (
-                            <Button key={c.id} variant="ghost" className="w-full justify-start h-auto py-2 px-3 hover:bg-muted" onClick={() => { setClientId(c.id); setIsClientPopoverOpen(false); }}>
+                          {(clientSearch.trim() ? clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.email.toLowerCase().includes(clientSearch.toLowerCase())) : clients).map(c => (
+                            <Button key={c.id} variant="ghost" className="w-full justify-start h-auto py-2 px-3 hover:bg-muted" onClick={() => { dispatch({ type: 'SET_FIELD', field: 'clientId', value: c.id, snapshot: true }); setIsClientPopoverOpen(false); }}>
                               <div className="flex items-center gap-3 overflow-hidden w-full">
                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">{c.name.charAt(0)}</div>
                                 <div className="flex flex-col leading-tight overflow-hidden text-left"><span className="text-sm font-semibold truncate">{c.name}</span><span className="text-[10px] text-muted-foreground truncate">{c.email}</span></div>
@@ -464,7 +482,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
               <div className="space-y-2">
                 <Label>Service Category</Label>
-                <Select value={serviceCategory} onValueChange={setServiceCategory}>
+                <Select value={present.serviceCategory} onValueChange={(v) => dispatch({ type: 'SET_FIELD', field: 'serviceCategory', value: v, snapshot: true })}>
                   <SelectTrigger className="flex items-center gap-2 h-12"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SERVICE_CATEGORIES.map(c => (
@@ -486,11 +504,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                   <div></div><div>Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-2">
-                  {items.map((item, idx) => (
-                    <div key={item.id} className={cn("grid grid-cols-1 md:grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity", draggedItemIndex === idx ? "opacity-40" : "opacity-100")} draggable onDragStart={(e) => { setDraggedItemIndex(idx); e.dataTransfer.effectAllowed = "move"; }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedItemIndex === null || draggedItemIndex === idx) return; setUndoStack(prev => [...prev, { items, serviceCategory, scopeDescription }]); setRedoStack([]); const newItems = [...items]; const draggedItem = newItems[draggedItemIndex]; newItems.splice(draggedItemIndex, 1); newItems.splice(idx, 0, draggedItem); setItems(newItems); setDraggedItemIndex(null); }}>
+                  {present.items.map((item, idx) => (
+                    <div key={item.id} className={cn("grid grid-cols-1 md:grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity", draggedItemIndex === idx ? "opacity-40" : "opacity-100")} draggable onDragStart={(e) => { setDraggedItemIndex(idx); e.dataTransfer.effectAllowed = "move"; }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedItemIndex === null || draggedItemIndex === idx) return; dispatch({ type: 'REORDER_ITEMS', fromIndex: draggedItemIndex, toIndex: idx }); setDraggedItemIndex(null); }}>
                       <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary hover:bg-primary/5 hover:ring-1 hover:ring-primary/20 rounded-sm p-0.5 transition-all"><GripVertical className="w-3.5 h-3.5" /></div>
                       <div className="relative">
-                        <Input value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="h-8 text-xs pr-8" placeholder="Service description..." />
+                        <Input value={item.description} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'items', value: present.items, snapshot: true })} className="h-8 text-xs pr-8" placeholder="Service description..." />
                         <Popover open={openLibraryId === item.id} onOpenChange={(open) => setOpenLibraryId(open ? item.id : null)}>
                           <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
                           <PopoverContent className="w-80 p-0 shadow-xl border-primary/20" side="bottom">
@@ -501,7 +519,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                                   <div key={cat} className="mb-3">
                                     <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1 flex items-center gap-1.5">{cat}</p>
                                     {libItems.map(li => (
-                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => applyLibraryItem(item.id, li)}>
+                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => {
+                                        dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: li.description });
+                                        dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: li.unit || "ea" });
+                                        dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: li.defaultUnitPrice });
+                                        dispatch({ type: 'SET_FIELD', field: 'items', value: present.items, snapshot: true });
+                                        setOpenLibraryId(null);
+                                      }}>
                                         <span className="truncate pr-2 text-left">{li.description}</span>
                                         <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
                                       </Button>
@@ -513,21 +537,21 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <Input value={item.unit} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} className="h-8 text-xs text-center px-1" />
-                      <Input type="number" value={item.length} onChange={(e) => updateItem(item.id, 'length', e.target.value)} className="h-8 text-xs text-center px-1" placeholder="L" />
-                      <Input type="number" value={item.width} onChange={(e) => updateItem(item.id, 'width', e.target.value)} className="h-8 text-xs text-center px-1" placeholder="W" />
-                      <Input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} className="h-8 text-xs text-center px-1 font-medium" />
-                      <Input type="number" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} className="h-8 text-xs text-center px-1" />
+                      <Input value={item.unit} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: e.target.value })} className="h-8 text-xs text-center px-1" />
+                      <Input type="number" value={item.length} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'length', value: e.target.value })} className="h-8 text-xs text-center px-1" placeholder="L" />
+                      <Input type="number" value={item.width} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'width', value: e.target.value })} className="h-8 text-xs text-center px-1" placeholder="W" />
+                      <Input type="number" value={item.quantity} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'quantity', value: e.target.value })} className="h-8 text-xs text-center px-1 font-medium" />
+                      <Input type="number" value={item.unitPrice} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: e.target.value })} className="h-8 text-xs text-center px-1" />
                       <div className="text-right text-xs font-bold px-1">${item.total.toLocaleString()}</div>
-                      <div className="flex justify-end"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteItem(item.id)}><Trash2 className="w-3.5 h-3.5" /></Button></div>
+                      <div className="flex justify-end"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => dispatch({ type: 'REMOVE_ITEM', id: item.id })}><Trash2 className="w-3.5 h-3.5" /></Button></div>
                     </div>
                   ))}
                 </div>
-                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all" onClick={() => setItems([...items, { id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }])}><Plus className="w-4 h-4" /> Add Line Item</Button>
+                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all" onClick={() => dispatch({ type: 'ADD_ITEM' })}><Plus className="w-4 h-4" /> Add Line Item</Button>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
-                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} className="min-h-[180px] text-sm leading-relaxed" placeholder="Describe project objectives..." />
+                <Textarea value={present.scopeDescription} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: present.scopeDescription, snapshot: true })} className="min-h-[180px] text-sm leading-relaxed" placeholder="Describe project objectives..." />
               </div>
             </CardContent>
           </Card>
@@ -538,22 +562,22 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
             <CardHeader className="bg-primary/5 border-b border-primary/10 py-4"><CardTitle className="text-lg flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Pricing & Totals</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate ($/hr)</Label><Input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="font-bold text-primary" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} className="font-bold" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials ($)</Label><Input type="number" value={materialCosts} onChange={(e) => setMaterialCosts(e.target.value)} className="font-bold" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate ($/hr)</Label><Input type="number" value={present.laborRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborRate', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'laborRate', value: present.laborRate, snapshot: true })} className="font-bold text-primary" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" value={present.laborHours} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborHours', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'laborHours', value: present.laborHours, snapshot: true })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials ($)</Label><Input type="number" value={present.materialCosts} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'materialCosts', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'materialCosts', value: present.materialCosts, snapshot: true })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" value={present.taxRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'taxRate', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'taxRate', value: present.taxRate, snapshot: true })} className="font-bold" /></div>
               </div>
               
               <div className="space-y-3 pt-6 border-t border-dashed">
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Items & Services</span><span className="font-medium">${items.reduce((acc, i) => acc + i.total, 0).toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor Subtotal</span><span className="font-medium">${(Number(laborHours) * Number(laborRate)).toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({taxRate}%)</span><span className="font-medium">${totals.taxTotal.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Items & Services</span><span className="font-medium">${present.items.reduce((acc, i) => acc + i.total, 0).toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor Subtotal</span><span className="font-medium">${(Number(present.laborHours) * Number(present.laborRate)).toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({present.taxRate}%)</span><span className="font-medium">${totals.taxTotal.toLocaleString()}</span></div>
                 <div className="pt-4 border-t-2 border-primary/20"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Total Quote Amount</span><span className="text-2xl font-black text-primary tracking-tighter">${totals.grandTotal.toLocaleString()}</span></div></div>
               </div>
 
               <Button size="lg" className="w-full h-14 text-lg font-black gap-2 shadow-lg hover:scale-[1.02] transition-transform active:scale-95" onClick={handleSaveQuote}><Save className="w-5 h-5" /> Save</Button>
               
-              <div className="pt-4 space-y-3"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Internal Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Private notes..." className="text-xs min-h-[80px] bg-muted/20 border-none" /></div>
+              <div className="pt-4 space-y-3"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Internal Notes</Label><Textarea value={present.notes} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'notes', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'notes', value: present.notes, snapshot: true })} placeholder="Private notes..." className="text-xs min-h-[80px] bg-muted/20 border-none" /></div>
             </CardContent>
           </Card>
         </div>
