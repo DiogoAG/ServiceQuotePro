@@ -59,17 +59,20 @@ export default function QuotesListPage() {
     const idToDelete = quoteToDelete.id;
     const category = quoteToDelete.serviceCategory;
 
-    // 1. Optimistic Update: Hide immediately
+    // 1. CRITICAL: Close modal immediately BEFORE the transition
+    // This ensures the Radix backdrop and body-lock are removed promptly
+    setQuoteToDelete(null);
+
+    // 2. Optimistic Update: Hide the item in the UI
     startTransition(() => {
       setOptimisticDeletedIds(prev => {
         const next = new Set(prev);
         next.add(idToDelete);
         return next;
       });
-      setQuoteToDelete(null);
     });
 
-    // 2. Background Firestore Delete
+    // 3. Background Firestore Delete
     const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
     deleteDocumentNonBlocking(docRef);
 
@@ -156,7 +159,10 @@ export default function QuotesListPage() {
                       <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer py-2.5"
-                          onSelect={() => setQuoteToDelete(quote)}
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            setQuoteToDelete(quote);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                         </DropdownMenuItem>
@@ -240,7 +246,10 @@ export default function QuotesListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem 
                               className="text-destructive cursor-pointer"
-                              onSelect={() => setQuoteToDelete(quote)}
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setQuoteToDelete(quote);
+                              }}
                             >
                               <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                             </DropdownMenuItem>
@@ -273,12 +282,22 @@ export default function QuotesListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl">Delete this quote?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>. This action cannot be undone.
+              {quoteToDelete ? (
+                <>This will remove the quote for <strong>{quoteToDelete.serviceCategory}</strong>. This action cannot be undone.</>
+              ) : (
+                "This action cannot be undone."
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
             <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground rounded-xl">Delete Quote</AlertDialogAction>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground rounded-xl"
+              disabled={isPending}
+            >
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Quote"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
