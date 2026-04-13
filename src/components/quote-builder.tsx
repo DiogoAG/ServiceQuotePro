@@ -299,6 +299,40 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     });
   }, [present.items, present.laborHours, present.laborRate, present.materialCosts, present.taxRate]);
 
+  const handleCreateAndSelectClient = () => {
+    if (!newClientName || !newClientEmail || !user) {
+      toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
+      return;
+    }
+
+    const clientId = uuidv4();
+    const newClient: Client = {
+      id: clientId,
+      name: newClientName,
+      email: newClientEmail,
+      phone: newClientPhone,
+      address: newClientAddress,
+    };
+
+    const docRef = doc(db, "contractorProfiles", user.uid, "clients", clientId);
+    setDocumentNonBlocking(docRef, {
+      ...newClient,
+      contractorId: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    setLocalClients(prev => [...prev, newClient]);
+    dispatch({ type: 'SET_FIELD', field: 'clientId', value: clientId, snapshot: true });
+
+    setIsNewClientDialogOpen(false);
+    setNewClientName("");
+    setNewClientEmail("");
+    setNewClientPhone("");
+    setNewClientAddress("");
+    toast({ title: "Client Created", description: `${newClientName} has been added and selected.` });
+  };
+
   const handleSaveQuote = () => {
     if (!present.clientId) {
       toast({ title: "Client Required", variant: "destructive" });
