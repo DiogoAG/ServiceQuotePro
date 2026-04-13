@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle, Lock } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle, Lock, PlusCircle } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -274,7 +274,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
@@ -332,6 +332,35 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     toast({ title: "Client Created", description: `${newClientName} has been added and selected.` });
   };
 
+  const handleSaveAsTemplate = () => {
+    if (!newTemplateName || !user) {
+      toast({ title: "Name Required", description: "Please enter a name for your template.", variant: "destructive" });
+      return;
+    }
+
+    const templateId = uuidv4();
+    const templateData: QuoteTemplate = {
+      id: templateId,
+      name: newTemplateName,
+      serviceCategory: present.serviceCategory,
+      scopeDescription: present.scopeDescription,
+      items: present.items.filter(i => i.description.trim() !== "").map(i => ({
+        description: i.description,
+        unit: i.unit,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        total: i.total
+      }))
+    };
+
+    const docRef = doc(db, "contractorProfiles", user.uid, "templates", templateId);
+    setDocumentNonBlocking(docRef, templateData, { merge: true });
+
+    setIsTemplateSaveDialogOpen(false);
+    setNewTemplateName("");
+    toast({ title: "Template Saved", description: `"${templateData.name}" has been added to your library.` });
+  };
+
   const handleSaveQuote = () => {
     if (!present.clientId) {
       toast({ title: "Client Required", variant: "destructive" });
@@ -378,8 +407,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (!grouped[i.category]) grouped[i.category] = [];
       grouped[i.category].push(i);
     });
-    return Object.entries(grouped);
-  }, [allLibraryItems]);
+    return Object.entries(grouped).sort(([catA], [catB]) => {
+      const isOfferedA = initialProfile.offeredServices?.some(s => catA.startsWith(s));
+      const isOfferedB = initialProfile.offeredServices?.some(s => catB.startsWith(s));
+      if (isOfferedA && !isOfferedB) return -1;
+      if (!isOfferedA && isOfferedB) return 1;
+      return catA.localeCompare(catB);
+    });
+  }, [allLibraryItems, initialProfile.offeredServices]);
 
   return (
     <div className="space-y-8">
@@ -404,18 +439,58 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </div>
               </div>
               <div className="flex gap-2">
+                <Dialog open={isTemplateSaveDialogOpen} onOpenChange={setIsTemplateSaveDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <PlusCircle className="w-3.5 h-3.5" /> Save Template
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader><DialogTitle>Save as Template</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Template Name</Label>
+                        <Input 
+                          placeholder="e.g. Standard Living Room Refresh" 
+                          value={newTemplateName} 
+                          onChange={(e) => setNewTemplateName(e.target.value)}
+                        />
+                        <p className="text-[10px] text-muted-foreground">This will save your current service category, items, and work scope description.</p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsTemplateSaveDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveAsTemplate}>Save Template</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
                 <Popover>
                   <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8 text-xs"><Copy className="w-3.5 h-3.5" /> Templates</Button></PopoverTrigger>
                   <PopoverContent className="w-72 p-0" align="end">
                     <div className="p-3 border-b bg-muted/30 font-bold text-[10px] uppercase text-muted-foreground">Available Templates</div>
                     <ScrollArea className="h-72">
                       <div className="p-1">
-                        {allAvailableTemplates.map(t => (
-                          <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start" onClick={() => dispatch({ type: 'APPLY_TEMPLATE', template: t })}>
-                            <span className="font-bold">{t.name}</span>
-                            <span className="text-[9px] opacity-60 uppercase">{t.serviceCategory}</span>
-                          </Button>
-                        ))}
+                        {allAvailableTemplates
+                          .sort((a, b) => {
+                            const isOfferedA = initialProfile.offeredServices?.includes(a.serviceCategory);
+                            const isOfferedB = initialProfile.offeredServices?.includes(b.serviceCategory);
+                            if (isOfferedA && !isOfferedB) return -1;
+                            if (!isOfferedA && isOfferedB) return 1;
+                            return 0;
+                          })
+                          .map(t => {
+                            const isOffered = initialProfile.offeredServices?.includes(t.serviceCategory);
+                            return (
+                              <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start" onClick={() => dispatch({ type: 'APPLY_TEMPLATE', template: t })}>
+                                <div className="flex items-center gap-2 w-full">
+                                  <span className="font-bold flex-1 truncate">{t.name}</span>
+                                  {isOffered && <Star className="w-3 h-3 fill-primary text-primary shrink-0" />}
+                                </div>
+                                <span className="text-[9px] opacity-60 uppercase">{t.serviceCategory}</span>
+                              </Button>
+                            );
+                          })}
                       </div>
                     </ScrollArea>
                   </PopoverContent>
@@ -505,22 +580,31 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             <div className="p-2 border-b bg-muted/50 font-bold text-[10px] uppercase">Library</div>
                             <ScrollArea className="h-80">
                               <div className="p-1">
-                                {organizedLibrary.map(([cat, libItems]) => (
-                                  <div key={cat} className="mb-3">
-                                    <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1">{cat}</p>
-                                    {libItems.map(li => (
-                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2" onClick={() => {
-                                        dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: li.description });
-                                        dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: li.unit || "ea" });
-                                        dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: li.defaultUnitPrice });
-                                        setOpenLibraryId(null);
-                                      }}>
-                                        <span className="truncate pr-2 text-left">{li.description}</span>
-                                        <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
-                                      </Button>
-                                    ))}
-                                  </div>
-                                ))}
+                                {organizedLibrary.map(([cat, libItems]) => {
+                                  const isOffered = initialProfile.offeredServices?.some(s => cat.startsWith(s));
+                                  return (
+                                    <div key={cat} className="mb-3">
+                                      <p className={cn(
+                                        "text-[9px] font-black uppercase px-2 py-1 rounded mb-1 flex items-center justify-between",
+                                        isOffered ? "bg-primary/10 text-primary" : "bg-muted/50 text-muted-foreground"
+                                      )}>
+                                        {cat}
+                                        {isOffered && <Star className="w-2.5 h-2.5 fill-primary" />}
+                                      </p>
+                                      {libItems.map(li => (
+                                        <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2" onClick={() => {
+                                          dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: li.description });
+                                          dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: li.unit || "ea" });
+                                          dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: li.defaultUnitPrice });
+                                          setOpenLibraryId(null);
+                                        }}>
+                                          <span className="truncate pr-2 text-left">{li.description}</span>
+                                          <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </ScrollArea>
                           </PopoverContent>
