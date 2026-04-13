@@ -33,17 +33,30 @@ export default function DashboardLayout({
     }
   }, [user, isUserLoading, router]);
 
-  // Safety cleanup: Ensure body is not locked after mount/navigation
-  // This prevents "ghost" overlays from Radix UI sticking around
+  // CRITICAL: Interaction Safety Valve
+  // Force reset body interaction styles that Shadcn/Radix sometimes leave behind
   useEffect(() => {
-    const cleanup = () => {
-      document.body.style.pointerEvents = "auto";
-      document.body.style.overflow = "auto";
+    const recoverInteraction = () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = "auto";
+        // Only reset overflow if we aren't inside an active intended lock
+        // but for a dashboard layout, auto is almost always the correct state
+        document.body.style.overflow = "auto";
+      }
     };
-    cleanup();
+
+    recoverInteraction();
+    
     // Also run on a slight delay to catch any post-animation locks
-    const timer = setTimeout(cleanup, 300);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(recoverInteraction, 300);
+    
+    // Polling recovery: ensures UI remains clickable even after interrupted modal animations
+    const interval = setInterval(recoverInteraction, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [pathname]);
 
   const handleExitDemo = async () => {

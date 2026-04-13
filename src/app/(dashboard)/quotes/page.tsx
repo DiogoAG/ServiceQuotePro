@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useTransition } from "react";
+import { useEffect, useState, useMemo, useTransition, useCallback } from "react";
 import { Quote, Client } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,11 +41,10 @@ export default function QuotesListPage() {
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
 
-  // Interaction safety valve: ensure body isn't locked if no dialog is open
+  // Interaction safety valve for this specific page
   useEffect(() => {
-    if (!quoteToDelete) {
+    if (!quoteToDelete && typeof document !== 'undefined') {
       document.body.style.pointerEvents = "auto";
-      document.body.style.overflow = "auto";
     }
   }, [quoteToDelete]);
 
@@ -61,33 +60,36 @@ export default function QuotesListPage() {
     return quotes?.filter(q => !optimisticDeletedIds.has(q.id)) || [];
   }, [quotes, optimisticDeletedIds]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (!quoteToDelete || !user) return;
     
     const idToDelete = quoteToDelete.id;
     const category = quoteToDelete.serviceCategory;
 
-    // 1. Immediately clear the dialog state to trigger unmounting
+    // 1. Signal dialog closure immediately to trigger UI cleanup
     setQuoteToDelete(null);
 
-    // 2. Mark as optimistically deleted in a low-priority transition
-    startTransition(() => {
-      setOptimisticDeletedIds(prev => {
-        const next = new Set(prev);
-        next.add(idToDelete);
-        return next;
+    // 2. Perform optimistic update after a small delay to let the modal close properly
+    // This prevents "pointer-events: none" from getting stuck on the body
+    setTimeout(() => {
+      startTransition(() => {
+        setOptimisticDeletedIds(prev => {
+          const next = new Set(prev);
+          next.add(idToDelete);
+          return next;
+        });
       });
-    });
 
-    // 3. Background Firestore Delete
-    const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
-    deleteDocumentNonBlocking(docRef);
+      // 3. Background Firestore Delete
+      const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
+      deleteDocumentNonBlocking(docRef);
 
-    toast({
-      title: "Quote Deleted",
-      description: `Quote for ${category} has been removed.`,
-    });
-  };
+      toast({
+        title: "Quote Deleted",
+        description: `Quote for ${category} has been removed.`,
+      });
+    }, 50);
+  }, [quoteToDelete, user, db, toast]);
 
   if (quotesLoading || clientsLoading) {
     return (
@@ -167,7 +169,7 @@ export default function QuotesListPage() {
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer py-2.5"
                           onSelect={(e) => {
-                            e.preventDefault(); // Prevent closing dropdown from stealing focus
+                            e.preventDefault();
                             setQuoteToDelete(quote);
                           }}
                         >
