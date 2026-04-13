@@ -59,11 +59,7 @@ export default function QuotesListPage() {
     const idToDelete = quoteToDelete.id;
     const category = quoteToDelete.serviceCategory;
 
-    // 1. CRITICAL: Close modal immediately BEFORE the transition
-    // This ensures the Radix backdrop and body-lock are removed promptly
-    setQuoteToDelete(null);
-
-    // 2. Optimistic Update: Hide the item in the UI
+    // 1. Mark as optimistically deleted
     startTransition(() => {
       setOptimisticDeletedIds(prev => {
         const next = new Set(prev);
@@ -72,9 +68,12 @@ export default function QuotesListPage() {
       });
     });
 
-    // 3. Background Firestore Delete
+    // 2. Background Firestore Delete
     const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
     deleteDocumentNonBlocking(docRef);
+
+    // 3. Clear state to close dialog
+    setQuoteToDelete(null);
 
     toast({
       title: "Quote Deleted",
@@ -159,10 +158,7 @@ export default function QuotesListPage() {
                       <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer py-2.5"
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            setQuoteToDelete(quote);
-                          }}
+                          onSelect={() => setQuoteToDelete(quote)}
                         >
                           <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                         </DropdownMenuItem>
@@ -246,10 +242,7 @@ export default function QuotesListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem 
                               className="text-destructive cursor-pointer"
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                setQuoteToDelete(quote);
-                              }}
+                              onSelect={() => setQuoteToDelete(quote)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                             </DropdownMenuItem>
@@ -277,7 +270,12 @@ export default function QuotesListPage() {
         </Table>
       </div>
 
-      <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
+      <AlertDialog 
+        open={!!quoteToDelete} 
+        onOpenChange={(open) => {
+          if (!open) setQuoteToDelete(null);
+        }}
+      >
         <AlertDialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl">Delete this quote?</AlertDialogTitle>

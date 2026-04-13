@@ -32,6 +32,12 @@ export default function DashboardLayout({
     }
   }, [user, isUserLoading, router]);
 
+  // Safety cleanup: Ensure body is not locked after mount/navigation
+  useEffect(() => {
+    document.body.style.pointerEvents = "auto";
+    document.body.style.overflow = "auto";
+  }, []);
+
   const handleExitDemo = async () => {
     exitDemoMode();
     await signOut(auth);
@@ -42,11 +48,9 @@ export default function DashboardLayout({
     if (!user) return;
     setIsResetting(true);
     try {
-      // In a real app we might delete collections first, 
-      // but for this MVP demo we just re-run the seed logic which uses 'setDoc'
       await seedDemoEnvironment(db, user.uid);
       toast({ title: "Demo Data Reset", description: "The environment has been restored to its original state." });
-      window.location.reload(); // Hard refresh to clear any cached local state
+      window.location.reload();
     } finally {
       setIsResetting(false);
     }
