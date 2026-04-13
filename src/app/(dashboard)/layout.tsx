@@ -38,6 +38,7 @@ export default function DashboardLayout({
   useEffect(() => {
     const recoverInteraction = () => {
       if (typeof document !== 'undefined') {
+        // Ensure buttons are always clickable
         document.body.style.pointerEvents = "auto";
         // Only reset overflow if we aren't inside an active intended lock
         // but for a dashboard layout, auto is almost always the correct state
@@ -51,7 +52,7 @@ export default function DashboardLayout({
     const timer = setTimeout(recoverInteraction, 300);
     
     // Polling recovery: ensures UI remains clickable even after interrupted modal animations
-    const interval = setInterval(recoverInteraction, 2000);
+    const interval = setInterval(recoverInteraction, 1000);
 
     return () => {
       clearTimeout(timer);

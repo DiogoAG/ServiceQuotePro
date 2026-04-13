@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useReducer } from "react";
@@ -466,9 +465,21 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Service Category</Label>
                 <Select value={present.serviceCategory} onValueChange={(v) => dispatch({ type: 'SET_FIELD', field: 'serviceCategory', value: v, snapshot: true })}>
-                  <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {SERVICE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    {SERVICE_CATEGORIES.map(c => {
+                      const isOffered = initialProfile.offeredServices?.includes(c);
+                      return (
+                        <SelectItem key={c} value={c}>
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{c}</span>
+                            {isOffered && <Star className="w-3 h-3 fill-primary text-primary shrink-0" />}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -529,6 +540,9 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed Work Scope</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground">Generating clear project objectives helps close more deals.</span>
+                </div>
                 <Textarea value={present.scopeDescription} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: e.target.value })} className="min-h-[180px] text-sm leading-relaxed" placeholder="Describe project objectives..." />
               </div>
             </CardContent>
