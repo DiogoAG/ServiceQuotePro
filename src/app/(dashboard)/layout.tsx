@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { cn } from "@/lib/utils";
 import { useUser, useAuth, useFirestore } from "@/firebase";
@@ -18,6 +18,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const auth = useAuth();
   const db = useFirestore();
   const { toast } = useToast();
@@ -33,10 +34,17 @@ export default function DashboardLayout({
   }, [user, isUserLoading, router]);
 
   // Safety cleanup: Ensure body is not locked after mount/navigation
+  // This prevents "ghost" overlays from Radix UI sticking around
   useEffect(() => {
-    document.body.style.pointerEvents = "auto";
-    document.body.style.overflow = "auto";
-  }, []);
+    const cleanup = () => {
+      document.body.style.pointerEvents = "auto";
+      document.body.style.overflow = "auto";
+    };
+    cleanup();
+    // Also run on a slight delay to catch any post-animation locks
+    const timer = setTimeout(cleanup, 300);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   const handleExitDemo = async () => {
     exitDemoMode();

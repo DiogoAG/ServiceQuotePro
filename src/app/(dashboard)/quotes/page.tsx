@@ -41,6 +41,14 @@ export default function QuotesListPage() {
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
 
+  // Interaction safety valve: ensure body isn't locked if no dialog is open
+  useEffect(() => {
+    if (!quoteToDelete) {
+      document.body.style.pointerEvents = "auto";
+      document.body.style.overflow = "auto";
+    }
+  }, [quoteToDelete]);
+
   // Optimization: Pre-calculate a client map for O(1) lookup during render
   const clientMap = useMemo(() => {
     const map = new Map<string, Client>();
@@ -59,7 +67,10 @@ export default function QuotesListPage() {
     const idToDelete = quoteToDelete.id;
     const category = quoteToDelete.serviceCategory;
 
-    // 1. Mark as optimistically deleted
+    // 1. Immediately clear the dialog state to trigger unmounting
+    setQuoteToDelete(null);
+
+    // 2. Mark as optimistically deleted in a low-priority transition
     startTransition(() => {
       setOptimisticDeletedIds(prev => {
         const next = new Set(prev);
@@ -68,12 +79,9 @@ export default function QuotesListPage() {
       });
     });
 
-    // 2. Background Firestore Delete
+    // 3. Background Firestore Delete
     const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
     deleteDocumentNonBlocking(docRef);
-
-    // 3. Clear state to close dialog
-    setQuoteToDelete(null);
 
     toast({
       title: "Quote Deleted",
@@ -158,7 +166,10 @@ export default function QuotesListPage() {
                       <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer py-2.5"
-                          onSelect={() => setQuoteToDelete(quote)}
+                          onSelect={(e) => {
+                            e.preventDefault(); // Prevent closing dropdown from stealing focus
+                            setQuoteToDelete(quote);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                         </DropdownMenuItem>
@@ -242,7 +253,10 @@ export default function QuotesListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem 
                               className="text-destructive cursor-pointer"
-                              onSelect={() => setQuoteToDelete(quote)}
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setQuoteToDelete(quote);
+                              }}
                             >
                               <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                             </DropdownMenuItem>
@@ -288,7 +302,12 @@ export default function QuotesListPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel 
+              className="rounded-xl" 
+              onClick={() => setQuoteToDelete(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete} 
               className="bg-destructive text-destructive-foreground rounded-xl"
