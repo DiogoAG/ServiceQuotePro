@@ -4,8 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { cn } from "@/lib/utils";
-import { useUser } from "@/firebase";
-import { Loader2 } from "lucide-react";
+import { useUser, useAuth, useFirestore } from "@/firebase";
+import { Loader2, Sparkles, X, RefreshCcw } from "lucide-react";
+import { useDemoMode } from "@/lib/demo/use-demo-mode";
+import { Button } from "@/components/ui/button";
+import { signOut } from "firebase/auth";
+import { seedDemoEnvironment } from "@/lib/demo/seed-demo-data";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardLayout({
   children,
@@ -13,14 +18,39 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const auth = useAuth();
+  const db = useFirestore();
+  const { toast } = useToast();
   const [isFolded, setIsFolded] = useState(false);
   const { user, isUserLoading } = useUser();
+  const { isDemoMode, exitDemoMode } = useDemoMode();
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
+
+  const handleExitDemo = async () => {
+    exitDemoMode();
+    await signOut(auth);
+    router.push("/login");
+  };
+
+  const handleResetDemo = async () => {
+    if (!user) return;
+    setIsResetting(true);
+    try {
+      // In a real app we might delete collections first, 
+      // but for this MVP demo we just re-run the seed logic which uses 'setDoc'
+      await seedDemoEnvironment(db, user.uid);
+      toast({ title: "Demo Data Reset", description: "The environment has been restored to its original state." });
+      window.location.reload(); // Hard refresh to clear any cached local state
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   if (isUserLoading || !user) {
     return (
@@ -32,6 +62,37 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      {/* Demo Banner */}
+      {isDemoMode && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-accent text-accent-foreground px-4 py-2 flex items-center justify-between no-print shadow-md">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+            <Sparkles className="w-3.5 h-3.5" />
+            Live Demo Mode
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 text-[10px] gap-1.5 font-black uppercase hover:bg-white/20"
+              onClick={handleResetDemo}
+              disabled={isResetting}
+            >
+              {isResetting ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCcw className="w-3 h-3" />}
+              Reset Data
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 text-[10px] gap-1.5 font-black uppercase hover:bg-white/20"
+              onClick={handleExitDemo}
+            >
+              <X className="w-3 h-3" />
+              Exit Demo
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="no-print h-full shrink-0">
         <DashboardNav isFolded={isFolded} onToggleFold={() => setIsFolded(!isFolded)} />
       </div>
@@ -39,7 +100,8 @@ export default function DashboardLayout({
         "flex-1 transition-all duration-300 p-4 md:p-8 lg:p-12 overflow-y-auto",
         "print:m-0 print:p-0 print:overflow-visible print:transition-none",
         isFolded ? "md:ml-20" : "md:ml-64",
-        "print:ml-0"
+        "print:ml-0",
+        isDemoMode ? "pt-16 md:pt-20" : "" // Offset for banner
       )}>
         {children}
       </main>

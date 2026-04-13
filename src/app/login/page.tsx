@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, useFirestore } from "@/firebase";
 import { 
   initiateEmailSignIn, 
   initiateEmailSignUp, 
@@ -16,13 +16,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Logo } from "@/components/logo";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, UserPlus, LogIn, Ghost } from "lucide-react";
+import { Loader2, Mail, Lock, UserPlus, LogIn, Sparkles } from "lucide-react";
+import { seedDemoEnvironment } from "@/lib/demo/seed-demo-data";
+import { useDemoMode } from "@/lib/demo/use-demo-mode";
 
 export default function LoginPage() {
   const router = useRouter();
   const auth = useAuth();
+  const db = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
+  const { enterDemoMode } = useDemoMode();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form State
@@ -81,42 +85,30 @@ export default function LoginPage() {
     initiateGoogleSignIn(auth)
       .catch((error: any) => {
         setIsLoading(false);
-        
-        // Handle user cancellation gracefully
-        if (error.code === 'auth/popup-closed-by-user') {
-          return;
-        }
-
-        // Handle unauthorized domain specifically
-        if (error.code === 'auth/unauthorized-domain') {
-          const domain = window.location.hostname;
-          toast({
-            title: "Domain Not Authorized",
-            description: `Please add '${domain}' to your Authorized Domains in the Firebase Console (Authentication > Settings).`,
-            variant: "destructive"
-          });
-          return;
-        }
-
-        toast({
-          title: "Google Sign In Failed",
-          description: error.message,
-          variant: "destructive"
-        });
+        if (error.code === 'auth/popup-closed-by-user') return;
+        toast({ title: "Google Sign In Failed", description: error.message, variant: "destructive" });
       });
   };
 
-  const handleAnonymousSignIn = () => {
+  const handleDemoModeSignIn = async () => {
     setIsLoading(true);
-    initiateAnonymousSignIn(auth)
-      .catch((error: any) => {
-        setIsLoading(false);
-        toast({
-          title: "Guest Access Failed",
-          description: error.message,
-          variant: "destructive"
-        });
+    try {
+      const credential = await initiateAnonymousSignIn(auth);
+      const userId = credential.user.uid;
+      
+      // Seed data immediately
+      await seedDemoEnvironment(db, userId);
+      
+      enterDemoMode();
+      router.push("/dashboard");
+    } catch (error: any) {
+      setIsLoading(false);
+      toast({
+        title: "Demo Mode Failed",
+        description: "Could not initialize demo environment.",
+        variant: "destructive"
       });
+    }
   };
 
   if (isUserLoading) {
@@ -157,22 +149,10 @@ export default function LoginPage() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
+                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
                 )}
                 Continue with Google
@@ -202,30 +182,14 @@ export default function LoginPage() {
                     <Label htmlFor="email">Work Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="email@company.com" 
-                        className="pl-10 h-11"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
+                      <Input id="email" type="email" placeholder="email@company.com" className="pl-10 h-11" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder="••••••••"
-                        className="pl-10 h-11"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
+                      <Input id="password" type="password" placeholder="••••••••" className="pl-10 h-11" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     </div>
                   </div>
                   <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20" disabled={isLoading}>
@@ -241,30 +205,14 @@ export default function LoginPage() {
                     <Label htmlFor="signup-email">Work Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="signup-email" 
-                        type="email" 
-                        placeholder="email@company.com" 
-                        className="pl-10 h-11"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
+                      <Input id="signup-email" type="email" placeholder="email@company.com" className="pl-10 h-11" value={email} onChange={(e) => setEmail(e.target.value)} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="signup-password" 
-                        type="password" 
-                        placeholder="••••••••"
-                        className="pl-10 h-11"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
+                      <Input id="signup-password" type="password" placeholder="••••••••" className="pl-10 h-11" value={password} onChange={(e) => setPassword(e.target.value)} required />
                     </div>
                   </div>
                   <Button type="submit" className="w-full h-11 font-bold shadow-lg shadow-primary/20" disabled={isLoading}>
@@ -278,10 +226,16 @@ export default function LoginPage() {
           <CardFooter className="flex flex-col gap-4 bg-muted/20 border-t py-6">
             <div className="relative w-full">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-muted-foreground/10"></span></div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-tighter"><span className="bg-muted/0 px-2 text-muted-foreground">Quick Explore</span></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-tighter"><span className="bg-muted/0 px-2 text-muted-foreground">Limited Time Access</span></div>
             </div>
-            <Button type="button" variant="ghost" className="w-full h-10 text-xs gap-2 font-bold" onClick={handleAnonymousSignIn} disabled={isLoading}>
-              <Ghost className="w-4 h-4" /> Sign In as Guest
+            <Button 
+              type="button" 
+              className="w-full h-12 gap-2 font-bold bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20" 
+              onClick={handleDemoModeSignIn} 
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Try Live Demo
             </Button>
           </CardFooter>
         </Card>
