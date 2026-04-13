@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Quote, Client } from "@/lib/types";
+import { addMoney, formatCurrency } from "@/lib/finance";
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -33,7 +34,8 @@ export default function DashboardPage() {
 
   const recentQuotes = quotes?.slice(0, 5) || [];
   
-  const totalValue = quotes?.reduce((acc, q) => acc + (q.grandTotal || 0), 0) || 0;
+  // Aggregate revenue using safe monetary addition
+  const totalValue = quotes?.reduce((acc, q) => addMoney(acc, q.grandTotal || 0), 0) || 0;
   const pendingQuotes = quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0;
 
   if (quotesLoading || clientsLoading) {
@@ -66,7 +68,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
-            <div className="text-xl sm:text-2xl font-bold">${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            <div className="text-xl sm:text-2xl font-bold">{formatCurrency(totalValue)}</div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">Total projected</p>
           </CardContent>
         </Card>
@@ -145,7 +147,7 @@ export default function DashboardPage() {
                           </TableCell>
                           <TableCell className="text-right font-bold sm:font-medium p-3 sm:p-4">
                             <Link href={`/quotes/${quote.id}`}>
-                              ${(quote.grandTotal || 0).toLocaleString()}
+                              {formatCurrency(quote.grandTotal || 0)}
                               <div className="sm:hidden mt-1">
                                 <Badge variant="secondary" className="text-[8px] h-4 px-1">{quote.status}</Badge>
                               </div>

@@ -12,6 +12,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
+import { formatCurrency } from "@/lib/finance";
 
 const DEFAULT_PROFILE: BusinessProfile = {
   businessName: "My Service Business",
@@ -208,8 +209,8 @@ export default function QuoteSummaryPage() {
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">{item.unit || '-'}</TableCell>
                         <TableCell className="text-right text-sm">{item.quantity}</TableCell>
-                        <TableCell className="text-right text-sm">${Number(item.unitPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right font-medium text-sm">${Number(item.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(item.unitPrice)}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatCurrency(item.total)}</TableCell>
                       </TableRow>
                     ))}
                     {(Number(quote.laborHours) || 0) > 0 && (
@@ -217,16 +218,16 @@ export default function QuoteSummaryPage() {
                         <TableCell className="text-sm py-3">Labor Hours</TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">hr</TableCell>
                         <TableCell className="text-right text-sm">{quote.laborHours}</TableCell>
-                        <TableCell className="text-right text-sm">${Number(quote.laborRate).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right font-medium text-sm">${(Number(quote.laborHours) * Number(quote.laborRate)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(quote.laborRate)}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatCurrency(Number(quote.laborHours) * Number(quote.laborRate))}</TableCell>
                       </TableRow>
                     )}
                     {(Number(quote.materialCosts) || 0) > 0 && (
                       <TableRow>
                         <TableCell colSpan={2} className="text-sm py-3">Materials & Equipment</TableCell>
                         <TableCell className="text-right text-sm">1</TableCell>
-                        <TableCell className="text-right text-sm">${Number(quote.materialCosts).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right font-medium text-sm">${Number(quote.materialCosts).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(quote.materialCosts)}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatCurrency(quote.materialCosts)}</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -240,15 +241,15 @@ export default function QuoteSummaryPage() {
             <div className="w-full sm:w-80 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">${quote.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="font-medium">{formatCurrency(quote.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tax ({quote.taxRate}%)</span>
-                <span className="font-medium">${quote.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="font-medium">{formatCurrency(quote.taxTotal)}</span>
               </div>
               <div className="flex justify-between items-center border-t pt-4">
                 <span className="text-base sm:text-xl font-bold uppercase tracking-tighter">Total Amount</span>
-                <span className="text-xl sm:text-3xl font-extrabold text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-xl sm:text-3xl font-extrabold text-primary">{formatCurrency(quote.grandTotal)}</span>
               </div>
             </div>
           </div>

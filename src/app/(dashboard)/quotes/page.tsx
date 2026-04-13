@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { formatCurrency } from "@/lib/finance";
 
 export default function QuotesListPage() {
   const { toast } = useToast();
@@ -102,7 +103,7 @@ export default function QuotesListPage() {
                       <p className="text-[11px] text-muted-foreground truncate">{client?.email}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-black text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      <p className="text-sm font-black text-primary">{formatCurrency(quote.grandTotal)}</p>
                     </div>
                   </div>
 
@@ -187,7 +188,7 @@ export default function QuotesListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-black text-primary">
-                      ${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {formatCurrency(quote.grandTotal)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

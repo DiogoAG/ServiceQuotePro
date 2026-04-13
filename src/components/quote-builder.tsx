@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useReducer } from "react";
@@ -22,6 +21,7 @@ import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { ToastAction } from "@/components/ui/toast";
 import { calculateQuoteTotals, roundToCent } from "@/lib/quote-engine";
+import { addMoney, multiplyMoney, formatCurrency } from "@/lib/finance";
 import { QuoteSchema } from "@/lib/validators/quote";
 
 // --- REDUCER TYPES ---
@@ -94,8 +94,6 @@ function quoteReducer(state: HistoryState, action: QuoteAction): HistoryState {
 
     case 'SET_FIELD': {
       const newState = { ...present, [action.field]: action.value };
-      // Some fields like typing in notes shouldn't create a snapshot immediately 
-      // but structural changes or field blurs should.
       if (action.snapshot) {
         return pushToPast(newState);
       }
@@ -123,13 +121,12 @@ function quoteReducer(state: HistoryState, action: QuoteAction): HistoryState {
             const w = parseFloat(String(updated.width));
             if (!isNaN(l) && !isNaN(w)) updated.quantity = roundToCent(l * w);
           }
-          updated.total = roundToCent((Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0));
+          // Use safe monetary multiplication for line item total
+          updated.total = multiplyMoney(Number(updated.unitPrice) || 0, Number(updated.quantity) || 0);
           return updated;
         }
         return item;
       });
-      // We don't push to past on every keystroke for items either, 
-      // but QuoteBuilder UI handles the "snapshot" timing via onBlur if needed.
       return { ...state, present: { ...present, items: newItems } };
     }
 
@@ -148,7 +145,7 @@ function quoteReducer(state: HistoryState, action: QuoteAction): HistoryState {
         items: action.template.items.map(i => ({
           ...i,
           id: uuidv4(),
-          total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+          total: multiplyMoney(Number(i.unitPrice) || 0, Number(i.quantity) || 1)
         })) as QuoteItem[]
       };
       return pushToPast(newState);
@@ -220,7 +217,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         items: duplicateSource.items.map(i => ({ 
           ...i, 
           id: uuidv4(),
-          total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
+          total: multiplyMoney(Number(i.unitPrice) || 0, Number(i.quantity) || 1)
         })) as QuoteItem[],
         laborHours: 'laborHours' in duplicateSource ? (duplicateSource as Quote).laborHours : 0,
         laborRate: 'laborRate' in duplicateSource ? (duplicateSource as Quote).laborRate : initialProfile.defaultLaborRate,
@@ -542,7 +539,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       <Input type="number" value={item.width} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'width', value: e.target.value })} className="h-8 text-xs text-center px-1" placeholder="W" />
                       <Input type="number" value={item.quantity} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'quantity', value: e.target.value })} className="h-8 text-xs text-center px-1 font-medium" />
                       <Input type="number" value={item.unitPrice} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: e.target.value })} className="h-8 text-xs text-center px-1" />
-                      <div className="text-right text-xs font-bold px-1">${item.total.toLocaleString()}</div>
+                      <div className="text-right text-xs font-bold px-1">{formatCurrency(item.total)}</div>
                       <div className="flex justify-end"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => dispatch({ type: 'REMOVE_ITEM', id: item.id })}><Trash2 className="w-3.5 h-3.5" /></Button></div>
                     </div>
                   ))}
@@ -569,10 +566,10 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               </div>
               
               <div className="space-y-3 pt-6 border-t border-dashed">
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Items & Services</span><span className="font-medium">${present.items.reduce((acc, i) => acc + i.total, 0).toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor Subtotal</span><span className="font-medium">${(Number(present.laborHours) * Number(present.laborRate)).toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({present.taxRate}%)</span><span className="font-medium">${totals.taxTotal.toLocaleString()}</span></div>
-                <div className="pt-4 border-t-2 border-primary/20"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Total Quote Amount</span><span className="text-2xl font-black text-primary tracking-tighter">${totals.grandTotal.toLocaleString()}</span></div></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Items & Services</span><span className="font-medium">{formatCurrency(present.items.reduce((acc, i) => addMoney(acc, i.total), 0))}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor Subtotal</span><span className="font-medium">{formatCurrency(multiplyMoney(present.laborRate, present.laborHours))}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({present.taxRate}%)</span><span className="font-medium">{formatCurrency(totals.taxTotal)}</span></div>
+                <div className="pt-4 border-t-2 border-primary/20"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Total Quote Amount</span><span className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(totals.grandTotal)}</span></div></div>
               </div>
 
               <Button size="lg" className="w-full h-14 text-lg font-black gap-2 shadow-lg hover:scale-[1.02] transition-transform active:scale-95" onClick={handleSaveQuote}><Save className="w-5 h-5" /> Save</Button>

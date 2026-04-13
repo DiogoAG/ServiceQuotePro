@@ -1,3 +1,4 @@
+import { addMoney, multiplyMoney, roundValue } from './finance';
 
 /**
  * Professional Quote Engine
@@ -19,41 +20,42 @@ export interface CalculationOutput {
 }
 
 /**
- * Rounds a number to exactly two decimal places.
- */
-export function roundToCent(val: number | string): number {
-  const num = typeof val === 'string' ? parseFloat(val) : val;
-  if (isNaN(num)) return 0;
-  return Math.round(num * 100) / 100;
-}
-
-/**
- * Recalculates all pricing for a quote.
- * This is the single source of truth for business logic.
+ * Recalculates all pricing for a quote using safe monetary math.
+ * Ensures that subtotal + tax always reconciles to grandTotal.
  */
 export function calculateQuoteTotals(input: CalculationInput): CalculationOutput {
   const { items, laborHours, laborRate, materialCosts, taxRate } = input;
 
-  // 1. Calculate Items Total
+  // 1. Calculate Items Total (sum of individual line item totals)
   const itemsTotal = items.reduce((acc, item) => {
-    return acc + (roundToCent(item.quantity) * roundToCent(item.unitPrice));
+    const itemTotal = multiplyMoney(item.unitPrice, item.quantity);
+    return addMoney(acc, itemTotal);
   }, 0);
 
-  // 2. Calculate Labor
-  const laborTotal = roundToCent(laborHours) * roundToCent(laborRate);
+  // 2. Calculate Labor Subtotal
+  const laborTotal = multiplyMoney(laborRate, laborHours);
 
-  // 3. Subtotal
-  const subtotal = roundToCent(itemsTotal + laborTotal + roundToCent(materialCosts));
+  // 3. Subtotal (Items + Labor + Materials)
+  const subtotal = addMoney(itemsTotal, laborTotal, materialCosts);
 
-  // 4. Tax
-  const taxTotal = roundToCent(subtotal * (roundToCent(taxRate) / 100));
+  // 4. Tax (Subtotal * Tax Rate %)
+  // taxRate is passed as a percentage (e.g. 8.25), so we divide by 100
+  const taxTotal = multiplyMoney(subtotal, (Number(taxRate) || 0) / 100);
 
-  // 5. Grand Total
-  const grandTotal = roundToCent(subtotal + taxTotal);
+  // 5. Grand Total (Subtotal + Tax)
+  const grandTotal = addMoney(subtotal, taxTotal);
 
   return {
-    subtotal: roundToCent(subtotal),
-    taxTotal: roundToCent(taxTotal),
-    grandTotal: roundToCent(grandTotal)
+    subtotal,
+    taxTotal,
+    grandTotal
   };
+}
+
+/**
+ * Rounds a number to exactly two decimal places.
+ * Maintained for backward compatibility but uses safe rounding logic.
+ */
+export function roundToCent(val: number | string): number {
+  return roundValue(val, 2);
 }
