@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useTransition, useCallback } from "react"
 import { Quote, Client } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Calendar, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Calendar, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, X } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -16,6 +16,7 @@ import { collection, query, orderBy, doc } from "firebase/firestore";
 import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { formatCurrency } from "@/lib/finance";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 type SortField = "date" | "client" | "service" | "status" | "total";
 type SortDirection = "asc" | "desc";
@@ -54,9 +55,21 @@ export default function QuotesListPage() {
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
   
+  // Search State
+  const [inputValue, setInputValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Sorting State
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   // Interaction safety valve for this specific page
   useEffect(() => {
@@ -75,9 +88,25 @@ export default function QuotesListPage() {
     if (!quotes) return [];
     
     // 1. Filter out deleted items
-    const filtered = quotes.filter(q => !optimisticDeletedIds.has(q.id));
+    let filtered = quotes.filter(q => !optimisticDeletedIds.has(q.id));
 
-    // 2. Sort the list
+    // 2. Apply Search Filter
+    const term = searchQuery.toLowerCase().trim();
+    if (term) {
+      filtered = filtered.filter(q => {
+        const client = clientMap.get(q.clientId);
+        return (
+          client?.name?.toLowerCase().includes(term) ||
+          client?.email?.toLowerCase().includes(term) ||
+          q.serviceCategory?.toLowerCase().includes(term) ||
+          q.status?.toLowerCase().includes(term) ||
+          q.id?.toLowerCase().includes(term) ||
+          q.notes?.toLowerCase().includes(term)
+        );
+      });
+    }
+
+    // 3. Sort the list
     return [...filtered].sort((a, b) => {
       let comparison = 0;
 
@@ -103,7 +132,7 @@ export default function QuotesListPage() {
 
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [quotes, optimisticDeletedIds, sortField, sortDirection, clientMap]);
+  }, [quotes, optimisticDeletedIds, searchQuery, sortField, sortDirection, clientMap]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -167,6 +196,34 @@ export default function QuotesListPage() {
             New Quote
           </Button>
         </Link>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <div className="relative group max-w-2xl">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Search quotes by client, service, or status..." 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            className="pl-10 pr-10 h-11 bg-card border-primary/10 focus-visible:ring-primary shadow-sm"
+          />
+          {inputValue && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute right-1 top-1 h-9 w-9 hover:bg-transparent"
+              onClick={() => setInputValue("")}
+            >
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </Button>
+          )}
+        </div>
+        
+        {searchQuery && (
+          <p className="text-xs text-muted-foreground animate-in fade-in slide-in-from-left-1">
+            Found <span className="font-bold text-foreground">{activeQuotes.length}</span> {activeQuotes.length === 1 ? 'quote' : 'quotes'} matching "{searchQuery}"
+          </p>
+        )}
       </div>
 
       {/* Mobile Quote Cards */}
@@ -240,10 +297,14 @@ export default function QuotesListPage() {
         ) : (
           <div className="text-center py-20 bg-muted/20 rounded-xl">
             <FileText className="w-12 h-12 opacity-20 mx-auto mb-3" />
-            <p className="font-bold text-muted-foreground">No quotes found.</p>
-            <Link href="/quotes/new" className="mt-4 block">
-              <Button variant="outline" size="sm">Create First Quote</Button>
-            </Link>
+            <p className="font-bold text-muted-foreground">
+              {searchQuery ? "No quotes match your search." : "No quotes found."}
+            </p>
+            {!searchQuery && (
+              <Link href="/quotes/new" className="mt-4 block">
+                <Button variant="outline" size="sm">Create First Quote</Button>
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -364,10 +425,14 @@ export default function QuotesListPage() {
                 <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
                   <div className="flex flex-col items-center gap-3">
                     <FileText className="w-16 h-16 opacity-10" />
-                    <p className="text-lg font-medium">No quotes found.</p>
-                    <Link href="/quotes/new">
-                      <Button variant="outline" size="lg" className="mt-2">Create First Quote</Button>
-                    </Link>
+                    <p className="text-lg font-medium">
+                      {searchQuery ? `No quotes found matching "${searchQuery}"` : "No quotes found."}
+                    </p>
+                    {!searchQuery && (
+                      <Link href="/quotes/new">
+                        <Button variant="outline" size="lg" className="mt-2">Create First Quote</Button>
+                      </Link>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
