@@ -29,7 +29,7 @@ export const QuoteSchema = z.object({
     address: z.string().optional()
   }).optional(),
   date: z.string(),
-  status: z.enum(['draft', 'sent', 'approved', 'rejected']),
+  status: z.enum(['draft', 'sent', 'accepted', 'invoiced', 'paid', 'rejected']),
   serviceCategory: z.enum(SERVICE_CATEGORIES as [string, ...string[]]),
   items: z.array(QuoteItemSchema),
   scopeDescription: z.string().optional(),
@@ -42,7 +42,6 @@ export const QuoteSchema = z.object({
   grandTotal: z.number(),
   notes: z.string().optional()
 }).refine((data) => {
-  // Ensure the quote isn't completely empty
   const hasItems = data.items.length > 0;
   const hasLabor = data.laborHours > 0;
   const hasMaterials = data.materialCosts > 0;

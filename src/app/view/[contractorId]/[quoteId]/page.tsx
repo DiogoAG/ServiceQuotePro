@@ -1,17 +1,21 @@
+
 "use client";
 
 import * as React from "react";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Building2, User, Phone, MapPin, Mail, Loader2, FileText } from "lucide-react";
+import { Printer, Building2, User, Phone, MapPin, Mail, Loader2, FileText, CheckCircle2, CreditCard } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { formatCurrency } from "@/lib/finance";
+import { updateQuoteStatus, processMockPayment } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_PROFILE: BusinessProfile = {
   businessName: "Service Business",
@@ -27,6 +31,8 @@ export default function PublicQuoteView() {
   const contractorId = params?.contractorId as string;
   const quoteId = params?.quoteId as string;
   const db = useFirestore();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const quoteRef = useMemoFirebase(() => {
     if (!contractorId || !quoteId) return null;
@@ -50,6 +56,32 @@ export default function PublicQuoteView() {
 
   const profile = profileData || DEFAULT_PROFILE;
 
+  const handleAccept = async () => {
+    if (!quote) return;
+    setIsProcessing(true);
+    try {
+      await updateQuoteStatus(db, contractorId, quote, 'accepted');
+      toast({ title: "Quote Accepted", description: "Thank you! The contractor has been notified." });
+    } catch (err) {
+      toast({ title: "Error", description: "Could not accept quote.", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!quote) return;
+    setIsProcessing(true);
+    try {
+      await processMockPayment(db, contractorId, quote);
+      toast({ title: "Payment Successful", description: "Your payment has been processed successfully." });
+    } catch (err) {
+      toast({ title: "Payment Failed", description: "Could not process payment.", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (quoteLoading || profileLoading || clientLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-muted/10">
@@ -67,7 +99,7 @@ export default function PublicQuoteView() {
         </div>
         <h1 className="text-2xl font-bold">Quote Not Found</h1>
         <p className="text-muted-foreground max-w-sm mt-2">
-          This quote may have been removed or the link is incorrect. Please contact your contractor for more information.
+          This quote may have been removed or the link is incorrect.
         </p>
       </div>
     );
@@ -86,11 +118,34 @@ export default function PublicQuoteView() {
                 <p className="font-bold text-sm">ID: {quote.id.slice(0, 8).toUpperCase()}</p>
              </div>
           </div>
-          <Button variant="outline" className="gap-2 bg-white" onClick={() => window.print()}>
-            <Printer className="w-4 h-4" />
-            Print / PDF
-          </Button>
+          <div className="flex gap-2">
+            {quote.status === 'sent' && (
+              <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={handleAccept} disabled={isProcessing}>
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Accept & Sign
+              </Button>
+            )}
+            {quote.status === 'invoiced' && (
+              <Button className="gap-2 bg-primary" onClick={handlePayment} disabled={isProcessing}>
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                Pay {formatCurrency(quote.grandTotal)}
+              </Button>
+            )}
+            <Button variant="outline" className="gap-2 bg-white" onClick={() => window.print()}>
+              <Printer className="w-4 h-4" />
+              Print / PDF
+            </Button>
+          </div>
         </div>
+
+        {quote.status === 'paid' && (
+          <Card className="bg-green-50 border-green-200 no-print">
+            <CardContent className="p-4 flex items-center justify-center gap-2 text-green-700 font-bold">
+              <CheckCircle2 className="w-5 h-5" />
+              This quote has been paid in full. Thank you!
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="shadow-2xl border-none bg-white text-black print:shadow-none print:border print:border-gray-200 print:rounded-none overflow-hidden">
           <CardContent className="p-6 sm:p-12 space-y-10 sm:space-y-16">
@@ -120,6 +175,9 @@ export default function PublicQuoteView() {
                 <div className="space-y-1 text-sm sm:text-base">
                   <p><span className="font-semibold mr-2">Date:</span> {new Date(quote.date).toLocaleDateString()}</p>
                   <p><span className="font-semibold mr-2">Ref #:</span> {quote.id.slice(0, 8).toUpperCase()}</p>
+                  <Badge variant="outline" className="mt-2 uppercase font-black tracking-widest text-[10px]">
+                    Status: {quote.status}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -218,7 +276,7 @@ export default function PublicQuoteView() {
                 </div>
                 <div className="flex justify-between items-center border-t border-primary/20 pt-6">
                   <div className="space-y-1">
-                    <span className="text-xs font-black uppercase tracking-tighter text-muted-foreground block">Total Quote Amount</span>
+                    <span className="text-xs font-black uppercase tracking-tighter text-muted-foreground block">Total Amount</span>
                     <span className="text-3xl sm:text-4xl font-black text-primary tracking-tighter block">{formatCurrency(quote.grandTotal)}</span>
                   </div>
                 </div>

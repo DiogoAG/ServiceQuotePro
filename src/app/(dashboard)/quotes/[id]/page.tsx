@@ -1,11 +1,13 @@
+
 "use client";
 
 import * as React from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useState } from "react";
 import { Quote, Client, BusinessProfile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Printer, Share2, ChevronLeft, Building2, User, Phone, MapPin, Mail, Loader2, StickyNote, Lock, Send, FileCheck, Receipt } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -13,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { formatCurrency } from "@/lib/finance";
+import { updateQuoteStatus } from "@/firebase/non-blocking-updates";
 
 const DEFAULT_PROFILE: BusinessProfile = {
   businessName: "My Service Business",
@@ -30,6 +33,7 @@ export default function QuoteSummaryPage() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const quoteRef = useMemoFirebase(() => {
     if (!user || !id) return null;
@@ -55,21 +59,25 @@ export default function QuoteSummaryPage() {
 
   const handleShare = async () => {
     if (!quote || !profile || !user) return;
-
     const publicUrl = `${window.location.origin}/view/${user.uid}/${quote.id}`;
-
     try {
       await navigator.clipboard.writeText(publicUrl);
-      toast({
-        title: "Link Copied",
-        description: "A client-viewable link has been copied to your clipboard.",
-      });
+      toast({ title: "Link Copied", description: "Public link copied to clipboard." });
     } catch (err) {
-      toast({
-        title: "Share Failed",
-        description: "Could not copy the link. Please copy the URL manually.",
-        variant: "destructive"
-      });
+      toast({ title: "Share Failed", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateStatus = async (newStatus: Quote['status']) => {
+    if (!quote || !user) return;
+    setIsProcessing(true);
+    try {
+      await updateQuoteStatus(db, user.uid, quote, newStatus);
+      toast({ title: `Status updated to ${newStatus}` });
+    } catch (err) {
+      toast({ title: "Update Failed", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -77,19 +85,12 @@ export default function QuoteSummaryPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium">Generating professional view...</p>
+        <p className="text-muted-foreground animate-pulse font-medium">Generating view...</p>
       </div>
     );
   }
 
-  if (!quote) {
-    return (
-      <div className="text-center py-20 space-y-4">
-        <p className="text-muted-foreground">Quote not found or error loading details.</p>
-        <Button onClick={() => router.push('/quotes')}>Back to Quotes</Button>
-      </div>
-    );
-  }
+  if (!quote) return <div className="text-center py-20">Quote not found.</div>;
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 print:p-0 print:m-0 pb-24 sm:pb-12 print:pb-0">
@@ -99,17 +100,21 @@ export default function QuoteSummaryPage() {
           Back
         </Button>
         <div className="flex gap-2 w-full sm:w-auto">
+          {quote.status === 'draft' && (
+            <Button className="gap-2 flex-1 sm:flex-none h-11 sm:h-9" onClick={() => handleUpdateStatus('sent')} disabled={isProcessing}>
+              <Send className="w-4 h-4" /> Send to Client
+            </Button>
+          )}
+          {quote.status === 'accepted' && (
+            <Button className="gap-2 flex-1 sm:flex-none h-11 sm:h-9 bg-blue-600 hover:bg-blue-700" onClick={() => handleUpdateStatus('invoiced')} disabled={isProcessing}>
+              <Receipt className="w-4 h-4" /> Create Invoice
+            </Button>
+          )}
           <Button variant="outline" className="gap-2 flex-1 sm:flex-none h-11 sm:h-9" onClick={() => window.print()}>
-            <Printer className="w-4 h-4" />
-            <span className="hidden xs:inline">Print / PDF</span>
-            <span className="xs:hidden">PDF</span>
+            <Printer className="w-4 h-4" /> Print / PDF
           </Button>
-          <Button 
-            className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90 flex-1 sm:flex-none h-11 sm:h-9"
-            onClick={handleShare}
-          >
-            <Share2 className="w-4 h-4" />
-            Share
+          <Button className="gap-2 bg-accent text-accent-foreground flex-1 sm:flex-none h-11 sm:h-9" onClick={handleShare}>
+            <Share2 className="w-4 h-4" /> Share
           </Button>
         </div>
       </div>
@@ -128,28 +133,20 @@ export default function QuoteSummaryPage() {
                     {profile.businessName.charAt(0)}
                   </div>
                 )}
-                <div className="sm:hidden min-w-0">
-                  <h1 className="text-xl font-bold uppercase tracking-tight truncate">{profile.businessName}</h1>
-                  <Badge variant="secondary" className="mt-1 text-[9px] h-4">
-                    {quote.serviceCategory}
-                  </Badge>
+                <div className="min-w-0">
+                  <h1 className="text-xl sm:text-3xl font-bold uppercase tracking-tight truncate">{profile.businessName}</h1>
+                  <div className="flex gap-2 items-center mt-1">
+                    <Badge variant="secondary" className="text-[9px] h-4 uppercase">{quote.serviceCategory}</Badge>
+                    <Badge className="text-[9px] h-4 uppercase font-black tracking-widest">{quote.status}</Badge>
+                  </div>
                 </div>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-2xl sm:text-3xl font-bold uppercase tracking-wider">{profile.businessName}</h1>
-                <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                   License: <span className="font-medium">{profile.licenseNumber}</span>
-                </p>
-                <Badge variant="secondary" className="mt-2 text-[10px]">
-                  {quote.serviceCategory}
-                </Badge>
               </div>
             </div>
             <div className="text-left sm:text-right space-y-2 w-full sm:w-auto">
               <h2 className="text-3xl sm:text-5xl font-extrabold text-primary/10 tracking-tighter">QUOTE</h2>
               <div className="space-y-1 text-xs sm:text-base">
                 <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Date:</span> {new Date(quote.date).toLocaleDateString()}</p>
-                <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Quote #:</span> {quote.id.slice(0, 8).toUpperCase()}</p>
+                <p className="flex justify-between sm:block"><span className="font-semibold sm:mr-2">Ref #:</span> {quote.id.slice(0, 8).toUpperCase()}</p>
               </div>
             </div>
           </div>
@@ -157,14 +154,13 @@ export default function QuoteSummaryPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12">
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2 text-primary font-bold uppercase text-[10px] sm:text-xs tracking-widest border-b sm:border-none pb-1 sm:pb-0">
-                <Building2 className="w-3.5 h-3.5" /> Contractor Details
+                <Building2 className="w-3.5 h-3.5" /> Contractor
               </div>
               <div className="space-y-0.5 sm:space-y-1 text-sm text-gray-600">
                 <p className="font-bold text-black text-base">{profile.businessName}</p>
                 {profile.address && <p className="flex items-start gap-1.5"><MapPin className="w-3.5 h-3.5 mt-0.5" />{profile.address}</p>}
                 {profile.phone && <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{profile.phone}</p>}
                 {profile.email && <p className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{profile.email}</p>}
-                <p className="text-xs opacity-70">License: {profile.licenseNumber}</p>
               </div>
             </div>
             <div className="space-y-3 sm:space-y-4">
@@ -204,9 +200,7 @@ export default function QuoteSummaryPage() {
                   <TableBody>
                     {quote.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="text-sm py-3">
-                          <div className="font-medium">{item.description}</div>
-                        </TableCell>
+                        <TableCell className="text-sm py-3"><div className="font-medium">{item.description}</div></TableCell>
                         <TableCell className="text-xs text-muted-foreground uppercase">{item.unit || '-'}</TableCell>
                         <TableCell className="text-right text-sm">{item.quantity}</TableCell>
                         <TableCell className="text-right text-sm">{formatCurrency(item.unitPrice)}</TableCell>
@@ -239,14 +233,8 @@ export default function QuoteSummaryPage() {
 
           <div className="flex justify-end pt-4 sm:pt-8">
             <div className="w-full sm:w-80 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">{formatCurrency(quote.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax ({quote.taxRate}%)</span>
-                <span className="font-medium">{formatCurrency(quote.taxTotal)}</span>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{formatCurrency(quote.subtotal)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({quote.taxRate}%)</span><span className="font-medium">{formatCurrency(quote.taxTotal)}</span></div>
               <div className="flex justify-between items-center border-t pt-4">
                 <span className="text-base sm:text-xl font-bold uppercase tracking-tighter">Total Amount</span>
                 <span className="text-xl sm:text-3xl font-extrabold text-primary">{formatCurrency(quote.grandTotal)}</span>
@@ -265,26 +253,13 @@ export default function QuoteSummaryPage() {
         </CardContent>
       </Card>
 
-      {/* Internal Notes - Hidden from Print */}
       {quote.notes && (
         <Card className="no-print border-primary/20 bg-primary/5 mx-1 sm:mx-0 shadow-sm mt-8">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div className="flex items-center gap-2">
-              <StickyNote className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Internal Contractor Notes</CardTitle>
-            </div>
-            <Badge variant="outline" className="gap-1 bg-white text-[10px] font-bold text-primary border-primary/20">
-              <Lock className="w-3 h-3" /> Contractor Only
-            </Badge>
+            <div className="flex items-center gap-2"><StickyNote className="w-5 h-5 text-primary" /><CardTitle className="text-lg">Internal Contractor Notes</CardTitle></div>
+            <Badge variant="outline" className="gap-1 bg-white text-[10px] font-bold text-primary border-primary/20"><Lock className="w-3 h-3" /> Contractor Only</Badge>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap italic">
-              {quote.notes}
-            </p>
-            <p className="text-[10px] text-muted-foreground/50 mt-4 uppercase tracking-widest font-bold">
-              These notes are private and will not appear on the shared quote or PDF.
-            </p>
-          </CardContent>
+          <CardContent><p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap italic">{quote.notes}</p></CardContent>
         </Card>
       )}
     </div>

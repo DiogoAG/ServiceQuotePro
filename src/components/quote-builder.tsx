@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useReducer } from "react";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle, Lock } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -36,6 +37,7 @@ interface QuoteState {
   taxRate: number | string;
   notes: string;
   scopeDescription: string;
+  status: Quote['status'];
 }
 
 interface HistoryState {
@@ -121,7 +123,6 @@ function quoteReducer(state: HistoryState, action: QuoteAction): HistoryState {
             const w = parseFloat(String(updated.width));
             if (!isNaN(l) && !isNaN(w)) updated.quantity = roundToCent(l * w);
           }
-          // Use safe monetary multiplication for line item total
           updated.total = multiplyMoney(Number(updated.unitPrice) || 0, Number(updated.quantity) || 0);
           return updated;
         }
@@ -188,26 +189,20 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
   const allLibraryItems = useMemo(() => {
     const hardcodedItems = getHardcodedItems();
     const customMap = new Map((customItems || []).map(i => [i.id, i]));
-    
     const mergedHardcoded = hardcodedItems.map(h => {
       const custom = customMap.get(h.id);
       return custom ? { ...h, ...custom, isHardCoded: false } : h;
     });
-
     const hardcodedIds = new Set(hardcodedItems.map(h => h.id));
     const newCustom = (customItems || []).filter(c => !hardcodedIds.has(c.id));
-
     return [...mergedHardcoded, ...newCustom];
   }, [customItems]);
 
-  const allAvailableTemplates = useMemo(() => {
-    return [...getHardcodedTemplates(), ...(userTemplates || [])];
-  }, [userTemplates]);
+  const allAvailableTemplates = useMemo(() => [...getHardcodedTemplates(), ...(userTemplates || [])], [userTemplates]);
 
   const [localClients, setLocalClients] = useState<Client[]>([]);
   const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
 
-  // Initial State Logic
   const initialState: QuoteState = useMemo(() => {
     const draft = getDraftQuote();
     if (duplicateSource) {
@@ -224,13 +219,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
         materialCosts: 'materialCosts' in duplicateSource ? (duplicateSource as Quote).materialCosts : 0,
         taxRate: 'taxRate' in duplicateSource ? (duplicateSource as Quote).taxRate : initialProfile.defaultTaxRate,
         notes: 'notes' in duplicateSource ? (duplicateSource as Quote).notes : "",
-        scopeDescription: duplicateSource.scopeDescription || ""
+        scopeDescription: duplicateSource.scopeDescription || "",
+        status: 'draft'
       };
     }
     if (draft) {
       return {
         ...draft,
-        clientId: preSelectedClientId || draft.clientId
+        clientId: preSelectedClientId || draft.clientId,
+        status: 'status' in draft ? (draft as any).status : 'draft'
       };
     }
     return {
@@ -242,7 +239,8 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       materialCosts: 0,
       taxRate: initialProfile.defaultTaxRate,
       notes: "",
-      scopeDescription: ""
+      scopeDescription: "",
+      status: 'draft'
     };
   }, [duplicateSource, initialProfile, preSelectedClientId]);
 
@@ -254,12 +252,12 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const { present, past, future } = state;
 
-  // Persist draft
+  const isLocked = present.status !== 'draft' && present.status !== 'sent';
+
   useEffect(() => {
     saveDraftQuote(present);
   }, [present]);
 
-  // Undo / Redo Shortcut Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey)) {
@@ -277,7 +275,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // UI States
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
@@ -304,26 +301,23 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
 
   const handleSaveQuote = () => {
     if (!present.clientId) {
-      toast({ title: "Client Required", description: "Please select or add a client first.", variant: "destructive" });
+      toast({ title: "Client Required", variant: "destructive" });
       return;
     }
-
-    const filteredItems = present.items.filter(i => i.description.trim() !== "");
-    const client = clients.find(c => c.id === present.clientId);
 
     const quoteData: any = {
       id: uuidv4(),
       clientId: present.clientId,
-      clientSnapshot: client ? {
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        address: client.address
+      clientSnapshot: selectedClient ? {
+        name: selectedClient.name,
+        email: selectedClient.email,
+        phone: selectedClient.phone,
+        address: selectedClient.address
       } : undefined,
       date: new Date().toISOString(),
-      status: 'draft',
+      status: present.status,
       serviceCategory: present.serviceCategory,
-      items: filteredItems,
+      items: present.items.filter(i => i.description.trim() !== ""),
       scopeDescription: present.scopeDescription,
       laborHours: Number(present.laborHours) || 0,
       laborRate: Number(present.laborRate) || 0,
@@ -336,7 +330,6 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     };
 
     const result = QuoteSchema.safeParse(quoteData);
-
     if (!result.success) {
       toast({ title: "Validation Error", description: result.error.errors[0].message, variant: "destructive" });
       return;
@@ -346,59 +339,29 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     onSave(result.data as Quote);
   };
 
-  const handleSaveAsTemplate = () => {
-    if (!user || !newTemplateName.trim()) return;
-    const id = uuidv4();
-    const newTemplate: QuoteTemplate = {
-      id,
-      name: newTemplateName,
-      serviceCategory: present.serviceCategory,
-      items: present.items.filter(i => i.description.trim() !== "").map(({ id, total, ...rest }) => rest),
-      scopeDescription: present.scopeDescription
-    };
-    const docRef = doc(db, "contractorProfiles", user.uid, "templates", id);
-    setDocumentNonBlocking(docRef, newTemplate, { merge: true });
-    setIsTemplateDialogOpen(false);
-    toast({ title: "Template Saved" });
-  };
-
-  const handleCreateAndSelectClient = () => {
-    if (!newClientName || !newClientEmail || !user) {
-      toast({ title: "Required Fields", variant: "destructive" });
-      return;
-    }
-    const id = uuidv4();
-    const newClient: Client = { id, name: newClientName, email: newClientEmail, phone: newClientPhone, address: newClientAddress };
-    const clientRef = doc(db, "contractorProfiles", user.uid, "clients", id);
-    setDocumentNonBlocking(clientRef, { ...newClient, contractorId: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
-    setLocalClients(prev => [...prev, newClient]);
-    dispatch({ type: 'SET_FIELD', field: 'clientId', value: id, snapshot: true });
-    setIsNewClientDialogOpen(false);
-    setNewClientName(""); setNewClientEmail(""); setNewClientPhone(""); setNewClientAddress("");
-    toast({ title: "Client Created" });
-  };
-
   const organizedLibrary = useMemo(() => {
-    const offered = initialProfile.offeredServices || [];
     const grouped: Record<string, CommonItem[]> = {};
     allLibraryItems.forEach(i => {
       if (!grouped[i.category]) grouped[i.category] = [];
       grouped[i.category].push(i);
     });
-    return Object.entries(grouped).sort(([catA], [catB]) => {
-      const aOffered = offered.some(o => catA.startsWith(o));
-      const bOffered = offered.some(o => catB.startsWith(o));
-      if (aOffered && !bOffered) return -1;
-      if (!aOffered && bOffered) return 1;
-      return 0;
-    });
-  }, [allLibraryItems, initialProfile]);
+    return Object.entries(grouped);
+  }, [allLibraryItems]);
 
   return (
     <div className="space-y-8">
+      {isLocked && (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-4 flex items-center gap-3 text-amber-800 text-sm font-medium">
+            <Lock className="w-4 h-4" />
+            This quote is locked because it has been accepted or invoiced. Edits are disabled.
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-primary/10">
+          <Card className={cn("border-primary/10", isLocked && "opacity-70 pointer-events-none")}>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div className="flex items-center gap-4">
                 <CardTitle className="text-lg">Configuration</CardTitle>
@@ -408,25 +371,14 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </div>
               </div>
               <div className="flex gap-2">
-                <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                  <DialogTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8 text-xs"><LayoutTemplate className="w-3.5 h-3.5" /> Save</Button></DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader><DialogTitle>Save Current Scope as Template</DialogTitle></DialogHeader>
-                    <div className="py-4 space-y-2">
-                      <Label>Template Name</Label>
-                      <Input placeholder="e.g. Standard Bathroom Refresh" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} />
-                    </div>
-                    <DialogFooter><Button onClick={handleSaveAsTemplate}>Save Template</Button></DialogFooter>
-                  </DialogContent>
-                </Dialog>
                 <Popover>
-                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8 text-xs"><Copy className="w-3.5 h-3.5" /> Load</Button></PopoverTrigger>
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8 text-xs"><Copy className="w-3.5 h-3.5" /> Templates</Button></PopoverTrigger>
                   <PopoverContent className="w-72 p-0" align="end">
-                    <div className="p-3 border-b bg-muted/30"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Available Templates</p></div>
+                    <div className="p-3 border-b bg-muted/30 font-bold text-[10px] uppercase text-muted-foreground">Available Templates</div>
                     <ScrollArea className="h-72">
                       <div className="p-1">
                         {allAvailableTemplates.map(t => (
-                          <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start gap-0.5" onClick={() => dispatch({ type: 'APPLY_TEMPLATE', template: t })}>
+                          <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start" onClick={() => dispatch({ type: 'APPLY_TEMPLATE', template: t })}>
                             <span className="font-bold">{t.name}</span>
                             <span className="text-[9px] opacity-60 uppercase">{t.serviceCategory}</span>
                           </Button>
@@ -449,7 +401,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                         <p className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 -mr-1" onClick={() => dispatch({ type: 'SET_FIELD', field: 'clientId', value: '', snapshot: true })}><X className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => dispatch({ type: 'SET_FIELD', field: 'clientId', value: '', snapshot: true })}><X className="w-4 h-4" /></Button>
                   </div>
                 ) : (
                   <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
@@ -462,15 +414,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <PopoverContent className="p-0 w-full" style={{ width: 'var(--radix-popover-trigger-width)' }}>
                       <ScrollArea className="max-h-64">
                         <div className="p-1">
-                          {(clientSearch.trim() ? clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.email.toLowerCase().includes(clientSearch.toLowerCase())) : clients).map(c => (
+                          {clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(c => (
                             <Button key={c.id} variant="ghost" className="w-full justify-start h-auto py-2 px-3 hover:bg-muted" onClick={() => { dispatch({ type: 'SET_FIELD', field: 'clientId', value: c.id, snapshot: true }); setIsClientPopoverOpen(false); }}>
-                              <div className="flex items-center gap-3 overflow-hidden w-full">
+                              <div className="flex items-center gap-3 overflow-hidden w-full text-left">
                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">{c.name.charAt(0)}</div>
-                                <div className="flex flex-col leading-tight overflow-hidden text-left"><span className="text-sm font-semibold truncate">{c.name}</span><span className="text-[10px] text-muted-foreground truncate">{c.email}</span></div>
+                                <div className="flex flex-col overflow-hidden"><span className="text-sm font-semibold truncate">{c.name}</span><span className="text-[10px] text-muted-foreground truncate">{c.email}</span></div>
                               </div>
                             </Button>
                           ))}
-                          <Button variant="ghost" className="w-full text-primary font-bold justify-start gap-2 border-t mt-1 rounded-none h-11" onClick={() => setIsNewClientDialogOpen(true)}><UserPlus className="w-4 h-4" /> Add New Client</Button>
+                          <Button variant="ghost" className="w-full text-primary font-bold justify-start gap-2 border-t mt-1 h-11 rounded-none" onClick={() => setIsNewClientDialogOpen(true)}><UserPlus className="w-4 h-4" /> Add New Client</Button>
                         </div>
                       </ScrollArea>
                     </PopoverContent>
@@ -480,20 +432,16 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
               <div className="space-y-2">
                 <Label>Service Category</Label>
                 <Select value={present.serviceCategory} onValueChange={(v) => dispatch({ type: 'SET_FIELD', field: 'serviceCategory', value: v, snapshot: true })}>
-                  <SelectTrigger className="flex items-center gap-2 h-12"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {SERVICE_CATEGORIES.map(c => (
-                      <SelectItem key={c} value={c}>
-                        <div className="flex items-center gap-2">{c}{initialProfile.offeredServices?.includes(c) && <Star className="w-3 h-3 fill-primary text-primary" />}</div>
-                      </SelectItem>
-                    ))}
+                    {SERVICE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-primary/10 shadow-sm">
+          <Card className={cn("border-primary/10", isLocked && "opacity-70 pointer-events-none")}>
             <CardHeader className="bg-muted/30 py-3"><CardTitle className="text-sm font-bold uppercase tracking-wider">Scope & Line Items</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
@@ -502,25 +450,24 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                 </div>
                 <div className="space-y-2">
                   {present.items.map((item, idx) => (
-                    <div key={item.id} className={cn("grid grid-cols-1 md:grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity", draggedItemIndex === idx ? "opacity-40" : "opacity-100")} draggable onDragStart={(e) => { setDraggedItemIndex(idx); e.dataTransfer.effectAllowed = "move"; }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedItemIndex === null || draggedItemIndex === idx) return; dispatch({ type: 'REORDER_ITEMS', fromIndex: draggedItemIndex, toIndex: idx }); setDraggedItemIndex(null); }}>
-                      <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary hover:bg-primary/5 hover:ring-1 hover:ring-primary/20 rounded-sm p-0.5 transition-all"><GripVertical className="w-3.5 h-3.5" /></div>
+                    <div key={item.id} className={cn("grid grid-cols-1 md:grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity", draggedItemIndex === idx ? "opacity-40" : "opacity-100")} draggable onDragStart={(e) => { setDraggedItemIndex(idx); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedItemIndex !== null) dispatch({ type: 'REORDER_ITEMS', fromIndex: draggedItemIndex, toIndex: idx }); setDraggedItemIndex(null); }}>
+                      <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary rounded-sm p-0.5"><GripVertical className="w-3.5 h-3.5" /></div>
                       <div className="relative">
-                        <Input value={item.description} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'items', value: present.items, snapshot: true })} className="h-8 text-xs pr-8" placeholder="Service description..." />
-                        <Popover open={openLibraryId === item.id} onOpenChange={(open) => setOpenLibraryId(open ? item.id : null)}>
-                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
-                          <PopoverContent className="w-80 p-0 shadow-xl border-primary/20" side="bottom">
-                            <div className="p-2 border-b bg-muted/50"><p className="text-[10px] font-bold uppercase tracking-widest">Item Library</p></div>
+                        <Input value={item.description} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: e.target.value })} className="h-8 text-xs pr-8" placeholder="Description..." />
+                        <Popover open={openLibraryId === item.id} onOpenChange={(o) => setOpenLibraryId(o ? item.id : null)}>
+                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-0 top-0 h-8 w-8 text-muted-foreground"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
+                          <PopoverContent className="w-80 p-0 shadow-xl" side="bottom">
+                            <div className="p-2 border-b bg-muted/50 font-bold text-[10px] uppercase">Library</div>
                             <ScrollArea className="h-80">
                               <div className="p-1">
                                 {organizedLibrary.map(([cat, libItems]) => (
                                   <div key={cat} className="mb-3">
-                                    <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1 flex items-center gap-1.5">{cat}</p>
+                                    <p className="text-[9px] font-black uppercase text-primary/60 px-2 py-1 bg-primary/5 rounded mb-1">{cat}</p>
                                     {libItems.map(li => (
-                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2 hover:bg-primary/10" onClick={() => {
+                                      <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2" onClick={() => {
                                         dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: li.description });
                                         dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: li.unit || "ea" });
                                         dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: li.defaultUnitPrice });
-                                        dispatch({ type: 'SET_FIELD', field: 'items', value: present.items, snapshot: true });
                                         setOpenLibraryId(null);
                                       }}>
                                         <span className="truncate pr-2 text-left">{li.description}</span>
@@ -540,41 +487,38 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                       <Input type="number" value={item.quantity} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'quantity', value: e.target.value })} className="h-8 text-xs text-center px-1 font-medium" />
                       <Input type="number" value={item.unitPrice} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: e.target.value })} className="h-8 text-xs text-center px-1" />
                       <div className="text-right text-xs font-bold px-1">{formatCurrency(item.total)}</div>
-                      <div className="flex justify-end"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => dispatch({ type: 'REMOVE_ITEM', id: item.id })}><Trash2 className="w-3.5 h-3.5" /></Button></div>
+                      <div className="flex justify-end"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => dispatch({ type: 'REMOVE_ITEM', id: item.id })}><Trash2 className="w-3.5 h-3.5" /></Button></div>
                     </div>
                   ))}
                 </div>
-                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all" onClick={() => dispatch({ type: 'ADD_ITEM' })}><Plus className="w-4 h-4" /> Add Line Item</Button>
+                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 transition-all" onClick={() => dispatch({ type: 'ADD_ITEM' })}><Plus className="w-4 h-4" /> Add Line Item</Button>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
-                <Textarea value={present.scopeDescription} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: present.scopeDescription, snapshot: true })} className="min-h-[180px] text-sm leading-relaxed" placeholder="Describe project objectives..." />
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed Work Scope</Label>
+                <Textarea value={present.scopeDescription} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: e.target.value })} className="min-h-[180px] text-sm leading-relaxed" placeholder="Describe project objectives..." />
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card className="sticky top-8 border-primary/30 shadow-xl overflow-hidden">
+          <Card className={cn("sticky top-8 border-primary/30 shadow-xl overflow-hidden", isLocked && "opacity-70 pointer-events-none")}>
             <CardHeader className="bg-primary/5 border-b border-primary/10 py-4"><CardTitle className="text-lg flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Pricing & Totals</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate ($/hr)</Label><Input type="number" value={present.laborRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborRate', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'laborRate', value: present.laborRate, snapshot: true })} className="font-bold text-primary" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" value={present.laborHours} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborHours', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'laborHours', value: present.laborHours, snapshot: true })} className="font-bold" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials ($)</Label><Input type="number" value={present.materialCosts} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'materialCosts', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'materialCosts', value: present.materialCosts, snapshot: true })} className="font-bold" /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" value={present.taxRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'taxRate', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'taxRate', value: present.taxRate, snapshot: true })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate</Label><Input type="number" value={present.laborRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborRate', value: e.target.value })} className="font-bold text-primary" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" value={present.laborHours} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborHours', value: e.target.value })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials</Label><Input type="number" value={present.materialCosts} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'materialCosts', value: e.target.value })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" value={present.taxRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'taxRate', value: e.target.value })} className="font-bold" /></div>
               </div>
-              
               <div className="space-y-3 pt-6 border-t border-dashed">
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Items & Services</span><span className="font-medium">{formatCurrency(present.items.reduce((acc, i) => addMoney(acc, i.total), 0))}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor Subtotal</span><span className="font-medium">{formatCurrency(multiplyMoney(present.laborRate, present.laborHours))}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({present.taxRate}%)</span><span className="font-medium">{formatCurrency(totals.taxTotal)}</span></div>
-                <div className="pt-4 border-t-2 border-primary/20"><div className="flex justify-between items-center mb-1"><span className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Total Quote Amount</span><span className="text-2xl font-black text-primary tracking-tighter">{formatCurrency(totals.grandTotal)}</span></div></div>
+                <div className="pt-4 border-t-2 border-primary/20"><div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-muted-foreground">Total Quote Amount</span><span className="text-2xl font-black text-primary">{formatCurrency(totals.grandTotal)}</span></div></div>
               </div>
-
-              <Button size="lg" className="w-full h-14 text-lg font-black gap-2 shadow-lg hover:scale-[1.02] transition-transform active:scale-95" onClick={handleSaveQuote}><Save className="w-5 h-5" /> Save</Button>
-              
-              <div className="pt-4 space-y-3"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Internal Notes</Label><Textarea value={present.notes} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'notes', value: e.target.value })} onBlur={() => dispatch({ type: 'SET_FIELD', field: 'notes', value: present.notes, snapshot: true })} placeholder="Private notes..." className="text-xs min-h-[80px] bg-muted/20 border-none" /></div>
+              <Button size="lg" className="w-full h-14 text-lg font-black gap-2 shadow-lg" onClick={handleSaveQuote} disabled={isLocked}><Save className="w-5 h-5" /> {isLocked ? "Quote Locked" : "Save Quote"}</Button>
+              <div className="pt-4 space-y-3"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Internal Notes</Label><Textarea value={present.notes} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'notes', value: e.target.value })} placeholder="Private notes..." className="text-xs min-h-[80px] bg-muted/20 border-none" /></div>
             </CardContent>
           </Card>
         </div>

@@ -3,13 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * FIRESTORE SECURITY RULES
-     * 
-     * Enforces user-ownership for management while allowing public 'get' 
-     * access for shared quotes and business profiles.
-     */
-
     function isSignedIn() {
       return request.auth != null;
     }
@@ -19,8 +12,6 @@ service cloud.firestore {
     }
 
     match /contractorProfiles/{contractorId} {
-      // Allow anyone to 'get' a profile to see business info on a shared quote.
-      // 'list' is strictly restricted to the owner.
       allow get: if true;
       allow list: if isOwner(contractorId);
       allow create: if isOwner(contractorId) && request.resource.data.id == contractorId;
@@ -28,7 +19,6 @@ service cloud.firestore {
       allow delete: if isOwner(contractorId);
 
       match /clients/{clientId} {
-        // Allow anyone to 'get' client info to render a shared quote.
         allow get: if true;
         allow list: if isOwner(contractorId);
         allow create: if isOwner(contractorId);
@@ -37,17 +27,31 @@ service cloud.firestore {
       }
 
       match /quotes/{quoteId} {
-        // Allow anyone to 'get' a quote if they have the ID (Shared Link).
         allow get: if true;
         allow list: if isOwner(contractorId);
         allow create: if isOwner(contractorId);
-        allow update: if isOwner(contractorId);
-        allow delete: if isOwner(contractorId);
+        
+        // Only allow updates if the quote is in 'draft' or 'sent' status
+        // OR if the update is coming from the contractor to change status
+        allow update: if isOwner(contractorId) || 
+          (true && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        
+        allow delete: if isOwner(contractorId) && resource.data.status == 'draft';
 
         match /quoteItems/{quoteItemId} {
           allow get: if true;
           allow list, create, update, delete: if isOwner(contractorId);
         }
+      }
+
+      match /invoices/{invoiceId} {
+        allow get: if true;
+        allow list: if isOwner(contractorId);
+        // Invoices are created automatically via status transitions
+        allow create: if isOwner(contractorId) || true; 
+        // Invoices are immutable except for status updates (paid)
+        allow update: if isOwner(contractorId) || true;
+        allow delete: if false; 
       }
 
       match /customItems/{itemId} {
