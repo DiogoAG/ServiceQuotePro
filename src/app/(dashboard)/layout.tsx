@@ -87,11 +87,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+    <div 
+      className="min-h-screen bg-background flex flex-col"
+      style={{ "--banner-height": isDemoMode ? "40px" : "0px" } as React.CSSProperties}
+    >
       {/* Demo Banner */}
       {isDemoMode && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-accent text-accent-foreground px-4 py-2 flex items-center justify-between no-print shadow-md">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+        <div className="sticky top-0 left-0 right-0 z-[110] bg-accent text-accent-foreground px-4 py-2 flex items-center justify-between no-print shadow-md h-10">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent-foreground">
             <Sparkles className="w-3.5 h-3.5" />
             Live Demo Mode
           </div>
@@ -99,7 +102,7 @@ export default function DashboardLayout({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-7 text-[10px] gap-1.5 font-black uppercase hover:bg-white/20"
+              className="h-7 text-[10px] gap-1.5 font-black uppercase hover:bg-white/20 text-accent-foreground"
               onClick={handleResetDemo}
               disabled={isResetting}
             >
@@ -109,7 +112,7 @@ export default function DashboardLayout({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-7 text-[10px] gap-1.5 font-black uppercase hover:bg-white/20"
+              className="h-7 text-[10px] gap-1.5 font-black uppercase hover:bg-white/20 text-accent-foreground"
               onClick={handleExitDemo}
             >
               <X className="w-3 h-3" />
@@ -119,18 +122,19 @@ export default function DashboardLayout({
         </div>
       )}
 
-      <div className="no-print h-full shrink-0">
-        <DashboardNav isFolded={isFolded} onToggleFold={() => setIsFolded(!isFolded)} />
+      <div className="flex-1 flex flex-col md:flex-row relative">
+        <div className="no-print h-full shrink-0">
+          <DashboardNav isFolded={isFolded} onToggleFold={() => setIsFolded(!isFolded)} />
+        </div>
+        <main className={cn(
+          "flex-1 transition-all duration-300 p-4 md:p-8 lg:p-12 overflow-y-auto",
+          "print:m-0 print:p-0 print:overflow-visible print:transition-none",
+          isFolded ? "md:ml-20" : "md:ml-64",
+          "print:ml-0"
+        )}>
+          {children}
+        </main>
       </div>
-      <main className={cn(
-        "flex-1 transition-all duration-300 p-4 md:p-8 lg:p-12 overflow-y-auto",
-        "print:m-0 print:p-0 print:overflow-visible print:transition-none",
-        isFolded ? "md:ml-20" : "md:ml-64",
-        "print:ml-0",
-        isDemoMode ? "pt-16 md:pt-20" : "" // Offset for banner
-      )}>
-        {children}
-      </main>
     </div>
   );
 }
