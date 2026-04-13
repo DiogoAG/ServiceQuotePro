@@ -90,13 +90,13 @@ export function generateDemoData(userId: string) {
   const templates: QuoteTemplate[] = [];
   const quotes: Quote[] = [];
 
-  // 1. Generate 100 Clients
+  // 1. Generate 100 Clients with stable IDs for overwriting
   for (let i = 0; i < 100; i++) {
     const fName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
     const lName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const name = `${fName} ${lName}`;
     clients.push({
-      id: `c-${i}-${uuidv4().slice(0, 8)}`,
+      id: `client-${i}`, // Stable ID
       name,
       email: `${fName.toLowerCase()}.${lName.toLowerCase()}${i}@example.com`,
       phone: `555-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -104,7 +104,7 @@ export function generateDemoData(userId: string) {
     });
   }
 
-  // 2. Generate 20+ Real Templates
+  // 2. Generate 20+ Real Templates with stable IDs
   TEMPLATE_DEFS.forEach((def, index) => {
     const items = def.items.map(itemName => {
       const libData = Object.values(ITEM_LIBRARY).flat().find(li => li.desc === itemName);
@@ -124,7 +124,7 @@ export function generateDemoData(userId: string) {
     }).filter(i => !!i);
 
     templates.push({
-      id: `t-${index}-${uuidv4().slice(0, 8)}`,
+      id: `template-${index}`, // Stable ID
       name: def.name,
       serviceCategory: def.cat,
       scopeDescription: def.scope,
@@ -133,7 +133,7 @@ export function generateDemoData(userId: string) {
     });
   });
 
-  // 3. Generate 250 Quotes
+  // 3. Generate 250 Quotes with stable IDs
   const statuses: Array<"draft" | "sent" | "approved" | "rejected"> = ["approved", "approved", "sent", "sent", "draft", "rejected"];
   const now = new Date();
 
@@ -173,7 +173,7 @@ export function generateDemoData(userId: string) {
     });
 
     quotes.push({
-      id: `q-${q}-${uuidv4().slice(0, 8)}`,
+      id: `quote-${q}`, // Stable ID
       clientId: client.id,
       contractorId: userId,
       clientSnapshot: {
@@ -222,17 +222,17 @@ export function generateDemoData(userId: string) {
 /**
  * Seeds a new user's account with the generated demo data.
  */
-export async function seedDemoEnvironment(db: Firestore, userId: string) {
+export async function seedDemoEnvironment(db: Firestore, userId: string, force = false) {
   const profileRef = doc(db, "contractorProfiles", userId);
   
-  const profileSnap = await getDoc(profileRef);
-  if (profileSnap.exists()) return;
+  if (!force) {
+    const profileSnap = await getDoc(profileRef);
+    if (profileSnap.exists()) return;
+  }
 
   const { clients, templates, quotes, businessProfile } = generateDemoData(userId);
   
   // Use sequential batches because Firestore limit is 500 per batch
-  // Total docs: 1 (profile) + 100 (clients) + 20 (templates) + 250 (quotes) = 371
-  // This fits in a single batch safely (max 500)
   const batch = writeBatch(db);
 
   batch.set(profileRef, {
@@ -240,7 +240,7 @@ export async function seedDemoEnvironment(db: Firestore, userId: string) {
     id: userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
-  });
+  }, { merge: true });
 
   clients.forEach(client => {
     const clientRef = doc(db, "contractorProfiles", userId, "clients", client.id);
@@ -249,12 +249,12 @@ export async function seedDemoEnvironment(db: Firestore, userId: string) {
       contractorId: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
+    }, { merge: true });
   });
 
   templates.forEach(template => {
     const templateRef = doc(db, "contractorProfiles", userId, "templates", template.id);
-    batch.set(templateRef, template);
+    batch.set(templateRef, template, { merge: true });
   });
 
   quotes.forEach(quote => {
@@ -263,7 +263,7 @@ export async function seedDemoEnvironment(db: Firestore, userId: string) {
       ...quote,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
+    }, { merge: true });
   });
 
   await batch.commit();

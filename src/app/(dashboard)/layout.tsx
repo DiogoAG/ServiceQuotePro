@@ -70,9 +70,11 @@ export default function DashboardLayout({
     if (!user) return;
     setIsResetting(true);
     try {
-      await seedDemoEnvironment(db, user.uid);
+      await seedDemoEnvironment(db, user.uid, true);
       toast({ title: "Demo Data Reset", description: "The environment has been restored to its original state." });
       window.location.reload();
+    } catch (err) {
+      toast({ title: "Reset Failed", description: "Could not reset demo environment.", variant: "destructive" });
     } finally {
       setIsResetting(false);
     }
