@@ -198,6 +198,12 @@ export function generateDemoData(userId: string) {
     });
   }
 
+  // Choose 1-3 random services for the profile
+  const numOffered = Math.floor(Math.random() * 3) + 1;
+  const offeredServices = [...SERVICE_CATEGORIES]
+    .sort(() => 0.5 - Math.random())
+    .slice(0, numOffered);
+
   const businessProfile: BusinessProfile = {
     businessName: "Pro Contractor Services (Demo)",
     licenseNumber: "LIC-TX-DEMO-2026",
@@ -206,7 +212,7 @@ export function generateDemoData(userId: string) {
     address: "500 Innovation Way, Austin, TX 78701",
     defaultTaxRate: 8.25,
     defaultLaborRate: 85,
-    offeredServices: SERVICE_CATEGORIES.slice(0, 8),
+    offeredServices: offeredServices,
     quoteTerms: "Standard 15-day payment terms apply. All workmanship is guaranteed for one year from date of completion."
   };
 
