@@ -485,6 +485,7 @@ export default function TemplatesPage() {
                 <Input placeholder="Search templates..." value={searchTemplate} onChange={(e) => setSearchTemplate(e.target.value)} className="pl-10 h-11 bg-muted/30 border-none" />
               </div>
             </CardHeader>
+          </Card>
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {filteredTemplates.map((template) => {
               const isOffered = profile?.offeredServices?.includes(template.serviceCategory);
