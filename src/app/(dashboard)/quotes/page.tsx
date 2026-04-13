@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useTransition } from "react";
 import { Quote, Client } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +20,7 @@ export default function QuotesListPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
+  const [isPending, startTransition] = useTransition();
 
   const quotesRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -38,16 +39,44 @@ export default function QuotesListPage() {
   const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
 
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
+
+  // Optimization: Pre-calculate a client map for O(1) lookup during render
+  const clientMap = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients?.forEach(c => map.set(c.id, c));
+    return map;
+  }, [clients]);
+
+  // Filter out quotes that were just deleted optimistically
+  const activeQuotes = useMemo(() => {
+    return quotes?.filter(q => !optimisticDeletedIds.has(q.id)) || [];
+  }, [quotes, optimisticDeletedIds]);
 
   const handleDelete = () => {
     if (!quoteToDelete || !user) return;
-    const docRef = doc(db, "contractorProfiles", user.uid, "quotes", quoteToDelete.id);
+    
+    const idToDelete = quoteToDelete.id;
+    const category = quoteToDelete.serviceCategory;
+
+    // 1. Optimistic Update: Hide immediately
+    startTransition(() => {
+      setOptimisticDeletedIds(prev => {
+        const next = new Set(prev);
+        next.add(idToDelete);
+        return next;
+      });
+      setQuoteToDelete(null);
+    });
+
+    // 2. Background Firestore Delete
+    const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
     deleteDocumentNonBlocking(docRef);
+
     toast({
       title: "Quote Deleted",
-      description: `The quote has been removed.`,
+      description: `Quote for ${category} has been removed.`,
     });
-    setQuoteToDelete(null);
   };
 
   if (quotesLoading || clientsLoading) {
@@ -75,9 +104,9 @@ export default function QuotesListPage() {
 
       {/* Mobile Quote Cards */}
       <div className="grid gap-4 md:hidden">
-        {quotes && quotes.length > 0 ? (
-          quotes.map((quote) => {
-            const client = clients?.find(c => c.id === quote.clientId);
+        {activeQuotes.length > 0 ? (
+          activeQuotes.map((quote) => {
+            const client = clientMap.get(quote.clientId);
             return (
               <Card key={quote.id} className="overflow-hidden border-primary/10 shadow-sm active:bg-accent/5 transition-colors">
                 <CardContent className="p-5 space-y-4">
@@ -89,7 +118,7 @@ export default function QuotesListPage() {
                       </div>
                       <h3 className="font-black text-lg leading-tight tracking-tight">{quote.serviceCategory}</h3>
                     </div>
-                    <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
+                    <Badge variant={quote.status === 'approved' || quote.status === 'accepted' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
                       {quote.status}
                     </Badge>
                   </div>
@@ -163,9 +192,9 @@ export default function QuotesListPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {quotes && quotes.length > 0 ? (
-              quotes.map((quote) => {
-                const client = clients?.find(c => c.id === quote.clientId);
+            {activeQuotes.length > 0 ? (
+              activeQuotes.map((quote) => {
+                const client = clientMap.get(quote.clientId);
                 return (
                   <TableRow key={quote.id} className="group cursor-pointer hover:bg-muted/50 transition-colors">
                     <TableCell className="text-xs font-medium">
@@ -183,7 +212,7 @@ export default function QuotesListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
+                      <Badge variant={quote.status === 'approved' || quote.status === 'accepted' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
                         {quote.status}
                       </Badge>
                     </TableCell>
@@ -244,7 +273,7 @@ export default function QuotesListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl">Delete this quote?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>.
+              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,11 +32,18 @@ export default function DashboardPage() {
   const { data: quotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
   const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
 
-  const recentQuotes = quotes?.slice(0, 5) || [];
+  // Optimization: Create a client map for O(1) lookup in list rendering
+  const clientMap = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients?.forEach(c => map.set(c.id, c));
+    return map;
+  }, [clients]);
+
+  const recentQuotes = useMemo(() => quotes?.slice(0, 5) || [], [quotes]);
   
   // Aggregate revenue using safe monetary addition
-  const totalValue = quotes?.reduce((acc, q) => addMoney(acc, q.grandTotal || 0), 0) || 0;
-  const pendingQuotes = quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0;
+  const totalValue = useMemo(() => quotes?.reduce((acc, q) => addMoney(acc, q.grandTotal || 0), 0) || 0, [quotes]);
+  const pendingQuotes = useMemo(() => quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0, [quotes]);
 
   if (quotesLoading || clientsLoading) {
     return (
@@ -126,7 +133,7 @@ export default function DashboardPage() {
                 <TableBody>
                   {recentQuotes.length > 0 ? (
                     recentQuotes.map((quote) => {
-                      const client = clients?.find(c => c.id === quote.clientId);
+                      const client = clientMap.get(quote.clientId);
                       return (
                         <TableRow key={quote.id} className="cursor-pointer group hover:bg-muted/50 transition-colors">
                           <TableCell className="font-medium p-3 sm:p-4">
@@ -138,7 +145,7 @@ export default function DashboardPage() {
                           <TableCell className="hidden sm:table-cell">
                             <Link href={`/quotes/${quote.id}`}>
                               <Badge 
-                                variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}
+                                variant={quote.status === 'approved' || quote.status === 'accepted' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}
                                 className="text-[10px]"
                               >
                                 {quote.status}
