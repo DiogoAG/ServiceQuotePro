@@ -407,24 +407,31 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       if (!grouped[i.category]) grouped[i.category] = [];
       grouped[i.category].push(i);
     });
+
+    const getBaseCategoryIndex = (catName: string) => {
+      const base = catName.split(' - ')[0];
+      return SERVICE_CATEGORIES.indexOf(base);
+    };
+
     return Object.entries(grouped).sort(([catA], [catB]) => {
       const isOfferedA = initialProfile.offeredServices?.some(s => catA.startsWith(s));
       const isOfferedB = initialProfile.offeredServices?.some(s => catB.startsWith(s));
       if (isOfferedA && !isOfferedB) return -1;
       if (!isOfferedA && isOfferedB) return 1;
+      
+      const idxA = getBaseCategoryIndex(catA);
+      const idxB = getBaseCategoryIndex(catB);
+      if (idxA !== idxB) return idxA - idxB;
+      
       return catA.localeCompare(catB);
     });
   }, [allLibraryItems, initialProfile.offeredServices]);
 
-  // Derived sorted categories for the Select component
   const sortedCategories = useMemo(() => {
-    return [...SERVICE_CATEGORIES].sort((a, b) => {
-      const isOfferedA = initialProfile.offeredServices?.includes(a);
-      const isOfferedB = initialProfile.offeredServices?.includes(b);
-      if (isOfferedA && !isOfferedB) return -1;
-      if (!isOfferedA && isOfferedB) return 1;
-      return a.localeCompare(b);
-    });
+    const offered = initialProfile.offeredServices || [];
+    const starred = SERVICE_CATEGORIES.filter(c => offered.includes(c));
+    const others = SERVICE_CATEGORIES.filter(c => !offered.includes(c));
+    return [...starred, ...others];
   }, [initialProfile.offeredServices]);
 
   return (
@@ -488,7 +495,11 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                             const isOfferedB = initialProfile.offeredServices?.includes(b.serviceCategory);
                             if (isOfferedA && !isOfferedB) return -1;
                             if (!isOfferedA && isOfferedB) return 1;
-                            return 0;
+                            
+                            const idxA = SERVICE_CATEGORIES.indexOf(a.serviceCategory);
+                            const idxB = SERVICE_CATEGORIES.indexOf(b.serviceCategory);
+                            if (idxA !== idxB) return idxA - idxB;
+                            return a.name.localeCompare(b.name);
                           })
                           .map(t => {
                             const isOffered = initialProfile.offeredServices?.includes(t.serviceCategory);

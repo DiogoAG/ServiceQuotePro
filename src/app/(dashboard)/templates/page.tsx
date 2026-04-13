@@ -259,7 +259,12 @@ export default function TemplatesPage() {
       const bIsOffered = offered.includes(b.serviceCategory);
       if (aIsOffered && !bIsOffered) return -1;
       if (!aIsOffered && bIsOffered) return 1;
-      return 0;
+      
+      const idxA = SERVICE_CATEGORIES.indexOf(a.serviceCategory);
+      const idxB = SERVICE_CATEGORIES.indexOf(b.serviceCategory);
+      if (idxA !== idxB) return idxA - idxB;
+      
+      return a.name.localeCompare(b.name);
     });
   }, [userTemplates, searchTemplate, profile]);
 
@@ -283,13 +288,9 @@ export default function TemplatesPage() {
 
   const sortedCategories = useMemo(() => {
     const offered = profile?.offeredServices || [];
-    return [...SERVICE_CATEGORIES].sort((a, b) => {
-      const aIsOffered = offered.includes(a);
-      const bIsOffered = offered.includes(b);
-      if (aIsOffered && !bIsOffered) return -1;
-      if (!aIsOffered && bIsOffered) return 1;
-      return 0;
-    });
+    const starred = SERVICE_CATEGORIES.filter(c => offered.includes(c));
+    const others = SERVICE_CATEGORIES.filter(c => !offered.includes(c));
+    return [...starred, ...others];
   }, [profile]);
 
   const handleExpandAll = () => setExpandedCategories([...SERVICE_CATEGORIES]);
@@ -364,7 +365,7 @@ export default function TemplatesPage() {
                       <AccordionTrigger className="hover:no-underline py-4 text-left">
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                           <span className="font-bold text-sm sm:text-base">{category}</span>
-                          {isOffered && <Badge variant="secondary" className="gap-1 text-[8px] sm:text-[9px] bg-primary/10 text-primary border-none uppercase tracking-tighter"><Star className="w-2.5 h-2.5 fill-primary" /> Offered</Badge>}
+                          {isOffered && <Star className="w-2.5 h-2.5 fill-primary" title="Offered Service" />}
                           <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">{totalItems} Items</span>
                         </div>
                       </AccordionTrigger>
@@ -484,7 +485,6 @@ export default function TemplatesPage() {
                 <Input placeholder="Search templates..." value={searchTemplate} onChange={(e) => setSearchTemplate(e.target.value)} className="pl-10 h-11 bg-muted/30 border-none" />
               </div>
             </CardHeader>
-          </Card>
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {filteredTemplates.map((template) => {
               const isOffered = profile?.offeredServices?.includes(template.serviceCategory);
