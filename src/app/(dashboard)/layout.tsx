@@ -40,8 +40,6 @@ export default function DashboardLayout({
       if (typeof document !== 'undefined') {
         // Ensure buttons are always clickable
         document.body.style.pointerEvents = "auto";
-        // Only reset overflow if we aren't inside an active intended lock
-        // but for a dashboard layout, auto is almost always the correct state
         document.body.style.overflow = "auto";
       }
     };
@@ -71,11 +69,21 @@ export default function DashboardLayout({
     setIsResetting(true);
     try {
       await seedDemoEnvironment(db, user.uid, true);
-      toast({ title: "Demo Data Reset", description: "The environment has been restored to its original state." });
-      window.location.reload();
+      toast({ 
+        title: "Environment Restored", 
+        description: "Demo data has been reset to the original professional state." 
+      });
+      
+      // Delay reload slightly so user can see the toast
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
     } catch (err) {
-      toast({ title: "Reset Failed", description: "Could not reset demo environment.", variant: "destructive" });
-    } finally {
+      toast({ 
+        title: "Reset Failed", 
+        description: "Could not reset demo environment.", 
+        variant: "destructive" 
+      });
       setIsResetting(false);
     }
   };
