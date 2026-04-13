@@ -67,6 +67,12 @@ export type Quote = {
   id: string;
   clientId: string;
   contractorId?: string;
+  clientSnapshot?: {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+  };
   date: string;
   status: 'draft' | 'sent' | 'approved' | 'rejected';
   serviceCategory: string;

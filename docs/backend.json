@@ -137,6 +137,15 @@
           "type": "string",
           "description": "Reference to the Client for whom this quote was prepared."
         },
+        "clientSnapshot": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string" },
+            "phone": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        },
         "date": {
           "type": "string",
           "description": "The date the quote was created.",
