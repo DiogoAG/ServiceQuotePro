@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
@@ -292,6 +292,15 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     const filteredItems = items.filter(i => i.description.trim() !== "");
     const client = clients.find(c => c.id === clientId);
 
+    // Business Logic: Recalculate totals immediately before saving to ensure data integrity
+    const finalTotals = calculateQuoteTotals({
+      items: filteredItems,
+      laborHours: Number(laborHours) || 0,
+      laborRate: Number(laborRate) || 0,
+      materialCosts: Number(materialCosts) || 0,
+      taxRate: Number(taxRate) || 0
+    });
+
     const quoteData: any = {
       id: uuidv4(),
       clientId,
@@ -310,13 +319,13 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
       laborRate: Number(laborRate) || 0,
       materialCosts: Number(materialCosts) || 0,
       taxRate: Number(taxRate) || 0,
-      taxTotal: totals.taxTotal,
-      subtotal: totals.subtotal,
-      grandTotal: totals.grandTotal,
+      taxTotal: finalTotals.taxTotal,
+      subtotal: finalTotals.subtotal,
+      grandTotal: finalTotals.grandTotal,
       notes
     };
 
-    // Use Zod for client-side validation before saving
+    // Client-side Validation Layer: Use Zod to enforce integrity
     const result = QuoteSchema.safeParse(quoteData);
 
     if (!result.success) {
