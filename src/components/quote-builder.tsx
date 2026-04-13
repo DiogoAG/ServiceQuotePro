@@ -416,6 +416,17 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
     });
   }, [allLibraryItems, initialProfile.offeredServices]);
 
+  // Derived sorted categories for the Select component
+  const sortedCategories = useMemo(() => {
+    return [...SERVICE_CATEGORIES].sort((a, b) => {
+      const isOfferedA = initialProfile.offeredServices?.includes(a);
+      const isOfferedB = initialProfile.offeredServices?.includes(b);
+      if (isOfferedA && !isOfferedB) return -1;
+      if (!isOfferedA && isOfferedB) return 1;
+      return a.localeCompare(b);
+    });
+  }, [initialProfile.offeredServices]);
+
   return (
     <div className="space-y-8">
       {isLocked && (
@@ -544,7 +555,7 @@ export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelect
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SERVICE_CATEGORIES.map(c => {
+                    {sortedCategories.map(c => {
                       const isOffered = initialProfile.offeredServices?.includes(c);
                       return (
                         <SelectItem key={c} value={c}>
