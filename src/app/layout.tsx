@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { Analytics } from '@vercel/analytics/next';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function RootLayout({
           {children}
         </FirebaseClientProvider>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
