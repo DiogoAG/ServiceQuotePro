@@ -1,9 +1,10 @@
-
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 import { 
   LayoutDashboard, 
   FileText, 
@@ -37,12 +38,22 @@ interface DashboardNavProps {
 
 export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push("/login");
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
       {/* Mobile Toggle */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b bg-card sticky top-0 z-50">
+      <div className={cn(
+        "md:hidden flex items-center justify-between p-4 border-b bg-card sticky z-50",
+        "top-[var(--banner-height,0px)]"
+      )}>
         <Link href="/dashboard" className="flex items-center gap-3">
           <Logo />
           <span className="font-bold text-xl tracking-tight text-primary whitespace-nowrap">ServiceQuotePro</span>
@@ -54,7 +65,8 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 bg-card border-r flex flex-col transition-all duration-300 transform md:translate-x-0",
+        "fixed left-0 bottom-0 z-50 bg-card border-r flex flex-col transition-all duration-300 transform md:translate-x-0",
+        "top-[var(--banner-height,0px)]",
         isOpen ? "translate-x-0" : "-translate-x-full",
         isFolded ? "w-20" : "w-64"
       )}>
@@ -130,7 +142,11 @@ export function DashboardNav({ isFolded = false, onToggleFold }: DashboardNavPro
             </Button>
           )}
           
-          <Button variant="ghost" className={cn("w-full justify-start gap-3 text-muted-foreground hover:text-destructive", isFolded ? "justify-center px-0" : "")}>
+          <Button 
+            variant="ghost" 
+            className={cn("w-full justify-start gap-3 text-muted-foreground", isFolded ? "justify-center px-0" : "")}
+            onClick={handleSignOut}
+          >
             <LogOut className="w-5 h-5 shrink-0" />
             {!isFolded && <span>Sign Out</span>}
           </Button>

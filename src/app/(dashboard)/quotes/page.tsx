@@ -1,62 +1,187 @@
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useTransition, useCallback } from "react";
 import { Quote, Client } from "@/lib/types";
-import { getQuotes, getClients, saveQuotes } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Undo2, Calendar, User, DollarSign, ArrowRight } from "lucide-react";
+import { Plus, Eye, MoreHorizontal, Copy, Trash2, FileText, Calendar, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, X } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy, doc } from "firebase/firestore";
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { formatCurrency } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+
+type SortField = "date" | "client" | "service" | "status" | "total";
+type SortDirection = "asc" | "desc";
+
+const STATUS_ORDER: Record<string, number> = {
+  'draft': 1,
+  'sent': 2,
+  'accepted': 3,
+  'invoiced': 4,
+  'paid': 5,
+  'rejected': 6
+};
 
 export default function QuotesListPage() {
   const { toast } = useToast();
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const { user } = useUser();
+  const db = useFirestore();
+  const [isPending, startTransition] = useTransition();
+
+  const quotesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, "contractorProfiles", user.uid, "quotes"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
+
+  const clientsRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(db, "contractorProfiles", user.uid, "clients");
+  }, [db, user]);
+
+  const { data: quotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
+  const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
+
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
+  
+  // Search State
+  const [inputValue, setInputValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
+  // Sorting State
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Debounce search input
   useEffect(() => {
-    setQuotes(getQuotes());
-    setClients(getClients());
-  }, []);
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
-  const handleDelete = () => {
-    if (!quoteToDelete) return;
-    const qId = quoteToDelete.id;
-    const qName = quoteToDelete.serviceCategory;
-    const updated = quotes.filter(q => q.id !== qId);
+  // Interaction safety valve for this specific page
+  useEffect(() => {
+    if (!quoteToDelete && typeof document !== 'undefined') {
+      document.body.style.pointerEvents = "auto";
+    }
+  }, [quoteToDelete]);
+
+  const clientMap = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients?.forEach(c => map.set(c.id, c));
+    return map;
+  }, [clients]);
+
+  const activeQuotes = useMemo(() => {
+    if (!quotes) return [];
     
-    setQuotes(updated);
-    saveQuotes(updated);
+    // 1. Filter out deleted items
+    let filtered = quotes.filter(q => !optimisticDeletedIds.has(q.id));
 
-    toast({
-      title: "Quote Deleted",
-      description: `${qName} quote has been removed.`,
-      action: (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => {
-            const currentQuotes = getQuotes();
-            const restored = [...currentQuotes, quoteToDelete];
-            setQuotes(restored);
-            saveQuotes(restored);
-            toast({ title: "Restored", description: "The quote has been restored." });
-          }}
-        >
-          <Undo2 className="w-4 h-4 mr-2" /> Undo
-        </Button>
-      )
+    // 2. Apply Search Filter
+    const term = searchQuery.toLowerCase().trim();
+    if (term) {
+      filtered = filtered.filter(q => {
+        const client = clientMap.get(q.clientId);
+        return (
+          client?.name?.toLowerCase().includes(term) ||
+          client?.email?.toLowerCase().includes(term) ||
+          q.serviceCategory?.toLowerCase().includes(term) ||
+          q.status?.toLowerCase().includes(term) ||
+          q.id?.toLowerCase().includes(term) ||
+          q.notes?.toLowerCase().includes(term)
+        );
+      });
+    }
+
+    // 3. Sort the list
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "client":
+          const nameA = clientMap.get(a.clientId)?.name || "";
+          const nameB = clientMap.get(b.clientId)?.name || "";
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case "service":
+          comparison = a.serviceCategory.localeCompare(b.serviceCategory);
+          break;
+        case "status":
+          comparison = (STATUS_ORDER[a.status] || 99) - (STATUS_ORDER[b.status] || 99);
+          break;
+        case "total":
+          comparison = (a.grandTotal || 0) - (b.grandTotal || 0);
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
     });
-    setQuoteToDelete(null);
+  }, [quotes, optimisticDeletedIds, searchQuery, sortField, sortDirection, clientMap]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
   };
 
-  const sortedQuotes = [...quotes].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />;
+    return sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4 text-primary" /> : <ArrowDown className="ml-2 h-4 w-4 text-primary" />;
+  };
+
+  const handleDelete = useCallback(() => {
+    if (!quoteToDelete || !user) return;
+    
+    const idToDelete = quoteToDelete.id;
+    const category = quoteToDelete.serviceCategory;
+
+    setQuoteToDelete(null);
+
+    setTimeout(() => {
+      startTransition(() => {
+        setOptimisticDeletedIds(prev => {
+          const next = new Set(prev);
+          next.add(idToDelete);
+          return next;
+        });
+      });
+
+      const docRef = doc(db, "contractorProfiles", user.uid, "quotes", idToDelete);
+      deleteDocumentNonBlocking(docRef);
+
+      toast({
+        title: "Quote Deleted",
+        description: `Quote for ${category} has been removed.`,
+      });
+    }, 50);
+  }, [quoteToDelete, user, db, toast]);
+
+  if (quotesLoading || clientsLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-20">
@@ -66,18 +191,46 @@ export default function QuotesListPage() {
           <p className="text-muted-foreground">Manage, track, and reuse your service quotes.</p>
         </div>
         <Link href="/quotes/new" className="w-full sm:w-auto">
-          <Button className="gap-2 w-full sm:w-auto h-12 sm:h-10 text-base sm:text-sm">
+          <Button className="gap-2 w-full sm:w-auto h-12 sm:h-10 text-base sm:text-sm shadow-md hover:shadow-lg transition-all">
             <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
             New Quote
           </Button>
         </Link>
       </div>
 
+      <div className="flex flex-col gap-4">
+        <div className="relative group max-w-2xl">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input 
+            placeholder="Search quotes by client, service, or status..." 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            className="pl-10 pr-10 h-11 bg-card border-primary/10 focus-visible:ring-primary shadow-sm"
+          />
+          {inputValue && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute right-1 top-1 h-9 w-9 hover:bg-transparent"
+              onClick={() => setInputValue("")}
+            >
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </Button>
+          )}
+        </div>
+        
+        {searchQuery && (
+          <p className="text-xs text-muted-foreground animate-in fade-in slide-in-from-left-1">
+            Found <span className="font-bold text-foreground">{activeQuotes.length}</span> {activeQuotes.length === 1 ? 'quote' : 'quotes'} matching "{searchQuery}"
+          </p>
+        )}
+      </div>
+
       {/* Mobile Quote Cards */}
       <div className="grid gap-4 md:hidden">
-        {sortedQuotes.length > 0 ? (
-          sortedQuotes.map((quote) => {
-            const client = clients.find(c => c.id === quote.clientId);
+        {activeQuotes.length > 0 ? (
+          activeQuotes.map((quote) => {
+            const client = clientMap.get(quote.clientId);
             return (
               <Card key={quote.id} className="overflow-hidden border-primary/10 shadow-sm active:bg-accent/5 transition-colors">
                 <CardContent className="p-5 space-y-4">
@@ -89,7 +242,7 @@ export default function QuotesListPage() {
                       </div>
                       <h3 className="font-black text-lg leading-tight tracking-tight">{quote.serviceCategory}</h3>
                     </div>
-                    <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
+                    <Badge variant={quote.status === 'approved' || quote.status === 'accepted' || quote.status === 'paid' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[9px] px-2 py-0.5">
                       {quote.status}
                     </Badge>
                   </div>
@@ -103,7 +256,7 @@ export default function QuotesListPage() {
                       <p className="text-[11px] text-muted-foreground truncate">{client?.email}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-black text-primary">${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      <p className="text-sm font-black text-primary">{formatCurrency(quote.grandTotal)}</p>
                     </div>
                   </div>
 
@@ -127,7 +280,10 @@ export default function QuotesListPage() {
                       <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer py-2.5"
-                          onSelect={() => setQuoteToDelete(quote)}
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            setQuoteToDelete(quote);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                         </DropdownMenuItem>
@@ -141,10 +297,14 @@ export default function QuotesListPage() {
         ) : (
           <div className="text-center py-20 bg-muted/20 rounded-xl">
             <FileText className="w-12 h-12 opacity-20 mx-auto mb-3" />
-            <p className="font-bold text-muted-foreground">No quotes found.</p>
-            <Link href="/quotes/new" className="mt-4 block">
-              <Button variant="outline" size="sm">Create First Quote</Button>
-            </Link>
+            <p className="font-bold text-muted-foreground">
+              {searchQuery ? "No quotes match your search." : "No quotes found."}
+            </p>
+            {!searchQuery && (
+              <Link href="/quotes/new" className="mt-4 block">
+                <Button variant="outline" size="sm">Create First Quote</Button>
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -154,18 +314,53 @@ export default function QuotesListPage() {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="font-bold">Date</TableHead>
-              <TableHead className="font-bold">Client</TableHead>
-              <TableHead className="font-bold">Service</TableHead>
-              <TableHead className="font-bold">Status</TableHead>
-              <TableHead className="text-right font-bold">Total</TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("date")}
+              >
+                <div className="flex items-center">
+                  Date <SortIcon field="date" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("client")}
+              >
+                <div className="flex items-center">
+                  Client <SortIcon field="client" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("service")}
+              >
+                <div className="flex items-center">
+                  Service <SortIcon field="service" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("status")}
+              >
+                <div className="flex items-center">
+                  Status <SortIcon field="status" />
+                </div>
+              </TableHead>
+              <TableHead 
+                className="text-right font-bold cursor-pointer hover:bg-muted/50 transition-colors group select-none"
+                onClick={() => handleSort("total")}
+              >
+                <div className="flex items-center justify-end">
+                  Total <SortIcon field="total" />
+                </div>
+              </TableHead>
               <TableHead className="w-40 text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedQuotes.length > 0 ? (
-              sortedQuotes.map((quote) => {
-                const client = clients.find(c => c.id === quote.clientId);
+            {activeQuotes.length > 0 ? (
+              activeQuotes.map((quote) => {
+                const client = clientMap.get(quote.clientId);
                 return (
                   <TableRow key={quote.id} className="group cursor-pointer hover:bg-muted/50 transition-colors">
                     <TableCell className="text-xs font-medium">
@@ -183,12 +378,12 @@ export default function QuotesListPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
+                      <Badge variant={quote.status === 'approved' || quote.status === 'accepted' || quote.status === 'paid' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
                         {quote.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-black text-primary">
-                      ${quote.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <TableCell className={cn("text-right font-black", sortField === "total" ? "text-primary" : "text-foreground")}>
+                      {formatCurrency(quote.grandTotal)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -211,7 +406,10 @@ export default function QuotesListPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem 
                               className="text-destructive cursor-pointer"
-                              onSelect={() => setQuoteToDelete(quote)}
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setQuoteToDelete(quote);
+                              }}
                             >
                               <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
                             </DropdownMenuItem>
@@ -227,10 +425,14 @@ export default function QuotesListPage() {
                 <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
                   <div className="flex flex-col items-center gap-3">
                     <FileText className="w-16 h-16 opacity-10" />
-                    <p className="text-lg font-medium">No quotes found.</p>
-                    <Link href="/quotes/new">
-                      <Button variant="outline" size="lg" className="mt-2">Create First Quote</Button>
-                    </Link>
+                    <p className="text-lg font-medium">
+                      {searchQuery ? `No quotes found matching "${searchQuery}"` : "No quotes found."}
+                    </p>
+                    {!searchQuery && (
+                      <Link href="/quotes/new">
+                        <Button variant="outline" size="lg" className="mt-2">Create First Quote</Button>
+                      </Link>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -239,17 +441,37 @@ export default function QuotesListPage() {
         </Table>
       </div>
 
-      <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
+      <AlertDialog 
+        open={!!quoteToDelete} 
+        onOpenChange={(open) => {
+          if (!open) setQuoteToDelete(null);
+        }}
+      >
         <AlertDialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl">Delete this quote?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the quote for <strong>{quoteToDelete?.serviceCategory}</strong>. You can undo this action immediately after.
+              {quoteToDelete ? (
+                <>This will remove the quote for <strong>{quoteToDelete.serviceCategory}</strong>. This action cannot be undone.</>
+              ) : (
+                "This action cannot be undone."
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground rounded-xl">Delete Quote</AlertDialogAction>
+            <AlertDialogCancel 
+              className="rounded-xl" 
+              onClick={() => setQuoteToDelete(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground rounded-xl"
+              disabled={isPending}
+            >
+              {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Quote"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

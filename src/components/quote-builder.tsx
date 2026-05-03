@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useReducer } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,729 +8,688 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, Check, LayoutTemplate, ChevronRight, Undo2, X, Star, DollarSign } from "lucide-react";
+import { Trash2, Plus, Save, Search, BookOpen, Copy, UserPlus, LayoutTemplate, X, Star, DollarSign, Undo2, Redo2, GripVertical, AlertCircle, Lock, PlusCircle } from "lucide-react";
 import { Client, Quote, QuoteItem, BusinessProfile, CommonItem, QuoteTemplate, SERVICE_CATEGORIES } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { getCommonItems, getTemplates, saveClients, saveTemplates, getDraftQuote, saveDraftQuote, clearDraftQuote, QuoteDraft } from "@/lib/store";
+import { getHardcodedItems, getHardcodedTemplates, QuoteDraft, getDraftQuote, saveDraftQuote, clearDraftQuote } from "@/lib/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { ToastAction } from "@/components/ui/toast";
+import { calculateQuoteTotals, roundToCent } from "@/lib/quote-engine";
+import { addMoney, multiplyMoney, formatCurrency } from "@/lib/finance";
+import { QuoteSchema } from "@/lib/validators/quote";
 
-const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
-  "General Contracting": ["Project Management", "Sitework", "Structural Construction", "Building Envelope", "Interior Construction", "Renovation & Expansion"],
-  "Electrical": ["Power Distribution", "Wiring & Devices", "Lighting Systems", "Low Voltage Systems", "Specialized Systems", "Controls & Automation", "Maintenance & Testing"],
-  "Plumbing": ["Water Supply Systems", "Drainage Systems", "Fixtures & Appliances", "Water Heating", "Gas Systems", "Specialty Systems", "Maintenance & Repair"],
-  "HVAC": ["Heating Systems", "Cooling Systems", "Air Distribution", "Controls", "Refrigeration", "Indoor Air Quality", "Maintenance & Service"],
-  "Landscaping": ["Site Development", "Softscape", "Hardscape", "Irrigation", "Outdoor Features", "Maintenance"],
-  "Painting": ["Interior Painting", "Exterior Painting", "Surface Preparation", "Specialty Painting Services", "Additional Services"],
-  "Roofing": ["Roof Systems", "Components", "Drainage", "Installation & Replacement", "Repair & Maintenance", "Inspection"],
-  "Carpentry": ["Rough Carpentry", "Finish Carpentry", "Doors & Windows", "Cabinets & Millwork", "Flooring", "Structural & Specialty", "Exterior Carpentry", "Custom Work", "Repair"],
-  "Cleaning": ["General Cleaning", "Deep Cleaning", "Floor Care", "Surface Cleaning", "Exterior Cleaning", "Sanitation", "Air Systems", "Waste Services"]
-};
+// --- REDUCER TYPES ---
+
+interface QuoteState {
+  clientId: string;
+  serviceCategory: string;
+  items: QuoteItem[];
+  laborHours: number | string;
+  laborRate: number | string;
+  materialCosts: number | string;
+  taxRate: number | string;
+  notes: string;
+  scopeDescription: string;
+  status: Quote['status'];
+}
+
+interface HistoryState {
+  past: QuoteState[];
+  present: QuoteState;
+  future: QuoteState[];
+}
+
+type QuoteAction =
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'SET_FIELD'; field: keyof QuoteState; value: any; snapshot?: boolean }
+  | { type: 'UPDATE_ITEM'; id: string; field: keyof QuoteItem; value: any }
+  | { type: 'ADD_ITEM' }
+  | { type: 'REMOVE_ITEM'; id: string }
+  | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
+  | { type: 'APPLY_TEMPLATE'; template: QuoteTemplate }
+  | { type: 'RESET_DRAFT'; draft: QuoteState };
+
+const HISTORY_LIMIT = 50;
+
+function quoteReducer(state: HistoryState, action: QuoteAction): HistoryState {
+  const { past, present, future } = state;
+
+  const pushToPast = (newState: QuoteState): HistoryState => {
+    const newPast = [...past, present].slice(-HISTORY_LIMIT);
+    return {
+      past: newPast,
+      present: newState,
+      future: []
+    };
+  };
+
+  switch (action.type) {
+    case 'UNDO': {
+      if (past.length === 0) return state;
+      const previous = past[past.length - 1];
+      const newPast = past.slice(0, past.length - 1);
+      return {
+        past: newPast,
+        present: previous,
+        future: [present, ...future]
+      };
+    }
+
+    case 'REDO': {
+      if (future.length === 0) return state;
+      const next = future[0];
+      const newFuture = future.slice(1);
+      return {
+        past: [...past, present],
+        present: next,
+        future: newFuture
+      };
+    }
+
+    case 'SET_FIELD': {
+      const newState = { ...present, [action.field]: action.value };
+      if (action.snapshot) {
+        return pushToPast(newState);
+      }
+      return { ...state, present: newState };
+    }
+
+    case 'ADD_ITEM': {
+      const newItem: QuoteItem = { id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 };
+      const newState = { ...present, items: [...present.items, newItem] };
+      return pushToPast(newState);
+    }
+
+    case 'REMOVE_ITEM': {
+      if (present.items.length <= 1) return state;
+      const newState = { ...present, items: present.items.filter(i => i.id !== action.id) };
+      return pushToPast(newState);
+    }
+
+    case 'UPDATE_ITEM': {
+      const newItems = present.items.map(item => {
+        if (item.id === action.id) {
+          const updated = { ...item, [action.field]: action.value };
+          if (action.field === 'length' || action.field === 'width') {
+            const l = parseFloat(String(updated.length));
+            const w = parseFloat(String(updated.width));
+            if (!isNaN(l) && !isNaN(w)) updated.quantity = roundToCent(l * w);
+          }
+          updated.total = multiplyMoney(Number(updated.unitPrice) || 0, Number(updated.quantity) || 0);
+          return updated;
+        }
+        return item;
+      });
+      return { ...state, present: { ...present, items: newItems } };
+    }
+
+    case 'REORDER_ITEMS': {
+      const newItems = [...present.items];
+      const [removed] = newItems.splice(action.fromIndex, 1);
+      newItems.splice(action.toIndex, 0, removed);
+      return pushToPast({ ...present, items: newItems });
+    }
+
+    case 'APPLY_TEMPLATE': {
+      const newState: QuoteState = {
+        ...present,
+        serviceCategory: action.template.serviceCategory,
+        scopeDescription: action.template.scopeDescription,
+        items: action.template.items.map(i => ({
+          ...i,
+          id: uuidv4(),
+          total: multiplyMoney(Number(i.unitPrice) || 0, Number(i.quantity) || 1)
+        })) as QuoteItem[]
+      };
+      return pushToPast(newState);
+    }
+
+    case 'RESET_DRAFT': {
+      return {
+        past: [],
+        present: action.draft,
+        future: []
+      };
+    }
+
+    default:
+      return state;
+  }
+}
+
+// --- COMPONENT ---
 
 type QuoteBuilderProps = {
   initialClients: Client[];
   initialProfile: BusinessProfile;
   onSave: (quote: Quote) => void;
   preSelectedClientId?: string;
-  duplicateSource?: Quote;
-};
-
-const roundToCent = (val: number | string) => Math.round(Number(val) * 100) / 100;
-
-const truncateToTwoDecimals = (value: string) => {
-  if (!value) return "";
-  const parts = value.split('.');
-  if (parts.length > 1 && parts[1].length > 2) {
-    return `${parts[0]}.${parts[1].slice(0, 2)}`;
-  }
-  return value;
+  duplicateSource?: Quote | QuoteTemplate;
 };
 
 export function QuoteBuilder({ initialClients, initialProfile, onSave, preSelectedClientId, duplicateSource }: QuoteBuilderProps) {
   const { toast } = useToast();
-  const isInitialMount = useRef(true);
-  const deletedStack = useRef<QuoteItem[]>([]);
-  
-  const getInitialState = useCallback(() => {
-    const draft = getDraftQuote();
-    const currentTaxRate = initialProfile.defaultTaxRate;
-    const currentLaborRate = initialProfile.defaultLaborRate;
-    const defaultCategory = initialProfile.offeredServices?.[0] || "General Contracting";
+  const { user } = useUser();
+  const db = useFirestore();
 
+  const customItemsRef = useMemoFirebase(() => user ? collection(db, "contractorProfiles", user.uid, "customItems") : null, [db, user]);
+  const templatesRef = useMemoFirebase(() => user ? collection(db, "contractorProfiles", user.uid, "templates") : null, [db, user]);
+  
+  const { data: customItems } = useCollection<CommonItem>(customItemsRef);
+  const { data: userTemplates } = useCollection<QuoteTemplate>(templatesRef);
+
+  const allLibraryItems = useMemo(() => {
+    const hardcodedItems = getHardcodedItems();
+    const customMap = new Map((customItems || []).map(i => [i.id, i]));
+    const mergedHardcoded = hardcodedItems.map(h => {
+      const custom = customMap.get(h.id);
+      return custom ? { ...h, ...custom, isHardCoded: false } : h;
+    });
+    const hardcodedIds = new Set(hardcodedItems.map(h => h.id));
+    const newCustom = (customItems || []).filter(c => !hardcodedIds.has(c.id));
+    return [...mergedHardcoded, ...newCustom];
+  }, [customItems]);
+
+  const allAvailableTemplates = useMemo(() => [...getHardcodedTemplates(), ...(userTemplates || [])], [userTemplates]);
+
+  const [localClients, setLocalClients] = useState<Client[]>([]);
+  const clients = useMemo(() => [...initialClients, ...localClients], [initialClients, localClients]);
+
+  const initialState: QuoteState = useMemo(() => {
+    const draft = getDraftQuote();
     if (duplicateSource) {
       return {
-        clientId: preSelectedClientId || duplicateSource.clientId || "",
-        serviceCategory: duplicateSource.serviceCategory || defaultCategory,
-        items: duplicateSource.items.map(i => ({ ...i, id: uuidv4() })),
-        laborHours: duplicateSource.laborHours || 0,
-        laborRate: currentLaborRate,
-        materialCosts: duplicateSource.materialCosts || 0,
-        taxRate: currentTaxRate,
-        notes: duplicateSource.notes || "",
-        scopeDescription: duplicateSource.scopeDescription || ""
+        clientId: 'clientId' in duplicateSource ? (duplicateSource as Quote).clientId : "",
+        serviceCategory: duplicateSource.serviceCategory,
+        items: duplicateSource.items.map(i => ({ 
+          ...i, 
+          id: uuidv4(),
+          total: multiplyMoney(Number(i.unitPrice) || 0, Number(i.quantity) || 1)
+        })) as QuoteItem[],
+        laborHours: 'laborHours' in duplicateSource ? (duplicateSource as Quote).laborHours : 0,
+        laborRate: 'laborRate' in duplicateSource ? (duplicateSource as Quote).laborRate : initialProfile.defaultLaborRate,
+        materialCosts: 'materialCosts' in duplicateSource ? (duplicateSource as Quote).materialCosts : 0,
+        taxRate: 'taxRate' in duplicateSource ? (duplicateSource as Quote).taxRate : initialProfile.defaultTaxRate,
+        notes: 'notes' in duplicateSource ? (duplicateSource as Quote).notes : "",
+        scopeDescription: duplicateSource.scopeDescription || "",
+        status: 'draft'
       };
     }
-    
+    if (draft) {
+      return {
+        ...draft,
+        clientId: preSelectedClientId || draft.clientId,
+        status: 'status' in draft ? (draft as any).status : 'draft'
+      };
+    }
     return {
-      clientId: preSelectedClientId || draft?.clientId || "",
-      serviceCategory: draft?.serviceCategory || defaultCategory,
-      items: draft?.items.map(i => ({ ...i, id: i.id || uuidv4() })) || [{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }],
-      laborHours: draft?.laborHours ?? 0,
-      laborRate: currentLaborRate,
-      materialCosts: draft?.materialCosts ?? 0,
-      taxRate: currentTaxRate,
-      notes: draft?.notes || "",
-      scopeDescription: draft?.scopeDescription || ""
+      clientId: preSelectedClientId || "",
+      serviceCategory: initialProfile.offeredServices?.[0] || "General Contracting",
+      items: [{ id: uuidv4(), description: "", unit: "ea", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }],
+      laborHours: 0,
+      laborRate: initialProfile.defaultLaborRate,
+      materialCosts: 0,
+      taxRate: initialProfile.defaultTaxRate,
+      notes: "",
+      scopeDescription: "",
+      status: 'draft'
     };
   }, [duplicateSource, initialProfile, preSelectedClientId]);
 
-  const initialState = useMemo(() => getInitialState(), [getInitialState]);
+  const [state, dispatch] = useReducer(quoteReducer, {
+    past: [],
+    present: initialState,
+    future: []
+  });
 
-  const [clients, setClients] = useState<Client[]>(initialClients);
-  const [clientId, setClientId] = useState<string>(initialState.clientId);
-  const [serviceCategory, setServiceCategory] = useState<string>(initialState.serviceCategory);
-  const [items, setItems] = useState<QuoteItem[]>(initialState.items);
-  const [laborHours, setLaborHours] = useState<number | string>(initialState.laborHours);
-  const [laborRate, setLaborRate] = useState<number | string>(initialState.laborRate);
-  const [materialCosts, setMaterialCosts] = useState<number | string>(initialState.materialCosts);
-  const [taxRate, setTaxRate] = useState<number | string>(initialState.taxRate);
-  const [notes, setNotes] = useState(initialState.notes);
-  const [scopeDescription, setScopeDescription] = useState(initialState.scopeDescription);
-  
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [newTemplateName, setNewTemplateName] = useState("");
-  const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
-  const [clientSearch, setClientSearch] = useState("");
-  const [commonItems, setCommonItems] = useState<CommonItem[]>([]);
-  const [templates, setTemplates] = useState<QuoteTemplate[]>([]);
-  const [templateSearch, setTemplateSearch] = useState("");
+  const { present, past, future } = state;
 
-  const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
-  const [newClientName, setNewClientName] = useState("");
-  const [newClientEmail, setNewClientEmail] = useState("");
-  const [newClientPhone, setNewClientPhone] = useState("");
-  const [newClientAddress, setNewClientAddress] = useState("");
+  const isLocked = present.status !== 'draft' && present.status !== 'sent';
 
   useEffect(() => {
-    setCommonItems(getCommonItems());
-    setTemplates(getTemplates());
-  }, []);
+    saveDraftQuote(present);
+  }, [present]);
 
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    const draft: QuoteDraft = {
-      clientId,
-      serviceCategory,
-      items,
-      laborHours: Number(laborHours),
-      laborRate: Number(laborRate),
-      materialCosts: Number(materialCosts),
-      taxRate: Number(taxRate),
-      notes,
-      scopeDescription
-    };
-    saveDraftQuote(draft);
-  }, [clientId, serviceCategory, items, laborHours, laborRate, materialCosts, taxRate, notes, scopeDescription]);
-
-  const selectedClient = useMemo(() => clients.find(c => c.id === clientId), [clients, clientId]);
-
-  const filteredClients = useMemo(() => {
-    if (!clientSearch.trim()) return [];
-    const term = clientSearch.toLowerCase();
-    return clients.filter(c => 
-      c.name.toLowerCase().includes(term) ||
-      c.email.toLowerCase().includes(term) ||
-      (c.phone && c.phone.toLowerCase().includes(term)) ||
-      (c.address && c.address.toLowerCase().includes(term))
-    );
-  }, [clients, clientSearch]);
-
-  const calculateTotals = useCallback(() => {
-    const itemsTotal = items.reduce((acc, item) => acc + (Number(item.total) || 0), 0);
-    const lh = Number(laborHours) || 0;
-    const lr = Number(laborRate) || 0;
-    const laborTotal = lh * lr;
-    const mc = Number(materialCosts) || 0;
-    
-    const subtotal = roundToCent(itemsTotal + laborTotal + mc);
-    const tr = Number(taxRate) || 0;
-    const taxTotal = roundToCent(subtotal * (tr / 100));
-    const grandTotal = roundToCent(subtotal + taxTotal);
-    
-    return { subtotal, taxTotal, grandTotal };
-  }, [items, laborHours, laborRate, materialCosts, taxRate]);
-
-  const addItem = () => {
-    setItems([...items, { id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }]);
-  };
-
-  const restoreItem = useCallback((item: QuoteItem) => {
-    setItems(prev => {
-      const isEmptyDefault = prev.length === 1 && !prev[0].description.trim() && !prev[0].unit?.trim() && (!prev[0].unitPrice || prev[0].unitPrice === 0);
-      if (isEmptyDefault) return [item];
-      return [...prev, item];
-    });
-  }, []);
-
-  const undoLastDelete = useCallback(() => {
-    const lastItem = deletedStack.current.pop();
-    if (lastItem) {
-      restoreItem(lastItem);
-      toast({ title: "Restored", description: `"${lastItem.description || 'Service Item'}" has been restored.` });
-    }
-  }, [restoreItem, toast]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
-        const activeElement = document.activeElement;
-        const isInput = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
-        if (!isInput) {
-          event.preventDefault();
-          undoLastDelete();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey)) {
+        if (e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) dispatch({ type: 'REDO' });
+          else dispatch({ type: 'UNDO' });
+        } else if (e.key === 'y') {
+          e.preventDefault();
+          dispatch({ type: 'REDO' });
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoLastDelete]);
+  }, []);
 
-  const removeItem = (id: string) => {
-    const itemToRemove = items.find(item => item.id === id);
-    if (!itemToRemove) return;
-    const isEmpty = !itemToRemove.description.trim() && !itemToRemove.unit?.trim() && (!itemToRemove.unitPrice || itemToRemove.unitPrice === 0);
-    if (items.length === 1) {
-      setItems([{ id: uuidv4(), description: "", unit: "", quantity: 1, length: "", width: "", unitPrice: 0, total: 0 }]);
-    } else {
-      setItems(items.filter(item => item.id !== id));
-    }
-    if (!isEmpty) {
-      deletedStack.current.push(itemToRemove);
-      toast({
-        title: "Item Removed",
-        description: `"${itemToRemove.description || 'Service Item'}" has been removed.`,
-        action: (
-          <Button variant="outline" size="sm" onClick={() => { restoreItem(itemToRemove); toast({ title: "Restored" }); }}>
-            <Undo2 className="w-4 h-4 mr-2" /> Undo
-          </Button>
-        )
-      });
-    }
-  };
+  const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientAddress, setNewClientAddress] = useState("");
+  const [openLibraryId, setOpenLibraryId] = useState<string | null>(null);
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
-  const updateItem = (id: string, field: keyof QuoteItem, value: any) => {
-    setItems(items.map(item => {
-      if (item.id === id) {
-        let finalValue = value;
-        if (field === 'quantity' || field === 'unitPrice' || field === 'length' || field === 'width') {
-          finalValue = truncateToTwoDecimals(value.toString());
-        }
-        
-        const updated = { ...item, [field]: finalValue };
+  const selectedClient = useMemo(() => clients.find(c => c.id === present.clientId), [clients, present.clientId]);
 
-        // Auto-calculate quantity if length and width are edited
-        if (field === 'length' || field === 'width') {
-          const l = parseFloat(String(updated.length));
-          const w = parseFloat(String(updated.width));
-          if (!isNaN(l) && !isNaN(w) && l > 0 && w > 0) {
-            updated.quantity = roundToCent(l * w);
-          }
-        }
+  const totals = useMemo(() => {
+    return calculateQuoteTotals({
+      items: present.items,
+      laborHours: Number(present.laborHours) || 0,
+      laborRate: Number(present.laborRate) || 0,
+      materialCosts: Number(present.materialCosts) || 0,
+      taxRate: Number(present.taxRate) || 0
+    });
+  }, [present.items, present.laborHours, present.laborRate, present.materialCosts, present.taxRate]);
 
-        // Recalculate total
-        if (field === 'quantity' || field === 'unitPrice' || field === 'length' || field === 'width') {
-          const q = Number(updated.quantity) || 0;
-          const p = Number(updated.unitPrice) || 0;
-          updated.total = roundToCent(q * p);
-        }
-        return updated;
-      }
-      return item;
-    }));
-  };
-
-  const selectCommonItem = (id: string, item: CommonItem) => {
-    setItems(items.map(i => {
-      if (i.id === id) {
-        const up = roundToCent(item.defaultUnitPrice || 0);
-        const q = Number(i.quantity) || 1;
-        return { ...i, description: item.description, unit: item.unit || "", unitPrice: up, total: roundToCent(q * up) };
-      }
-      return i;
-    }));
-  };
-
-  const applyTemplate = (template: QuoteTemplate) => {
-    setServiceCategory(template.serviceCategory);
-    setScopeDescription(template.scopeDescription);
-    setItems(template.items.map(i => ({ 
-      ...i, 
-      id: uuidv4(), 
-      total: roundToCent((Number(i.quantity) || 1) * (Number(i.unitPrice) || 0))
-    })));
-  };
-
-  const handleSaveAsTemplate = () => {
-    if (!newTemplateName.trim()) {
-      toast({ title: "Name Required", description: "Please give your template a name.", variant: "destructive" });
-      return;
-    }
-    const validItems = items.filter(item => item.description.trim() !== "");
-    if (validItems.length === 0) {
-      toast({ title: "Template Required Items", description: "A template must have at least one line item with a description.", variant: "destructive" });
-      return;
-    }
-    const newTemplate: QuoteTemplate = {
-      id: uuidv4(),
-      name: newTemplateName,
-      serviceCategory,
-      items: validItems.map(({ id, ...rest }) => ({
-        ...rest,
-        quantity: roundToCent(rest.quantity),
-        unitPrice: roundToCent(rest.unitPrice),
-        total: roundToCent(Number(rest.quantity) * Number(rest.unitPrice))
-      })),
-      scopeDescription
-    };
-    const updated = [...templates, newTemplate];
-    saveTemplates(updated);
-    setTemplates(updated);
-    setIsTemplateDialogOpen(false);
-    setNewTemplateName("");
-    toast({ title: "Template Saved" });
-  };
-
-  const handleOpenNewClientDialog = () => {
-    setNewClientName(clientSearch);
-    setIsNewClientDialogOpen(true);
-    setIsClientPopoverOpen(false);
-  };
-
-  const handleSaveNewClient = () => {
-    if (!newClientName || !newClientEmail) {
+  const handleCreateAndSelectClient = () => {
+    if (!newClientName || !newClientEmail || !user) {
       toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
       return;
     }
-    const newClient: Client = { id: uuidv4(), name: newClientName, email: newClientEmail, phone: newClientPhone, address: newClientAddress };
-    const updated = [...clients, newClient];
-    saveClients(updated);
-    setClients(updated);
-    setClientId(newClient.id);
+
+    const clientId = uuidv4();
+    const newClient: Client = {
+      id: clientId,
+      name: newClientName,
+      email: newClientEmail,
+      phone: newClientPhone,
+      address: newClientAddress,
+    };
+
+    const docRef = doc(db, "contractorProfiles", user.uid, "clients", clientId);
+    setDocumentNonBlocking(docRef, {
+      ...newClient,
+      contractorId: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    setLocalClients(prev => [...prev, newClient]);
+    dispatch({ type: 'SET_FIELD', field: 'clientId', value: clientId, snapshot: true });
+
     setIsNewClientDialogOpen(false);
-    setClientSearch("");
     setNewClientName("");
     setNewClientEmail("");
     setNewClientPhone("");
     setNewClientAddress("");
-    toast({ title: "Client Added" });
+    toast({ title: "Client Created", description: `${newClientName} has been added and selected.` });
   };
 
-  const totals = calculateTotals();
+  const handleSaveAsTemplate = () => {
+    if (!newTemplateName || !user) {
+      toast({ title: "Name Required", description: "Please enter a name for your template.", variant: "destructive" });
+      return;
+    }
 
-  const handleSave = () => {
-    if (!clientId) {
-      toast({ title: "Client Required", description: "Please select a client before saving.", variant: "destructive" });
-      return;
-    }
-    const finalItems = items.filter(item => !(!item.description.trim() && !item.unit?.trim() && (!item.unitPrice || Number(item.unitPrice) === 0)))
-      .map(item => ({ ...item, quantity: roundToCent(item.quantity), unitPrice: roundToCent(item.unitPrice), total: roundToCent(Number(item.quantity) * Number(item.unitPrice)) }));
-    
-    for (const item of finalItems) {
-      if (!item.description.trim()) {
-        toast({ title: "Description Required", description: "All line items must have a description.", variant: "destructive" });
-        return;
-      }
-    }
-    if (finalItems.length === 0) {
-      toast({ title: "No Items", description: "Please add at least one line item.", variant: "destructive" });
-      return;
-    }
-    const newQuote: Quote = {
-      id: uuidv4(), clientId, date: new Date().toISOString(), status: 'draft', serviceCategory, items: finalItems,
-      scopeDescription, laborHours: roundToCent(laborHours), laborRate: roundToCent(laborRate), materialCosts: roundToCent(materialCosts),
-      taxRate: Number(taxRate) || 0, taxTotal: totals.taxTotal, subtotal: totals.subtotal, grandTotal: totals.grandTotal, notes,
+    const templateId = uuidv4();
+    const templateData: QuoteTemplate = {
+      id: templateId,
+      name: newTemplateName,
+      serviceCategory: present.serviceCategory,
+      scopeDescription: present.scopeDescription,
+      items: present.items.filter(i => i.description.trim() !== "").map(i => ({
+        description: i.description,
+        unit: i.unit,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        total: i.total
+      }))
     };
-    clearDraftQuote();
-    onSave(newQuote);
+
+    const docRef = doc(db, "contractorProfiles", user.uid, "templates", templateId);
+    setDocumentNonBlocking(docRef, templateData, { merge: true });
+
+    setIsTemplateSaveDialogOpen(false);
+    setNewTemplateName("");
+    toast({ title: "Template Saved", description: `"${templateData.name}" has been added to your library.` });
   };
 
-  const filteredTemplates = useMemo(() => {
-    const search = templateSearch.toLowerCase();
-    const offered = initialProfile?.offeredServices || [];
+  const handleSaveQuote = () => {
+    if (!present.clientId) {
+      toast({ title: "Client Required", variant: "destructive" });
+      return;
+    }
 
-    const filtered = templates.filter(t => 
-      t.name.toLowerCase().includes(search) || 
-      t.serviceCategory.toLowerCase().includes(search) ||
-      t.items.some(item => item.description.toLowerCase().includes(search))
-    );
+    const quoteData: any = {
+      id: uuidv4(),
+      clientId: present.clientId,
+      clientSnapshot: selectedClient ? {
+        name: selectedClient.name,
+        email: selectedClient.email,
+        phone: selectedClient.phone,
+        address: selectedClient.address
+      } : undefined,
+      date: new Date().toISOString(),
+      status: present.status,
+      serviceCategory: present.serviceCategory,
+      items: present.items.filter(i => i.description.trim() !== ""),
+      scopeDescription: present.scopeDescription,
+      laborHours: Number(present.laborHours) || 0,
+      laborRate: Number(present.laborRate) || 0,
+      materialCosts: Number(present.materialCosts) || 0,
+      taxRate: Number(present.taxRate) || 0,
+      taxTotal: totals.taxTotal,
+      subtotal: totals.subtotal,
+      grandTotal: totals.grandTotal,
+      notes: present.notes
+    };
 
-    // Sort by offered services first
-    return [...filtered].sort((a, b) => {
-      const aIsOffered = offered.includes(a.serviceCategory);
-      const bIsOffered = offered.includes(b.serviceCategory);
-      if (aIsOffered && !bIsOffered) return -1;
-      if (!aIsOffered && bIsOffered) return 1;
-      return 0;
-    });
-  }, [templates, templateSearch, initialProfile]);
+    const result = QuoteSchema.safeParse(quoteData);
+    if (!result.success) {
+      toast({ title: "Validation Error", description: result.error.errors[0].message, variant: "destructive" });
+      return;
+    }
+    
+    clearDraftQuote();
+    onSave(result.data as Quote);
+  };
 
-  const organizedCommonItems = useMemo(() => {
-    const categories: Record<string, CommonItem[]> = {};
-    commonItems.forEach(item => {
-      const cat = item.category || "General";
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push(item);
-    });
-
-    const result: { category: string; items: CommonItem[]; isOffered: boolean }[] = [];
-    const offered = initialProfile?.offeredServices || [];
-    const sortedCategories = [...SERVICE_CATEGORIES].sort((a, b) => {
-      const aIsOffered = offered.includes(a);
-      const bIsOffered = offered.includes(b);
-      if (aIsOffered && !bIsOffered) return -1;
-      if (!aIsOffered && bIsOffered) return 1;
-      return 0;
-    });
-
-    sortedCategories.forEach(mainCat => {
-      const isOffered = offered.includes(mainCat);
-      if (SERVICE_SUBCATEGORIES[mainCat]) {
-        SERVICE_SUBCATEGORIES[mainCat].forEach(sub => {
-          const fullCatName = `${mainCat} - ${sub}`;
-          if (categories[fullCatName]) {
-            result.push({ category: fullCatName, items: categories[fullCatName], isOffered });
-          }
-        });
-      } else {
-        if (categories[mainCat]) {
-          result.push({ category: mainCat, items: categories[mainCat], isOffered });
-        }
-      }
+  const organizedLibrary = useMemo(() => {
+    const grouped: Record<string, CommonItem[]> = {};
+    allLibraryItems.forEach(i => {
+      if (!grouped[i.category]) grouped[i.category] = [];
+      grouped[i.category].push(i);
     });
 
-    return result;
-  }, [commonItems, initialProfile]);
+    const getBaseCategoryIndex = (catName: string) => {
+      const base = catName.split(' - ')[0];
+      return SERVICE_CATEGORIES.indexOf(base);
+    };
+
+    return Object.entries(grouped).sort(([catA], [catB]) => {
+      const isOfferedA = initialProfile.offeredServices?.some(s => catA.startsWith(s));
+      const isOfferedB = initialProfile.offeredServices?.some(s => catB.startsWith(s));
+      if (isOfferedA && !isOfferedB) return -1;
+      if (!isOfferedA && isOfferedB) return 1;
+      
+      const idxA = getBaseCategoryIndex(catA);
+      const idxB = getBaseCategoryIndex(catB);
+      if (idxA !== idxB) return idxA - idxB;
+      
+      return catA.localeCompare(catB);
+    });
+  }, [allLibraryItems, initialProfile.offeredServices]);
 
   const sortedCategories = useMemo(() => {
-    const offered = initialProfile?.offeredServices || [];
-    return [...SERVICE_CATEGORIES].sort((a, b) => {
-      const aIsOffered = offered.includes(a);
-      const bIsOffered = offered.includes(b);
-      if (aIsOffered && !bIsOffered) return -1;
-      if (!aIsOffered && bIsOffered) return 1;
-      return 0;
-    });
-  }, [initialProfile]);
+    const offered = initialProfile.offeredServices || [];
+    const starred = SERVICE_CATEGORIES.filter(c => offered.includes(c));
+    const others = SERVICE_CATEGORIES.filter(c => !offered.includes(c));
+    return [...starred, ...others];
+  }, [initialProfile.offeredServices]);
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-20">
-      <div className="grid gap-6 sm:gap-8 lg:grid-cols-3">
+    <div className="space-y-8">
+      {isLocked && (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-4 flex items-center gap-3 text-amber-800 text-sm font-medium">
+            <Lock className="w-4 h-4" />
+            This quote is locked because it has been accepted or invoiced. Edits are disabled.
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-sm border-primary/10 overflow-visible">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 px-4 sm:px-6">
-              <CardTitle className="text-xl">Quote Configuration</CardTitle>
-              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+          <Card className={cn("border-primary/10", isLocked && "opacity-70 pointer-events-none")}>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div className="flex items-center gap-4">
+                <CardTitle className="text-lg">Configuration</CardTitle>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => dispatch({ type: 'UNDO' })} disabled={past.length === 0} className="h-7 w-7"><Undo2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => dispatch({ type: 'REDO' })} disabled={future.length === 0} className="h-7 w-7"><Redo2 className="w-3.5 h-3.5" /></Button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Dialog open={isTemplateSaveDialogOpen} onOpenChange={setIsTemplateSaveDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none h-10 sm:h-9">
-                      <LayoutTemplate className="w-4 h-4" /> <span className="hidden xs:inline">Save Template</span><span className="xs:hidden">Save</span>
+                    <Button variant="outline" size="sm" className="gap-2 h-8 text-xs">
+                      <PlusCircle className="w-3.5 h-3.5" /> Save Template
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
-                    <DialogHeader><DialogTitle>Save as Reusable Template</DialogTitle></DialogHeader>
-                    <div className="py-4 space-y-4">
+                  <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader><DialogTitle>Save as Template</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-4">
                       <div className="space-y-2">
                         <Label>Template Name</Label>
-                        <Input placeholder="e.g. Standard 3-Room Interior Paint" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} />
+                        <Input 
+                          placeholder="e.g. Standard Living Room Refresh" 
+                          value={newTemplateName} 
+                          onChange={(e) => setNewTemplateName(e.target.value)}
+                        />
+                        <p className="text-[10px] text-muted-foreground">This will save your current service category, items, and work scope description.</p>
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+                      <Button variant="outline" onClick={() => setIsTemplateSaveDialogOpen(false)}>Cancel</Button>
                       <Button onClick={handleSaveAsTemplate}>Save Template</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Popover onOpenChange={(open) => !open && setTemplateSearch("")}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-secondary/30 flex-1 sm:flex-none h-10 sm:h-9">
-                      <Copy className="w-4 h-4" /> <span className="hidden xs:inline">Load Template</span><span className="xs:hidden">Load</span>
-                    </Button>
-                  </PopoverTrigger>
+
+                <Popover>
+                  <PopoverTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-8 text-xs"><Copy className="w-3.5 h-3.5" /> Templates</Button></PopoverTrigger>
                   <PopoverContent className="w-72 p-0" align="end">
-                    <div className="flex flex-col">
-                      <div className="p-3 border-b bg-muted/20">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                          <Input 
-                            placeholder="Search name, category, or items..." 
-                            className="pl-8 h-8 text-xs bg-background" 
-                            value={templateSearch} 
-                            onChange={(e) => setTemplateSearch(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <ScrollArea className="h-64">
-                        <div className="p-2 space-y-1">
-                          {filteredTemplates.map(t => {
-                            const isOffered = initialProfile?.offeredServices?.includes(t.serviceCategory);
+                    <div className="p-3 border-b bg-muted/30 font-bold text-[10px] uppercase text-muted-foreground">Available Templates</div>
+                    <ScrollArea className="h-72">
+                      <div className="p-1">
+                        {allAvailableTemplates
+                          .sort((a, b) => {
+                            const isOfferedA = initialProfile.offeredServices?.includes(a.serviceCategory);
+                            const isOfferedB = initialProfile.offeredServices?.includes(b.serviceCategory);
+                            if (isOfferedA && !isOfferedB) return -1;
+                            if (!isOfferedA && isOfferedB) return 1;
+                            
+                            const idxA = SERVICE_CATEGORIES.indexOf(a.serviceCategory);
+                            const idxB = SERVICE_CATEGORIES.indexOf(b.serviceCategory);
+                            if (idxA !== idxB) return idxA - idxB;
+                            return a.name.localeCompare(b.name);
+                          })
+                          .map(t => {
+                            const isOffered = initialProfile.offeredServices?.includes(t.serviceCategory);
                             return (
-                              <Button key={t.id} variant="ghost" className={cn("w-full justify-start text-sm py-2 h-auto rounded-md group", isOffered && "bg-primary/5")} onClick={() => applyTemplate(t)}>
-                                <div className="text-left overflow-hidden flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <div className="font-medium truncate">{t.name}</div>
-                                    {isOffered && <Star className="w-2.5 h-2.5 fill-primary text-primary shrink-0" />}
-                                  </div>
-                                  <div className="text-[10px] opacity-60 uppercase font-bold tracking-tight">{t.serviceCategory}</div>
+                              <Button key={t.id} variant="ghost" className="w-full justify-start text-xs h-auto py-2.5 px-3 flex flex-col items-start" onClick={() => dispatch({ type: 'APPLY_TEMPLATE', template: t })}>
+                                <div className="flex items-center gap-2 w-full">
+                                  <span className="font-bold flex-1 truncate">{t.name}</span>
+                                  {isOffered && <Star className="w-3 h-3 fill-primary text-primary shrink-0" />}
                                 </div>
+                                <span className="text-[9px] opacity-60 uppercase">{t.serviceCategory}</span>
                               </Button>
                             );
                           })}
-                          {filteredTemplates.length === 0 && (
-                            <p className="text-xs text-center py-8 text-muted-foreground">
-                              {templates.length === 0 ? "No templates saved." : "No matches found."}
-                            </p>
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </div>
+                      </div>
+                    </ScrollArea>
                   </PopoverContent>
                 </Popover>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6 px-4 sm:px-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end overflow-visible">
-                <div className="space-y-2 relative">
-                  <Label>Client Selection</Label>
-                  {selectedClient ? (
-                    <div className="flex items-center justify-between px-3 h-11 rounded-lg border border-primary/20 bg-primary/5">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                          {selectedClient.name.charAt(0)}
-                        </div>
-                        <div className="flex flex-col leading-tight overflow-hidden">
-                          <span className="text-sm font-semibold truncate">{selectedClient.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</span>
-                        </div>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Client</Label>
+                {selectedClient ? (
+                  <div className="flex items-center justify-between px-3 h-12 border rounded-lg bg-primary/5 border-primary/20">
+                    <div className="flex items-center gap-3 truncate flex-1">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">{selectedClient.name.charAt(0)}</div>
+                      <div className="truncate">
+                        <p className="font-bold text-[13px] leading-tight truncate">{selectedClient.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{selectedClient.email}</p>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive shrink-0 ml-2"
-                        onClick={() => setClientId("")}
-                      >
-                        <X className="w-3 h-3 mr-1" /> Change
-                      </Button>
                     </div>
-                  ) : (
-                    <Popover open={isClientPopoverOpen && (filteredClients.length > 0 || clientSearch.length > 0)} onOpenChange={setIsClientPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <div className="relative group w-full">
-                          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none z-10" />
-                          <Input 
-                            placeholder="Search by name, email..." 
-                            className="pl-9 h-11 border-primary/20 bg-muted/20 focus:bg-background transition-all" 
-                            value={clientSearch} 
-                            onChange={(e) => { 
-                              setClientSearch(e.target.value); 
-                              if (!isClientPopoverOpen) setIsClientPopoverOpen(true); 
-                            }} 
-                            onFocus={() => { 
-                              if (!isClientPopoverOpen) setIsClientPopoverOpen(true); 
-                            }} 
-                          />
-                        </div>
-                      </PopoverTrigger>
-                      <PopoverContent className="p-0 border shadow-xl bg-popover" align="start" sideOffset={4} style={{ width: 'var(--radix-popover-trigger-width)' }} onOpenAutoFocus={(e) => e.preventDefault()}>
-                        <ScrollArea className="max-h-[300px]">
-                          <div className="p-2 border-b bg-muted/30"><p className="text-[10px] font-bold text-muted-foreground px-2 uppercase tracking-widest">Client Results</p></div>
-                          {filteredClients.length > 0 ? (
-                            filteredClients.map((c) => (
-                              <Button key={c.id} variant="ghost" className={cn("w-full justify-start rounded-none px-4 py-3 h-auto border-b last:border-0", clientId === c.id && "bg-primary/5")} onClick={() => { setClientId(c.id); setClientSearch(""); setIsClientPopoverOpen(false); }}>
-                                <div className="flex flex-col items-start w-full gap-0.5">
-                                  <div className="flex items-center justify-between w-full text-left">
-                                    <span className="font-semibold text-sm">{c.name}</span>
-                                    {clientId === c.id && <Check className="h-4 w-4 text-primary" />}
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground font-medium">{c.email}</span>
-                                </div>
-                              </Button>
-                            ))
-                          ) : null}
-                          <div className="p-2">
-                            <Button variant="ghost" className="w-full justify-start text-primary h-auto py-2 px-2 text-xs gap-2" onClick={handleOpenNewClientDialog}>
-                              <UserPlus className="h-3.5 w-3.5" /> {filteredClients.length === 0 && clientSearch ? `Add "${clientSearch}" as new client` : "Create new client"}
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => dispatch({ type: 'SET_FIELD', field: 'clientId', value: '', snapshot: true })}><X className="w-4 h-4" /></Button>
+                  </div>
+                ) : (
+                  <Popover open={isClientPopoverOpen} onOpenChange={setIsClientPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search name or email..." className="pl-9 h-12" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} />
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-full" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+                      <ScrollArea className="max-h-64">
+                        <div className="p-1">
+                          {clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(c => (
+                            <Button key={c.id} variant="ghost" className="w-full justify-start h-auto py-2 px-3 hover:bg-muted" onClick={() => { dispatch({ type: 'SET_FIELD', field: 'clientId', value: c.id, snapshot: true }); setIsClientPopoverOpen(false); }}>
+                              <div className="flex items-center gap-3 overflow-hidden w-full text-left">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">{c.name.charAt(0)}</div>
+                                <div className="flex flex-col overflow-hidden"><span className="text-sm font-semibold truncate">{c.name}</span><span className="text-[10px] text-muted-foreground truncate">{c.email}</span></div>
+                              </div>
                             </Button>
+                          ))}
+                          <Button variant="ghost" className="w-full text-primary font-bold justify-start gap-2 border-t mt-1 h-11 rounded-none" onClick={() => setIsNewClientDialogOpen(true)}><UserPlus className="w-4 h-4" /> Add New Client</Button>
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Service Category</Label>
+                <Select value={present.serviceCategory} onValueChange={(v) => dispatch({ type: 'SET_FIELD', field: 'serviceCategory', value: v, snapshot: true })}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedCategories.map(c => {
+                      const isOffered = initialProfile.offeredServices?.includes(c);
+                      return (
+                        <SelectItem key={c} value={c}>
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{c}</span>
+                            {isOffered && <Star className="w-3 h-3 fill-primary text-primary shrink-0" />}
                           </div>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>Service Category</Label>
-                  <Select onValueChange={setServiceCategory} value={serviceCategory}>
-                    <SelectTrigger className="h-11 border-primary/20"><SelectValue placeholder="Select service type..." /></SelectTrigger>
-                    <SelectContent>
-                      {sortedCategories.map(cat => {
-                        const isOffered = initialProfile?.offeredServices?.includes(cat);
-                        return (
-                          <SelectItem key={cat} value={cat}>
-                            <div className="flex items-center gap-2">
-                              {cat}
-                              {isOffered && <Star className="w-3 h-3 fill-primary text-primary" />}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
 
-          <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
-            <DialogContent className="max-w-[90vw] sm:max-w-md rounded-2xl">
-              <DialogHeader><DialogTitle>Add New Client</DialogTitle></DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="new-name">Full Name *</Label>
-                  <Input id="new-name" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="e.g. John Doe" />
+          <Card className={cn("border-primary/10", isLocked && "opacity-70 pointer-events-none")}>
+            <CardHeader className="bg-muted/30 py-3"><CardTitle className="text-sm font-bold uppercase tracking-wider">Scope & Line Items</CardTitle></CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-2">
+                <div className="hidden md:grid grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 px-2 text-[10px] font-bold uppercase text-muted-foreground border-b pb-2">
+                  <div></div><div>Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price</div><div className="text-right">Total</div><div></div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="new-email">Email Address *</Label>
-                  <Input id="new-email" type="email" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} placeholder="e.g. john@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-phone">Phone Number</Label>
-                  <Input id="new-phone" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} placeholder="e.g. 555-0101" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-address">Address</Label>
-                  <Input id="new-address" value={newClientAddress} onChange={(e) => setNewClientAddress(e.target.value)} placeholder="e.g. 123 Main St" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNewClientDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveNewClient}>Save & Select Client</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Card className="shadow-sm border-primary/10 overflow-hidden">
-            <CardHeader className="border-b bg-muted/20 py-4 px-4 sm:px-6"><CardTitle className="text-xl">Work Scope & Line Items</CardTitle></CardHeader>
-            <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
-              <div className="space-y-4">
-                <div className="hidden md:grid grid-cols-[1fr_70px_65px_65px_75px_90px_90px_40px] gap-2 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-b pb-2">
-                  <div>Item Description</div><div>Unit</div><div>L</div><div>W</div><div>Qty</div><div>Price ($)</div><div className="text-right">Total</div><div></div>
-                </div>
-                
-                <div className="space-y-4 md:space-y-3">
-                  {items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_70px_65px_65px_75px_90px_90px_40px] gap-2 md:gap-2 items-start md:items-center group relative border p-4 rounded-xl md:border-none md:p-0 bg-muted/5 md:bg-transparent shadow-sm md:shadow-none">
-                      <div className="md:hidden flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-black text-primary/40 uppercase tracking-widest">Line Item</span>
-                        <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-
+                  {present.items.map((item, idx) => (
+                    <div key={item.id} className={cn("grid grid-cols-1 md:grid-cols-[20px_1fr_60px_50px_50px_60px_80px_90px_40px] gap-2 items-center group transition-opacity", draggedItemIndex === idx ? "opacity-40" : "opacity-100")} draggable onDragStart={(e) => { setDraggedItemIndex(idx); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (draggedItemIndex !== null) dispatch({ type: 'REORDER_ITEMS', fromIndex: draggedItemIndex, toIndex: idx }); setDraggedItemIndex(null); }}>
+                      <div className="flex justify-center cursor-grab active:cursor-grabbing text-muted-foreground/40 group-hover:text-primary rounded-sm p-0.5"><GripVertical className="w-3.5 h-3.5" /></div>
                       <div className="relative">
-                        <Input value={item.description || ""} onChange={(e) => updateItem(item.id, 'description', e.target.value)} placeholder="Item description..." className="pr-10 h-10 md:h-9 text-sm rounded-lg" />
-                        <Popover>
-                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-1 top-1.5 md:top-1 h-7 w-7 text-muted-foreground hover:text-primary"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
-                          <PopoverContent className="w-80 p-2" align="start">
-                            <p className="text-[10px] font-bold text-muted-foreground px-2 py-1 uppercase border-b mb-1">Service Library</p>
-                            <ScrollArea className="h-72">
-                              {organizedCommonItems.map(({ category, items: libItems, isOffered }) => (
-                                <div key={category} className="mb-4 last:mb-0 px-1">
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <ChevronRight className="w-2.5 h-2.5 text-primary/40" />
-                                    <p className="text-[9px] font-black uppercase text-primary/70">{category}</p>
-                                    {isOffered && <Badge variant="secondary" className="px-1 py-0 h-3 text-[7px] bg-primary/10 text-primary border-none"><Star className="w-2 h-2 fill-primary mr-0.5" /> PINNED</Badge>}
-                                  </div>
-                                  <div className="space-y-0.5">
-                                    {libItems.map(ci => (
-                                      <Button key={ci.id} variant="ghost" className="w-full justify-start text-xs py-1.5 h-auto px-2 hover:bg-muted" onClick={() => selectCommonItem(item.id, ci)}>
-                                        <div className="text-left w-full flex justify-between items-center gap-2"><span className="font-medium truncate">{ci.description}</span><span className="text-[10px] font-mono shrink-0 opacity-60">${ci.defaultUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
+                        <Input value={item.description} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: e.target.value })} className="h-8 text-xs pr-8" placeholder="Description..." />
+                        <Popover open={openLibraryId === item.id} onOpenChange={(o) => setOpenLibraryId(o ? item.id : null)}>
+                          <PopoverTrigger asChild><Button variant="ghost" size="icon" className="absolute right-0 top-0 h-8 w-8 text-muted-foreground"><BookOpen className="w-3.5 h-3.5" /></Button></PopoverTrigger>
+                          <PopoverContent className="w-80 p-0 shadow-xl" side="bottom">
+                            <div className="p-2 border-b bg-muted/50 font-bold text-[10px] uppercase">Library</div>
+                            <ScrollArea className="h-80">
+                              <div className="p-1">
+                                {organizedLibrary.map(([cat, libItems]) => {
+                                  const isOffered = initialProfile.offeredServices?.some(s => cat.startsWith(s));
+                                  return (
+                                    <div key={cat} className="mb-3">
+                                      <p className={cn(
+                                        "text-[9px] font-black uppercase px-2 py-1 rounded mb-1 flex items-center justify-between",
+                                        isOffered ? "bg-primary/10 text-primary" : "bg-muted/50 text-muted-foreground"
+                                      )}>
+                                        {cat}
+                                        {isOffered && <Star className="w-2.5 h-2.5 fill-primary" />}
+                                      </p>
+                                      {libItems.map(li => (
+                                        <Button key={li.id} variant="ghost" className="w-full justify-between text-[11px] h-auto py-1.5 px-2" onClick={() => {
+                                          dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'description', value: li.description });
+                                          dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: li.unit || "ea" });
+                                          dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: li.defaultUnitPrice });
+                                          setOpenLibraryId(null);
+                                        }}>
+                                          <span className="truncate pr-2 text-left">{li.description}</span>
+                                          <span className="font-bold shrink-0 opacity-70">${li.defaultUnitPrice}</span>
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </ScrollArea>
                           </PopoverContent>
                         </Popover>
                       </div>
-
-                      <div className="grid grid-cols-2 md:contents gap-2 md:gap-2">
-                        <div className="space-y-1.5 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Unit</Label>
-                          <Input value={item.unit || ""} onChange={(e) => updateItem(item.id, 'unit', e.target.value)} placeholder="unit" className="h-10 md:h-9 text-xs rounded-lg px-1" />
-                        </div>
-                        <div className="space-y-1.5 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Length</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.length || ""} onChange={(e) => updateItem(item.id, 'length', e.target.value)} placeholder="L" />
-                        </div>
-                        <div className="space-y-1.5 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Width</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.width || ""} onChange={(e) => updateItem(item.id, 'width', e.target.value)} placeholder="W" />
-                        </div>
-                        <div className="space-y-1.5 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Qty</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} />
-                        </div>
-                        <div className="space-y-1.5 md:space-y-0">
-                          <Label className="md:hidden text-[9px] uppercase font-bold text-muted-foreground">Price ($)</Label>
-                          <Input type="number" step="1.0" className="h-10 md:h-9 text-xs px-1 rounded-lg" value={item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', e.target.value)} />
-                        </div>
-                        <div className="flex flex-col md:block items-end justify-center bg-primary/5 md:bg-transparent p-2 md:p-0 rounded-lg">
-                          <Label className="md:hidden text-[9px] uppercase font-bold text-primary mb-1">Total</Label>
-                          <div className="text-right font-black md:font-medium text-xs text-primary md:text-foreground overflow-hidden text-ellipsis">${(Number(item.total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </div>
-                      </div>
-
-                      <Button variant="ghost" size="icon" className="hidden md:flex text-destructive h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(item.id)}><Trash2 className="w-4 h-4" /></Button>
+                      <Input value={item.unit} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unit', value: e.target.value })} className="h-8 text-xs text-center px-1" />
+                      <Input type="number" value={item.length} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'length', value: e.target.value })} className="h-8 text-xs text-center px-1" placeholder="L" />
+                      <Input type="number" value={item.width} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'width', value: e.target.value })} className="h-8 text-xs text-center px-1" placeholder="W" />
+                      <Input type="number" value={item.quantity} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'quantity', value: e.target.value })} className="h-8 text-xs text-center px-1 font-medium" />
+                      <Input type="number" value={item.unitPrice} onChange={(e) => dispatch({ type: 'UPDATE_ITEM', id: item.id, field: 'unitPrice', value: e.target.value })} className="h-8 text-xs text-center px-1" />
+                      <div className="text-right text-xs font-bold px-1">{formatCurrency(item.total)}</div>
+                      <div className="flex justify-end"><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => dispatch({ type: 'REMOVE_ITEM', id: item.id })}><Trash2 className="w-3.5 h-3.5" /></Button></div>
                     </div>
                   ))}
                 </div>
-                <div className="pt-4 flex justify-start border-t">
-                  <Button variant="ghost" size="sm" onClick={addItem} className="text-primary gap-2 h-12 sm:h-10 px-4 font-bold hover:bg-primary/5 w-full md:w-auto rounded-xl sm:rounded-md"><Plus className="w-5 h-5 sm:w-4 sm:h-4" /> Add Another Item</Button>
-                </div>
+                <Button variant="ghost" size="sm" className="w-full border-dashed border-2 h-10 gap-2 hover:bg-primary/5 transition-all" onClick={() => dispatch({ type: 'ADD_ITEM' })}><Plus className="w-4 h-4" /> Add Line Item</Button>
               </div>
-
-              <div className="space-y-3 pt-6 border-t">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
-                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Detailed Work Scope</Label>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed Work Scope</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground">Generating clear project objectives helps close more deals.</span>
                 </div>
-                <Textarea value={scopeDescription} onChange={(e) => setScopeDescription(e.target.value)} placeholder={`Briefly describe the ${serviceCategory.toLowerCase()} work...`} className="min-h-[180px] text-sm leading-relaxed rounded-xl p-4" />
+                <Textarea value={present.scopeDescription} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'scopeDescription', value: e.target.value })} className="min-h-[180px] text-sm leading-relaxed" placeholder="Describe project objectives..." />
               </div>
             </CardContent>
           </Card>
         </div>
+
         <div className="space-y-6">
-          <Card className="shadow-lg border-primary/20 sticky top-4 sm:top-8 overflow-hidden rounded-2xl">
-            <CardHeader className="bg-primary/5 py-4 px-4 sm:px-6"><CardTitle className="text-lg flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Pricing & Totals</CardTitle></CardHeader>
-            <CardContent className="space-y-6 pt-6 px-4 sm:px-6">
-              <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate ($/hr)</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={laborRate} onChange={(e) => setLaborRate(truncateToTwoDecimals(e.target.value))} /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={laborHours} onChange={(e) => setLaborHours(truncateToTwoDecimals(e.target.value))} /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials ($)</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={materialCosts} onChange={(e) => setMaterialCosts(truncateToTwoDecimals(e.target.value))} /></div>
-                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" step="1.0" className="h-10 px-3 rounded-lg" value={taxRate} onChange={(e) => setTaxRate(truncateToTwoDecimals(e.target.value))} /></div>
+          <Card className={cn("sticky top-8 border-primary/30 shadow-xl overflow-hidden", isLocked && "opacity-70 pointer-events-none")}>
+            <CardHeader className="bg-primary/5 border-b border-primary/10 py-4"><CardTitle className="text-lg flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Pricing & Totals</CardTitle></CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Rate</Label><Input type="number" value={present.laborRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborRate', value: e.target.value })} className="font-bold text-primary" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Labor Hours</Label><Input type="number" value={present.laborHours} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'laborHours', value: e.target.value })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Materials</Label><Input type="number" value={present.materialCosts} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'materialCosts', value: e.target.value })} className="font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Tax Rate (%)</Label><Input type="number" value={present.taxRate} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'taxRate', value: e.target.value })} className="font-bold" /></div>
               </div>
               <div className="space-y-3 pt-6 border-t border-dashed">
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-bold">${totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                <div className="flex justify-between items-center pt-4 border-t-2 border-primary/20"><span className="text-sm font-black uppercase tracking-widest text-primary">Grand Total</span><span className="text-2xl sm:text-3xl font-black text-primary overflow-hidden text-ellipsis">${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Items & Services</span><span className="font-medium">{formatCurrency(present.items.reduce((acc, i) => addMoney(acc, i.total), 0))}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor Subtotal</span><span className="font-medium">{formatCurrency(multiplyMoney(present.laborRate, present.laborHours))}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({present.taxRate}%)</span><span className="font-medium">{formatCurrency(totals.taxTotal)}</span></div>
+                <div className="pt-4 border-t-2 border-primary/20"><div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-muted-foreground">Total Quote Amount</span><span className="text-2xl font-black text-primary">{formatCurrency(totals.grandTotal)}</span></div></div>
               </div>
-              <Button className="w-full gap-2 shadow-xl h-14 sm:h-12 text-lg sm:text-base font-black rounded-xl sm:rounded-lg" size="lg" onClick={handleSave}><Save className="w-5 h-5" /> Save Quote</Button>
+              <Button size="lg" className="w-full h-14 text-lg font-black gap-2 shadow-lg" onClick={handleSaveQuote} disabled={isLocked}><Save className="w-5 h-5" /> {isLocked ? "Quote Locked" : "Save Quote"}</Button>
+              <div className="pt-4 space-y-3"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Internal Notes</Label><Textarea value={present.notes} onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'notes', value: e.target.value })} placeholder="Private notes..." className="text-xs min-h-[80px] bg-muted/20 border-none" /></div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader><DialogTitle className="text-xl font-bold">New Client Profile</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label>Full Name</Label><Input placeholder="e.g. Jane Smith" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Email Address</Label><Input type="email" placeholder="jane@example.com" value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Phone Number</Label><Input placeholder="e.g. 555-0100" value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Address</Label><Input placeholder="e.g. 123 Main St" value={newClientAddress} onChange={(e) => setNewClientAddress(e.target.value)} /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setIsNewClientDialogOpen(false)}>Cancel</Button><Button onClick={handleCreateAndSelectClient}>Create & Pre-select</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

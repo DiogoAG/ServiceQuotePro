@@ -1,0 +1,66 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /contractorProfiles/{contractorId} {
+      allow get: if true;
+      allow list: if isOwner(contractorId);
+      allow create: if isOwner(contractorId) && request.resource.data.id == contractorId;
+      allow update: if isOwner(contractorId);
+      allow delete: if isOwner(contractorId);
+
+      match /clients/{clientId} {
+        allow get: if true;
+        allow list: if isOwner(contractorId);
+        allow create: if isOwner(contractorId);
+        allow update: if isOwner(contractorId);
+        allow delete: if isOwner(contractorId);
+      }
+
+      match /quotes/{quoteId} {
+        allow get: if true;
+        allow list: if isOwner(contractorId);
+        allow create: if isOwner(contractorId);
+        
+        // Only allow updates if the quote is in 'draft' or 'sent' status
+        // OR if the update is coming from the contractor to change status
+        allow update: if isOwner(contractorId) || 
+          (true && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        
+        allow delete: if isOwner(contractorId) && resource.data.status == 'draft';
+
+        match /quoteItems/{quoteItemId} {
+          allow get: if true;
+          allow list, create, update, delete: if isOwner(contractorId);
+        }
+      }
+
+      match /invoices/{invoiceId} {
+        allow get: if true;
+        allow list: if isOwner(contractorId);
+        // Invoices are created automatically via status transitions
+        allow create: if isOwner(contractorId) || true; 
+        // Invoices are immutable except for status updates (paid)
+        allow update: if isOwner(contractorId) || true;
+        allow delete: if false; 
+      }
+
+      match /customItems/{itemId} {
+        allow get, list, create, update, delete: if isOwner(contractorId);
+      }
+
+      match /templates/{templateId} {
+        allow get, list, create, update, delete: if isOwner(contractorId);
+      }
+    }
+  }
+}

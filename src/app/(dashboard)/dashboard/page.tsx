@@ -1,28 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Quote, Client } from "@/lib/types";
-import { getQuotes, getClients } from "@/lib/store";
+import { useEffect, useState, useMemo } from "react";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Users, DollarSign, Clock, ArrowUpRight, History } from "lucide-react";
+import { Plus, FileText, Users, DollarSign, Clock, ArrowUpRight, History, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Quote, Client } from "@/lib/types";
+import { addMoney, formatCurrency } from "@/lib/finance";
 
 export default function DashboardPage() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const { user } = useUser();
+  const db = useFirestore();
 
-  useEffect(() => {
-    setQuotes(getQuotes());
-    setClients(getClients());
-  }, []);
+  const clientsRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(db, "contractorProfiles", user.uid, "clients");
+  }, [db, user]);
 
-  const recentQuotes = [...quotes].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+  const quotesRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, "contractorProfiles", user.uid, "quotes"),
+      orderBy("createdAt", "desc")
+    );
+  }, [db, user]);
+
+  const { data: quotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
+  const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
+
+  // Optimization: Create a client map for O(1) lookup in list rendering
+  const clientMap = useMemo(() => {
+    const map = new Map<string, Client>();
+    clients?.forEach(c => map.set(c.id, c));
+    return map;
+  }, [clients]);
+
+  const recentQuotes = useMemo(() => quotes?.slice(0, 5) || [], [quotes]);
   
-  const totalValue = quotes.reduce((acc, q) => acc + q.grandTotal, 0);
-  const pendingQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
+  // Aggregate revenue using safe monetary addition
+  const totalValue = useMemo(() => quotes?.reduce((acc, q) => addMoney(acc, q.grandTotal || 0), 0) || 0, [quotes]);
+  const pendingQuotes = useMemo(() => quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0, [quotes]);
+
+  if (quotesLoading || clientsLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -46,7 +75,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
-            <div className="text-xl sm:text-2xl font-bold">${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+            <div className="text-xl sm:text-2xl font-bold">{formatCurrency(totalValue)}</div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">Total projected</p>
           </CardContent>
         </Card>
@@ -66,7 +95,7 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
-            <div className="text-xl sm:text-2xl font-bold">{clients.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{clients?.length || 0}</div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">Active directory</p>
           </CardContent>
         </Card>
@@ -76,7 +105,7 @@ export default function DashboardPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
-            <div className="text-xl sm:text-2xl font-bold">{quotes.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{quotes?.length || 0}</div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">Total created</p>
           </CardContent>
         </Card>
@@ -104,7 +133,7 @@ export default function DashboardPage() {
                 <TableBody>
                   {recentQuotes.length > 0 ? (
                     recentQuotes.map((quote) => {
-                      const client = clients.find(c => c.id === quote.clientId);
+                      const client = clientMap.get(quote.clientId);
                       return (
                         <TableRow key={quote.id} className="cursor-pointer group hover:bg-muted/50 transition-colors">
                           <TableCell className="font-medium p-3 sm:p-4">
@@ -116,7 +145,7 @@ export default function DashboardPage() {
                           <TableCell className="hidden sm:table-cell">
                             <Link href={`/quotes/${quote.id}`}>
                               <Badge 
-                                variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}
+                                variant={quote.status === 'approved' || quote.status === 'accepted' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'}
                                 className="text-[10px]"
                               >
                                 {quote.status}
@@ -125,7 +154,7 @@ export default function DashboardPage() {
                           </TableCell>
                           <TableCell className="text-right font-bold sm:font-medium p-3 sm:p-4">
                             <Link href={`/quotes/${quote.id}`}>
-                              ${quote.grandTotal.toLocaleString()}
+                              {formatCurrency(quote.grandTotal || 0)}
                               <div className="sm:hidden mt-1">
                                 <Badge variant="secondary" className="text-[8px] h-4 px-1">{quote.status}</Badge>
                               </div>
@@ -144,15 +173,6 @@ export default function DashboardPage() {
                 </TableBody>
               </Table>
             </div>
-            {recentQuotes.length > 0 && (
-              <div className="mt-4 flex justify-end">
-                <Link href="/quotes" className="w-full sm:w-auto">
-                  <Button variant="ghost" className="gap-2 text-primary w-full sm:w-auto text-sm">
-                    View all quotes <ArrowUpRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -166,14 +186,14 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              {clients.slice(0, 5).map((client) => (
+              {clients?.slice(0, 5).map((client) => (
                 <Link 
                   key={client.id} 
                   href={`/clients/${client.id}`}
                   className="flex items-center gap-4 border-b pb-3 pt-3 first:pt-0 last:border-0 last:pb-0 group hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors"
                 >
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary shrink-0 group-hover:bg-primary group-hover:text-white transition-all">
-                    {client.name.charAt(0)}
+                    {(client.name || '?').charAt(0)}
                   </div>
                   <div className="flex-1 space-y-0.5 min-w-0">
                     <p className="text-sm font-bold leading-none group-hover:text-primary transition-colors truncate">{client.name}</p>
@@ -182,7 +202,7 @@ export default function DashboardPage() {
                   <ArrowUpRight className="w-4 h-4 text-primary opacity-30 group-hover:opacity-100 transition-all shrink-0" />
                 </Link>
               ))}
-              {clients.length === 0 && (
+              {!clients?.length && (
                 <p className="text-center py-8 text-muted-foreground">No clients added yet.</p>
               )}
             </div>

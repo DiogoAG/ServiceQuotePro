@@ -1,467 +1,323 @@
 
 import { Client, Quote, QuoteItem, BusinessProfile, QuoteTemplate, CommonItem } from './types';
 
-const CLIENTS_KEY = 'service_quote_pro_clients';
-const QUOTES_KEY = 'service_quote_pro_quotes';
-const PROFILE_KEY = 'service_quote_pro_profile';
-const TEMPLATES_KEY = 'service_quote_pro_templates';
-const COMMON_ITEMS_KEY = 'service_quote_pro_common_items';
 const DRAFT_QUOTE_KEY = 'service_quote_pro_draft_quote';
 
-export const getClients = (): Client[] => {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(CLIENTS_KEY);
-  return stored ? JSON.parse(stored) : [
-    { id: '1', name: 'John Smith', email: 'john.smith@gmail.com', phone: '555-0101', address: '123 Oak St, Springfield' },
-    { id: '2', name: 'Sarah Miller', email: 's.miller88@outlook.com', phone: '555-0102', address: '456 Maple Ave, Riverside' },
-    { id: '3', name: 'David Wilson', email: 'dwilson@biz.com', phone: '555-9999', address: '789 Industrial Way, Metro City' }
-  ];
-};
+// Hardcoded base library items - these are ALWAYS available to all users
+export const getHardcodedItems = (): CommonItem[] => [
+  // --- PLUMBING ---
+  { id: 'h-pl-1', category: 'Plumbing - Water Supply Systems', description: 'Main Water Line Installation', unit: 'ea', defaultUnitPrice: 2500.00, isHardCoded: true },
+  { id: 'h-pl-2', category: 'Plumbing - Water Supply Systems', description: 'Whole House Repipe', unit: 'ea', defaultUnitPrice: 8500.00, isHardCoded: true },
+  { id: 'h-pl-3', category: 'Plumbing - Drainage Systems', description: 'DWV Stack Installation', unit: 'ea', defaultUnitPrice: 1200.00, isHardCoded: true },
+  { id: 'h-pl-4', category: 'Plumbing - Drainage Systems', description: 'Sewer Line Trenching', unit: 'linear ft', defaultUnitPrice: 85.00, isHardCoded: true },
+  { id: 'h-pl-5', category: 'Plumbing - Drainage Systems', description: 'Storm Drainage Basin', unit: 'ea', defaultUnitPrice: 950.00, isHardCoded: true },
+  { id: 'h-pl-6', category: 'Plumbing - Fixtures & Appliances', description: 'Toilet Installation (New)', unit: 'ea', defaultUnitPrice: 350.00, isHardCoded: true },
+  { id: 'h-pl-7', category: 'Plumbing - Fixtures & Appliances', description: 'Faucet / Sink Installation', unit: 'ea', defaultUnitPrice: 225.00, isHardCoded: true },
+  { id: 'h-pl-8', category: 'Plumbing - Fixtures & Appliances', description: 'Shower Valve Replacement', unit: 'ea', defaultUnitPrice: 450.00, isHardCoded: true },
+  { id: 'h-pl-9', category: 'Plumbing - Fixtures & Appliances', description: 'Boiler System Installation', unit: 'ea', defaultUnitPrice: 6500.00, isHardCoded: true },
+  { id: 'h-pl-10', category: 'Plumbing - Water Heating', description: 'Standard Tank Water Heater', unit: 'ea', defaultUnitPrice: 1450.00, isHardCoded: true },
+  { id: 'h-pl-11', category: 'Plumbing - Water Heating', description: 'Tankless Water Heater', unit: 'ea', defaultUnitPrice: 3200.00, isHardCoded: true },
+  { id: 'h-pl-12', category: 'Plumbing - Gas Systems', description: 'Gas Piping Installation', unit: 'linear ft', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-pl-13', category: 'Plumbing - Gas Systems', description: 'Gas Range / Appliance Hookup', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-pl-14', category: 'Plumbing - Specialty Systems', description: 'Backflow Preventer Device', unit: 'ea', defaultUnitPrice: 550.00, isHardCoded: true },
+  { id: 'h-pl-15', category: 'Plumbing - Specialty Systems', description: 'Water Filtration System', unit: 'ea', defaultUnitPrice: 1200.00, isHardCoded: true },
+  { id: 'h-pl-16', category: 'Plumbing - Specialty Systems', description: 'Sump Pump Installation', unit: 'ea', defaultUnitPrice: 850.00, isHardCoded: true },
+  { id: 'h-pl-17', category: 'Plumbing - Maintenance & Repair', description: 'Plumbing Maintenance & Repair', unit: 'hr', defaultUnitPrice: 95.00, isHardCoded: true },
+  { id: 'h-pl-18', category: 'Plumbing - Maintenance & Repair', description: 'Leak Detection & Repair', unit: 'hr', defaultUnitPrice: 125.00, isHardCoded: true },
+  { id: 'h-pl-19', category: 'Plumbing - Maintenance & Repair', description: 'Drain Cleaning (Auger)', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
 
-export const saveClients = (clients: Client[]) => {
-  localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
-};
+  // --- GENERAL CONTRACTING ---
+  { id: 'h-gc-1', category: 'General Contracting - Project Management', description: 'Project Management & Oversight', unit: 'hr', defaultUnitPrice: 125.00, isHardCoded: true },
+  { id: 'h-gc-2', category: 'General Contracting - Project Management', description: 'Subcontractor Coordination', unit: 'hr', defaultUnitPrice: 95.00, isHardCoded: true },
+  { id: 'h-gc-3', category: 'General Contracting - Project Management', description: 'Quality Control Inspection', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-gc-4', category: 'General Contracting - Sitework', description: 'Site Preparation & Protection', unit: 'flat', defaultUnitPrice: 500.00, isHardCoded: true },
+  { id: 'h-gc-5', category: 'General Contracting - Sitework', description: 'Excavation Service', unit: 'hr', defaultUnitPrice: 175.00, isHardCoded: true },
+  { id: 'h-gc-6', category: 'General Contracting - Sitework', description: 'Light Demolition', unit: 'hr', defaultUnitPrice: 85.00, isHardCoded: true },
+  { id: 'h-gc-7', category: 'General Contracting - Structural Construction', description: 'Foundation / Footings', unit: 'cu yd', defaultUnitPrice: 450.00, isHardCoded: true },
+  { id: 'h-gc-8', category: 'General Contracting - Structural Construction', description: 'Structural Framing', unit: 'sq ft', defaultUnitPrice: 12.00, isHardCoded: true },
+  { id: 'h-gc-9', category: 'General Contracting - Structural Construction', description: 'Load-Bearing Wall Mod', unit: 'ea', defaultUnitPrice: 2500.00, isHardCoded: true },
+  { id: 'h-gc-10', category: 'General Contracting - Structural Construction', description: 'Exterior Sheathing', unit: 'sq ft', defaultUnitPrice: 4.50, isHardCoded: true },
+  { id: 'h-gc-11', category: 'General Contracting - Building Envelope', description: 'Insulation Installation', unit: 'sq ft', defaultUnitPrice: 2.25, isHardCoded: true },
+  { id: 'h-gc-12', category: 'General Contracting - Building Envelope', description: 'Waterproofing Membrane', unit: 'sq ft', defaultUnitPrice: 4.50, isHardCoded: true },
+  { id: 'h-gc-13', category: 'General Contracting - Interior Construction', description: 'Drywall Hanging & Taping', unit: 'sq ft', defaultUnitPrice: 3.25, isHardCoded: true },
+  { id: 'h-gc-14', category: 'General Contracting - Interior Construction', description: 'Flooring Installation', unit: 'sq ft', defaultUnitPrice: 5.50, isHardCoded: true },
+  { id: 'h-gc-15', category: 'General Contracting - Interior Construction', description: 'Millwork / Finish Carpentry', unit: 'hr', defaultUnitPrice: 85.00, isHardCoded: true },
+  { id: 'h-gc-16', category: 'General Contracting - Renovation & Expansion', description: 'Kitchen Remodel Base', unit: 'ea', defaultUnitPrice: 15000.00, isHardCoded: true },
+  { id: 'h-gc-17', category: 'General Contracting - Renovation & Expansion', description: 'Bathroom Remodel Base', unit: 'ea', defaultUnitPrice: 8500.00, isHardCoded: true },
+  { id: 'h-gc-18', category: 'General Contracting - Renovation & Expansion', description: 'Tenant Improvement Allowance', unit: 'sq ft', defaultUnitPrice: 45.00, isHardCoded: true },
 
-export const getQuotes = (): Quote[] => {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(QUOTES_KEY);
-  return stored ? JSON.parse(stored) : [];
-};
+  // --- ELECTRICAL ---
+  { id: 'h-el-1', category: 'Electrical - Power Distribution', description: 'Main Service Panel Installation', unit: 'ea', defaultUnitPrice: 2800.00, isHardCoded: true },
+  { id: 'h-el-2', category: 'Electrical - Power Distribution', description: 'Subpanel Installation', unit: 'ea', defaultUnitPrice: 1200.00, isHardCoded: true },
+  { id: 'h-el-3', category: 'Electrical - Power Distribution', description: 'Transformer Mounting', unit: 'ea', defaultUnitPrice: 1500.00, isHardCoded: true },
+  { id: 'h-el-4', category: 'Electrical - Wiring & Devices', description: 'Rough-In Wiring (per outlet)', unit: 'ea', defaultUnitPrice: 125.00, isHardCoded: true },
+  { id: 'h-el-5', category: 'Electrical - Wiring & Devices', description: 'Finish Device (Outlet/Switch)', unit: 'ea', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-el-6', category: 'Electrical - Wiring & Devices', description: 'Whole House Rewire', unit: 'ea', defaultUnitPrice: 12000.00, isHardCoded: true },
+  { id: 'h-el-7', category: 'Electrical - Lighting Systems', description: 'Interior Recessed Lighting', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
+  { id: 'h-el-8', category: 'Electrical - Lighting Systems', description: 'Exterior Flood Lighting', unit: 'ea', defaultUnitPrice: 225.00, isHardCoded: true },
+  { id: 'h-el-9', category: 'Electrical - Lighting Systems', description: 'Emergency Lighting Unit', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-el-10', category: 'Electrical - Low Voltage Systems', description: 'Data / Cat6 Cabling Drop', unit: 'ea', defaultUnitPrice: 175.00, isHardCoded: true },
+  { id: 'h-el-11', category: 'Electrical - Low Voltage Systems', description: 'Security Camera Installation', unit: 'ea', defaultUnitPrice: 350.00, isHardCoded: true },
+  { id: 'h-el-12', category: 'Electrical - Low Voltage Systems', description: 'Fire Alarm Device Installation', unit: 'ea', defaultUnitPrice: 250.00, isHardCoded: true },
+  { id: 'h-el-13', category: 'Electrical - Specialized Systems', description: 'Backup Generator Transfer Switch', unit: 'ea', defaultUnitPrice: 1200.00, isHardCoded: true },
+  { id: 'h-el-14', category: 'Electrical - Specialized Systems', description: 'EV Charging Station Level 2', unit: 'ea', defaultUnitPrice: 950.00, isHardCoded: true },
+  { id: 'h-el-15', category: 'Electrical - Specialized Systems', description: 'Solar PV Module Installation', unit: 'ea', defaultUnitPrice: 850.00, isHardCoded: true },
+  { id: 'h-el-16', category: 'Electrical - Controls & Automation', description: 'Smart Home Hub / Controller', unit: 'ea', defaultUnitPrice: 450.00, isHardCoded: true },
+  { id: 'h-el-17', category: 'Electrical - Controls & Automation', description: 'Automated Lighting Zone', unit: 'ea', defaultUnitPrice: 650.00, isHardCoded: true },
+  { id: 'h-el-18', category: 'Electrical - Maintenance & Testing', description: 'Electrical Troubleshooting', unit: 'hr', defaultUnitPrice: 110.00, isHardCoded: true },
+  { id: 'h-el-19', category: 'Electrical - Maintenance & Testing', description: 'Full System Safety Inspection', unit: 'ea', defaultUnitPrice: 250.00, isHardCoded: true },
 
-export const saveQuotes = (quotes: Quote[]) => {
-  localStorage.setItem(QUOTES_KEY, JSON.stringify(quotes));
-};
+  // --- HVAC ---
+  { id: 'h-hv-1', category: 'HVAC - Cooling Systems', description: 'AC Condenser Unit Installation', unit: 'ea', defaultUnitPrice: 4200.00, isHardCoded: true },
+  { id: 'h-hv-2', category: 'HVAC - Cooling Systems', description: 'Chiller Plant Service', unit: 'hr', defaultUnitPrice: 185.00, isHardCoded: true },
+  { id: 'h-hv-3', category: 'HVAC - Heating Systems', description: 'Gas Furnace Installation', unit: 'ea', defaultUnitPrice: 4500.00, isHardCoded: true },
+  { id: 'h-hv-4', category: 'HVAC - Heating Systems', description: 'Heat Pump System (Split)', unit: 'ea', defaultUnitPrice: 7500.00, isHardCoded: true },
+  { id: 'h-hv-5', category: 'HVAC - Air Distribution', description: 'Ductwork Fabrication & Installation', unit: 'linear ft', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-hv-6', category: 'HVAC - Air Distribution', description: 'VAV Box Installation', unit: 'ea', defaultUnitPrice: 950.00, isHardCoded: true },
+  { id: 'h-hv-7', category: 'HVAC - Air Distribution', description: 'Ventilation Fan Installation', unit: 'ea', defaultUnitPrice: 350.00, isHardCoded: true },
+  { id: 'h-hv-8', category: 'HVAC - Controls', description: 'Smart Thermostat Installation', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-hv-9', category: 'HVAC - Controls', description: 'Zoning Control System', unit: 'zone', defaultUnitPrice: 850.00, isHardCoded: true },
+  { id: 'h-hv-10', category: 'HVAC - Indoor Air Quality', description: 'HEPA Air Filtration System', unit: 'ea', defaultUnitPrice: 1200.00, isHardCoded: true },
+  { id: 'h-hv-11', category: 'HVAC - Indoor Air Quality', description: 'Whole House Humidifier', unit: 'ea', defaultUnitPrice: 650.00, isHardCoded: true },
+  { id: 'h-hv-12', category: 'HVAC - Maintenance & Service', description: 'Annual System Diagnostic', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
+  { id: 'h-hv-13', category: 'HVAC - Maintenance & Service', description: 'Refrigerant Recharging', unit: 'lb', defaultUnitPrice: 95.00, isHardCoded: true },
 
-export const getBusinessProfile = (): BusinessProfile => {
-  const defaultProfile: BusinessProfile = {
-    businessName: 'ProContractor Services',
-    licenseNumber: 'LIC-123456',
-    logoUrl: 'https://picsum.photos/seed/logo/200/200',
-    defaultTaxRate: 8.5,
-    defaultLaborRate: 75,
-    offeredServices: [],
-    quoteTerms: 'Valid for 30 days. Payment is due upon completion unless otherwise specified. A 50% deposit may be required for projects exceeding $2,000.'
-  };
+  // --- LANDSCAPING ---
+  { id: 'h-la-1', category: 'Landscaping - Site Development', description: 'Final Grading & Soil Preparation', unit: 'sq ft', defaultUnitPrice: 1.50, isHardCoded: true },
+  { id: 'h-la-2', category: 'Landscaping - Site Development', description: 'French Drain Installation', unit: 'linear ft', defaultUnitPrice: 35.00, isHardCoded: true },
+  { id: 'h-la-3', category: 'Landscaping - Softscape', description: 'Premium Sod Installation', unit: 'sq ft', defaultUnitPrice: 2.25, isHardCoded: true },
+  { id: 'h-la-4', category: 'Landscaping - Softscape', description: 'Tree Planting (Up to 15gal)', unit: 'ea', defaultUnitPrice: 350.00, isHardCoded: true },
+  { id: 'h-la-5', category: 'Landscaping - Softscape', description: 'Shrub / Perennial Planting', unit: 'ea', defaultUnitPrice: 65.00, isHardCoded: true },
+  { id: 'h-la-6', category: 'Landscaping - Hardscape', description: 'Paver Patio Construction', unit: 'sq ft', defaultUnitPrice: 25.00, isHardCoded: true },
+  { id: 'h-la-7', category: 'Landscaping - Hardscape', description: 'Stone Retaining Wall', unit: 'sq ft', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-la-8', category: 'Landscaping - Hardscape', description: 'Flagstone Walkway', unit: 'sq ft', defaultUnitPrice: 32.00, isHardCoded: true },
+  { id: 'h-la-9', category: 'Landscaping - Hardscape', description: 'Custom Gas Fire Pit', unit: 'ea', defaultUnitPrice: 3500.00, isHardCoded: true },
+  { id: 'h-la-10', category: 'Landscaping - Outdoor Features', description: 'Landscape Lighting (per fixture)', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-la-11', category: 'Landscaping - Irrigation', description: 'Sprinkler System Zone (New)', unit: 'zone', defaultUnitPrice: 850.00, isHardCoded: true },
+  { id: 'h-la-12', category: 'Landscaping - Irrigation', description: 'Drip Irrigation Line', unit: 'linear ft', defaultUnitPrice: 8.50, isHardCoded: true },
+  { id: 'h-la-13', category: 'Landscaping - Maintenance', description: 'Lawn Maintenance Visit', unit: 'visit', defaultUnitPrice: 75.00, isHardCoded: true },
+  { id: 'h-la-14', category: 'Landscaping - Maintenance', description: 'Seasonal Pruning & Cleanup', unit: 'hr', defaultUnitPrice: 85.00, isHardCoded: true },
 
-  if (typeof window === 'undefined') return defaultProfile;
-  const stored = localStorage.getItem(PROFILE_KEY);
-  if (!stored) return defaultProfile;
-  
-  const parsed = JSON.parse(stored);
-  return {
-    ...defaultProfile,
-    ...parsed,
-    offeredServices: parsed.offeredServices || []
-  };
-};
+  // --- PAINTING ---
+  { id: 'h-pa-1', category: 'Painting - Interior Painting', description: 'Interior Wall Painting', unit: 'sq ft', defaultUnitPrice: 2.50, isHardCoded: true },
+  { id: 'h-pa-2', category: 'Painting - Interior Painting', description: 'Ceiling Painting', unit: 'sq ft', defaultUnitPrice: 2.00, isHardCoded: true },
+  { id: 'h-pa-3', category: 'Painting - Interior Painting', description: 'Accent Wall Painting', unit: 'flat', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-pa-4', category: 'Painting - Interior Painting', description: 'Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.50, isHardCoded: true },
+  { id: 'h-pa-5', category: 'Painting - Interior Painting', description: 'Crown Molding Painting', unit: 'linear ft', defaultUnitPrice: 2.25, isHardCoded: true },
+  { id: 'h-pa-6', category: 'Painting - Interior Painting', description: 'Door Painting (Interior)', unit: 'ea', defaultUnitPrice: 85.00, isHardCoded: true },
+  { id: 'h-pa-7', category: 'Painting - Interior Painting', description: 'Door Frame Painting', unit: 'ea', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-pa-8', category: 'Painting - Interior Painting', description: 'Window Frame Painting (Interior)', unit: 'ea', defaultUnitPrice: 65.00, isHardCoded: true },
+  { id: 'h-pa-9', category: 'Painting - Interior Painting', description: 'Closet Painting', unit: 'ea', defaultUnitPrice: 120.00, isHardCoded: true },
+  { id: 'h-pa-10', category: 'Painting - Interior Painting', description: 'Staircase / Railing Painting', unit: 'linear ft', defaultUnitPrice: 35.00, isHardCoded: true },
+  { id: 'h-pa-11', category: 'Painting - Interior Painting', description: 'Trim Painting', unit: 'linear ft', defaultUnitPrice: 1.75, isHardCoded: true },
+  { id: 'h-pa-12', category: 'Painting - Exterior Painting', description: 'Exterior Wall Painting', unit: 'sq ft', defaultUnitPrice: 3.75, isHardCoded: true },
+  { id: 'h-pa-13', category: 'Painting - Exterior Painting', description: 'Stucco Painting', unit: 'sq ft', defaultUnitPrice: 4.25, isHardCoded: true },
+  { id: 'h-pa-14', category: 'Painting - Exterior Painting', description: 'Brick Painting', unit: 'sq ft', defaultUnitPrice: 4.50, isHardCoded: true },
+  { id: 'h-pa-15', category: 'Painting - Exterior Painting', description: 'Trim / Fascia Painting', unit: 'linear ft', defaultUnitPrice: 2.50, isHardCoded: true },
+  { id: 'h-pa-16', category: 'Painting - Exterior Painting', description: 'Garage Door Painting', unit: 'ea', defaultUnitPrice: 250.00, isHardCoded: true },
+  { id: 'h-pa-17', category: 'Painting - Exterior Painting', description: 'Front Door Painting', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-pa-18', category: 'Painting - Exterior Painting', description: 'Window Frame Painting (Exterior)', unit: 'ea', defaultUnitPrice: 75.00, isHardCoded: true },
+  { id: 'h-pa-19', category: 'Painting - Exterior Painting', description: 'Shutter Painting', unit: 'ea', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-pa-20', category: 'Painting - Exterior Painting', description: 'Deck Painting', unit: 'sq ft', defaultUnitPrice: 2.25, isHardCoded: true },
+  { id: 'h-pa-21', category: 'Painting - Exterior Painting', description: 'Fence Painting', unit: 'linear ft', defaultUnitPrice: 12.00, isHardCoded: true },
+  { id: 'h-pa-22', category: 'Painting - Surface Preparation', description: 'Pressure Washing', unit: 'sq ft', defaultUnitPrice: 0.25, isHardCoded: true },
+  { id: 'h-pa-23', category: 'Painting - Surface Preparation', description: 'Paint Scraping', unit: 'hr', defaultUnitPrice: 65.00, isHardCoded: true },
+  { id: 'h-pa-24', category: 'Painting - Surface Preparation', description: 'Sanding', unit: 'hr', defaultUnitPrice: 55.00, isHardCoded: true },
+  { id: 'h-pa-25', category: 'Painting - Surface Preparation', description: 'Crack / Hole Patching', unit: 'ea', defaultUnitPrice: 15.00, isHardCoded: true },
+  { id: 'h-pa-26', category: 'Painting - Surface Preparation', description: 'Drywall Repair', unit: 'hr', defaultUnitPrice: 85.00, isHardCoded: true },
+  { id: 'h-pa-27', category: 'Painting - Surface Preparation', description: 'Priming Surfaces', unit: 'sq ft', defaultUnitPrice: 1.25, isHardCoded: true },
+  { id: 'h-pa-28', category: 'Painting - Surface Preparation', description: 'Caulking / Sealing', unit: 'linear ft', defaultUnitPrice: 1.25, isHardCoded: true },
+  { id: 'h-pa-29', category: 'Painting - Specialty Painting Services', description: 'Cabinet Painting', unit: 'ea', defaultUnitPrice: 85.00, isHardCoded: true },
+  { id: 'h-pa-30', category: 'Painting - Specialty Painting Services', description: 'Cabinet Refinishing', unit: 'hr', defaultUnitPrice: 95.00, isHardCoded: true },
+  { id: 'h-pa-31', category: 'Painting - Specialty Painting Services', description: 'Wood Staining', unit: 'sq ft', defaultUnitPrice: 3.50, isHardCoded: true },
+  { id: 'h-pa-32', category: 'Painting - Specialty Painting Services', description: 'Deck Staining', unit: 'sq ft', defaultUnitPrice: 3.25, isHardCoded: true },
+  { id: 'h-pa-33', category: 'Painting - Specialty Painting Services', description: 'Fence Staining', unit: 'sq ft', defaultUnitPrice: 3.00, isHardCoded: true },
+  { id: 'h-pa-34', category: 'Painting - Specialty Painting Services', description: 'Varnish / Polyurethane Finish', unit: 'sq ft', defaultUnitPrice: 2.75, isHardCoded: true },
+  { id: 'h-pa-35', category: 'Painting - Specialty Painting Services', description: 'Epoxy Garage Floor Coating', unit: 'sq ft', defaultUnitPrice: 6.50, isHardCoded: true },
+  { id: 'h-pa-36', category: 'Painting - Specialty Painting Services', description: 'Waterproof Coating', unit: 'sq ft', defaultUnitPrice: 2.50, isHardCoded: true },
+  { id: 'h-pa-37', category: 'Painting - Additional Services', description: 'Wallpaper Removal', unit: 'sq ft', defaultUnitPrice: 2.25, isHardCoded: true },
+  { id: 'h-pa-38', category: 'Painting - Additional Services', description: 'Popcorn Ceiling Removal', unit: 'sq ft', defaultUnitPrice: 3.50, isHardCoded: true },
+  { id: 'h-pa-39', category: 'Painting - Additional Services', description: 'Texture Application', unit: 'sq ft', defaultUnitPrice: 1.75, isHardCoded: true },
+  { id: 'h-pa-40', category: 'Painting - Additional Services', description: 'Touch-Up Painting', unit: 'hr', defaultUnitPrice: 75.00, isHardCoded: true },
 
-export const saveBusinessProfile = (profile: BusinessProfile) => {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-};
+  // --- ROOFING ---
+  { id: 'h-ro-1', category: 'Roofing - Roof Systems', description: 'Asphalt Shingle Roof (New)', unit: 'sq', defaultUnitPrice: 475.00, isHardCoded: true },
+  { id: 'h-ro-2', category: 'Roofing - Roof Systems', description: 'Standing Seam Metal Roof', unit: 'sq', defaultUnitPrice: 950.00, isHardCoded: true },
+  { id: 'h-ro-3', category: 'Roofing - Roof Systems', description: 'Flat Membrane (TPO) Roof', unit: 'sq', defaultUnitPrice: 650.00, isHardCoded: true },
+  { id: 'h-ro-4', category: 'Roofing - Components', description: 'Flashing Replacement', unit: 'linear ft', defaultUnitPrice: 15.00, isHardCoded: true },
+  { id: 'h-ro-5', category: 'Roofing - Components', description: 'Ridge Vent Installation', unit: 'linear ft', defaultUnitPrice: 18.00, isHardCoded: true },
+  { id: 'h-ro-6', category: 'Roofing - Drainage', description: 'Downspout Extension', unit: 'ea', defaultUnitPrice: 45.00, isHardCoded: true },
+  { id: 'h-ro-7', category: 'Roofing - Drainage', description: 'Seamless Gutter Install', unit: 'linear ft', defaultUnitPrice: 12.50, isHardCoded: true },
+  { id: 'h-ro-8', category: 'Roofing - Repair & Maintenance', description: 'Roof Repair & Maintenance', unit: 'hr', defaultUnitPrice: 95.00, isHardCoded: true },
+  { id: 'h-ro-9', category: 'Roofing - Repair & Maintenance', description: 'Storm Damage Assessment', unit: 'ea', defaultUnitPrice: 250.00, isHardCoded: true },
+  { id: 'h-ro-10', category: 'Roofing - Repair & Maintenance', description: 'Professional Roof Inspection', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
+  { id: 'h-ro-11', category: 'Roofing - Installation & Replacement', description: 'Full Roof Tear-Off Fee', unit: 'sq', defaultUnitPrice: 150.00, isHardCoded: true },
 
-export const getTemplates = (): QuoteTemplate[] => {
-  if (typeof window === 'undefined') return [];
-  
-  const hardCodedTemplates: QuoteTemplate[] = [
-    {
-      id: 't-paint-1',
-      name: 'Standard Living Room Refresh',
-      serviceCategory: 'Painting',
-      isHardCoded: true,
-      items: [
-        { description: 'Interior Wall Painting (2 coats)', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
-        { description: 'Ceiling Painting', unit: 'sq ft', quantity: 200, unitPrice: 2.0, total: 400 },
-        { description: 'Baseboard & Trim Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 },
-        { description: 'Minor Wall Patching & Prep', unit: 'hr', quantity: 2, unitPrice: 85, total: 170 }
-      ],
-      scopeDescription: 'Full preparation and painting of living room walls and ceiling. Includes minor patching, furniture covering, and cleanup.'
-    },
-    {
-      id: 't-elec-1',
-      name: 'Main Service Panel Upgrade (200A)',
-      serviceCategory: 'Electrical',
-      isHardCoded: true,
-      items: [
-        { description: '200 Amp Main Breaker Panel', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
-        { description: 'Circuit Breaker Set (Standard)', unit: 'ea', quantity: 20, unitPrice: 25, total: 500 },
-        { description: 'Permit & Inspection Fee', unit: 'flat', quantity: 1, unitPrice: 350, total: 350 }
-      ],
-      scopeDescription: 'Upgrade existing electrical service to 200A. Includes removal of old panel, installation of new 200A panel, grounding, and labeled breakers.'
-    },
-    {
-      id: 't-plum-1',
-      name: 'Master Bath Fixture Update',
-      serviceCategory: 'Plumbing',
-      isHardCoded: true,
-      items: [
-        { description: 'Dual Sink Faucet Installation', unit: 'ea', quantity: 2, unitPrice: 225, total: 450 },
-        { description: 'High-Efficiency Toilet Install', unit: 'ea', quantity: 1, unitPrice: 350, total: 350 },
-        { description: 'Shower Head & Valve Kit', unit: 'ea', quantity: 1, unitPrice: 450, total: 450 }
-      ],
-      scopeDescription: 'Removal and replacement of existing master bathroom faucets, toilet, and shower trim. Includes testing for leaks.'
-    },
-    {
-      id: 't-hvac-1',
-      name: 'Central AC System Replacement',
-      serviceCategory: 'HVAC',
-      isHardCoded: true,
-      items: [
-        { description: '15 SEER Condenser Unit', unit: 'ea', quantity: 1, unitPrice: 4200, total: 4200 },
-        { description: 'Matching Evaporator Coil', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
-        { description: 'Lineset & Accessories', unit: 'flat', quantity: 1, unitPrice: 450, total: 450 }
-      ],
-      scopeDescription: 'Complete removal of old AC unit and installation of new high-efficiency 15 SEER system. Includes new lineset and refrigerant.'
-    },
-    {
-      id: 't-gc-1',
-      name: 'Kitchen Remodel - Basic',
-      serviceCategory: 'General Contracting',
-      isHardCoded: true,
-      items: [
-        { description: 'Stock Cabinet Installation', unit: 'set', quantity: 1, unitPrice: 8500, total: 8500 },
-        { description: 'Quartz Countertop (Group A)', unit: 'sq ft', quantity: 45, unitPrice: 95, total: 4275 },
-        { description: 'Backsplash Tile Labor', unit: 'sq ft', quantity: 30, unitPrice: 25, total: 750 }
-      ],
-      scopeDescription: 'Moderate kitchen renovation including new stock cabinetry, quartz countertops, and decorative tile backsplash.'
-    },
-    {
-      id: 't-land-1',
-      name: 'Paver Patio & Planting Bed',
-      serviceCategory: 'Landscaping',
-      isHardCoded: true,
-      items: [
-        { description: 'Interlocking Paver Patio', unit: 'sq ft', quantity: 300, unitPrice: 28, total: 8400 },
-        { description: 'Decorative Planting Bed (w/ Mulch)', unit: 'sq ft', quantity: 100, unitPrice: 8, total: 800 },
-        { description: 'Specimen Tree (15 Gal)', unit: 'ea', quantity: 2, unitPrice: 250, total: 500 }
-      ],
-      scopeDescription: 'Installation of a new 300 sq ft paver patio with adjacent planting beds and screening trees.'
-    },
-    {
-      id: 't-roof-1',
-      name: 'Residential Re-Roof (Shingle)',
-      serviceCategory: 'Roofing',
-      isHardCoded: true,
-      items: [
-        { description: 'Architectural Shingle Roof', unit: 'sq', quantity: 22, unitPrice: 650, total: 14300 },
-        { description: 'Tear-off & Disposal Fee', unit: 'sq', quantity: 22, unitPrice: 150, total: 3300 },
-        { description: 'Ice & Water Shield Barrier', unit: 'sq', quantity: 5, unitPrice: 125, total: 625 }
-      ],
-      scopeDescription: 'Complete roof replacement including tear-off of one layer of old shingles and installation of new architectural lifetime shingles.'
-    },
-    {
-      id: 't-carp-1',
-      name: 'Custom Living Room Built-ins',
-      serviceCategory: 'Carpentry',
-      isHardCoded: true,
-      items: [
-        { description: 'Custom Lower Cabinet Bases', unit: 'linear ft', quantity: 12, unitPrice: 350, total: 4200 },
-        { description: 'Open Shelving Units (Upper)', unit: 'linear ft', quantity: 12, unitPrice: 250, total: 3000 },
-        { description: 'Finish Trim & Molding', unit: 'flat', quantity: 1, unitPrice: 850, total: 850 }
-      ],
-      scopeDescription: 'Design and construction of custom fireside built-in cabinets and floating shelves. Material: Paint-grade MDF/Maple.'
-    },
-    {
-      id: 't-clean-1',
-      name: 'Post-Construction Deep Clean',
-      serviceCategory: 'Cleaning',
-      isHardCoded: true,
-      items: [
-        { description: 'Post-Renovation Detailed Clean', unit: 'sq ft', quantity: 2500, unitPrice: 0.85, total: 2125 },
-        { description: 'Exterior Window Cleaning (1st Fl)', unit: 'window', quantity: 12, unitPrice: 15, total: 180 },
-        { description: 'Floor Buff & Polish', unit: 'sq ft', quantity: 800, unitPrice: 1.25, total: 1000 }
-      ],
-      scopeDescription: 'Comprehensive deep cleaning after construction. Includes dust removal from all surfaces, inside cabinets, and window tracks.'
-    },
-    {
-      id: 't-other-1',
-      name: 'General Handyman Repair',
-      serviceCategory: 'Other',
-      isHardCoded: true,
-      items: [
-        { description: 'Handyman Labor (Minor Repairs)', unit: 'hr', quantity: 4, unitPrice: 75, total: 300 },
-        { description: 'Small Parts & Fasteners Allowance', unit: 'flat', quantity: 1, unitPrice: 50, total: 50 }
-      ],
-      scopeDescription: 'Miscellaneous small repairs and maintenance tasks around the property. Includes labor for up to 4 hours and basic consumables.'
-    }
-  ];
+  // --- CARPENTRY ---
+  { id: 'h-ca-1', category: 'Carpentry - Rough Carpentry', description: 'Wall Framing (Standard)', unit: 'sq ft', defaultUnitPrice: 8.50, isHardCoded: true },
+  { id: 'h-ca-2', category: 'Carpentry - Rough Carpentry', description: 'Floor Joist Installation', unit: 'sq ft', defaultUnitPrice: 12.00, isHardCoded: true },
+  { id: 'h-ca-3', category: 'Carpentry - Finish Carpentry', description: 'Crown Molding Installation', unit: 'linear ft', defaultUnitPrice: 12.50, isHardCoded: true },
+  { id: 'h-ca-4', category: 'Carpentry - Finish Carpentry', description: 'Baseboard / Trim Installation', unit: 'linear ft', defaultUnitPrice: 6.50, isHardCoded: true },
+  { id: 'h-ca-5', category: 'Carpentry - Doors & Windows', description: 'Interior Door Installation', unit: 'ea', defaultUnitPrice: 185.00, isHardCoded: true },
+  { id: 'h-ca-6', category: 'Carpentry - Doors & Windows', description: 'Window Installation (Standard)', unit: 'ea', defaultUnitPrice: 350.00, isHardCoded: true },
+  { id: 'h-ca-7', category: 'Carpentry - Cabinets & Millwork', description: 'Kitchen Cabinet Installation', unit: 'ea', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-ca-8', category: 'Carpentry - Cabinets & Millwork', description: 'Custom Built-In Unit', unit: 'ea', defaultUnitPrice: 1200.00, isHardCoded: true },
+  { id: 'h-ca-9', category: 'Carpentry - Flooring', description: 'Hardwood Floor Installation', unit: 'sq ft', defaultUnitPrice: 8.50, isHardCoded: true },
+  { id: 'h-ca-10', category: 'Carpentry - Exterior Carpentry', description: 'Composite Decking Installation', unit: 'sq ft', defaultUnitPrice: 22.00, isHardCoded: true },
+  { id: 'h-ca-11', category: 'Carpentry - Exterior Carpentry', description: 'Pergola Construction', unit: 'flat', defaultUnitPrice: 2500.00, isHardCoded: true },
+  { id: 'h-ca-12', category: 'Carpentry - Repair', description: 'Siding / Trim Wood Repair', unit: 'hr', defaultUnitPrice: 85.00, isHardCoded: true },
 
-  const stored = localStorage.getItem(TEMPLATES_KEY);
-  if (!stored) return hardCodedTemplates;
-  
-  const userTemplates: QuoteTemplate[] = JSON.parse(stored);
-  const hardCodedIds = new Set(hardCodedTemplates.map(t => t.id));
-  const userAdded = userTemplates.filter(t => !hardCodedIds.has(t.id));
-  
-  return [...hardCodedTemplates, ...userAdded];
-};
+  // --- CLEANING ---
+  { id: 'h-cl-1', category: 'Cleaning - General Cleaning', description: 'Standard Residential Cleaning', unit: 'visit', defaultUnitPrice: 150.00, isHardCoded: true },
+  { id: 'h-cl-2', category: 'Cleaning - General Cleaning', description: 'Commercial Janitorial Visit', unit: 'visit', defaultUnitPrice: 250.00, isHardCoded: true },
+  { id: 'h-cl-3', category: 'Cleaning - Deep Cleaning', description: 'Move-In / Move-Out Deep Clean', unit: 'sq ft', defaultUnitPrice: 0.45, isHardCoded: true },
+  { id: 'h-cl-4', category: 'Cleaning - Deep Cleaning', description: 'Post-Construction Cleanup', unit: 'sq ft', defaultUnitPrice: 0.65, isHardCoded: true },
+  { id: 'h-cl-5', category: 'Cleaning - Floor Care', description: 'Carpet Steam Cleaning', unit: 'room', defaultUnitPrice: 75.00, isHardCoded: true },
+  { id: 'h-cl-6', category: 'Cleaning - Floor Care', description: 'Tile & Grout Scrubbing', unit: 'sq ft', defaultUnitPrice: 1.25, isHardCoded: true },
+  { id: 'h-cl-7', category: 'Cleaning - Surface Cleaning', description: 'Professional Window Cleaning', unit: 'pane', defaultUnitPrice: 15.00, isHardCoded: true },
+  { id: 'h-cl-8', category: 'Cleaning - Surface Cleaning', description: 'Upholstery Steam Clean', unit: 'ea', defaultUnitPrice: 125.00, isHardCoded: true },
+  { id: 'h-cl-9', category: 'Cleaning - Exterior Cleaning', description: 'Power Washing (Siding)', unit: 'sq ft', defaultUnitPrice: 0.35, isHardCoded: true },
+  { id: 'h-cl-10', category: 'Cleaning - Sanitation', description: 'Professional Disinfection', unit: 'sq ft', defaultUnitPrice: 0.15, isHardCoded: true },
+  { id: 'h-cl-11', category: 'Cleaning - Waste Services', description: 'Debris Removal & Disposal', unit: 'load', defaultUnitPrice: 450.00, isHardCoded: true },
 
-export const saveTemplates = (templates: QuoteTemplate[]) => {
-  const userOnly = templates.filter(t => !t.isHardCoded);
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(userOnly));
-};
+  // --- OTHER ---
+  { id: 'h-ot-1', category: 'Other', description: 'General Handyman Labor', unit: 'hr', defaultUnitPrice: 75.00, isHardCoded: true },
+  { id: 'h-ot-2', category: 'Other', description: 'Furniture Assembly', unit: 'hr', defaultUnitPrice: 65.00, isHardCoded: true }
+];
 
-export const getCommonItems = (): CommonItem[] => {
-  if (typeof window === 'undefined') return [];
-  
-  const hardCodedItems: CommonItem[] = [
-    // --- GENERAL CONTRACTING ---
-    { id: 'gc_pm_1', category: 'General Contracting - Project Management', description: 'Project Management & Oversight', unit: 'flat', defaultUnitPrice: 1500, isHardCoded: true },
-    { id: 'gc_pm_2', category: 'General Contracting - Project Management', description: 'Subcontractor Coordination', unit: 'flat', defaultUnitPrice: 750, isHardCoded: true },
-    { id: 'gc_pm_3', category: 'General Contracting - Project Management', description: 'Quality Control Inspection', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
-    
-    { id: 'gc_sw_1', category: 'General Contracting - Sitework', description: 'Site Preparation & Protection', unit: 'sq ft', defaultUnitPrice: 1.25, isHardCoded: true },
-    { id: 'gc_sw_2', category: 'General Contracting - Sitework', description: 'Excavation Service', unit: 'hr', defaultUnitPrice: 175, isHardCoded: true },
-    { id: 'gc_sw_3', category: 'General Contracting - Sitework', description: 'Demolition (Light)', unit: 'hr', defaultUnitPrice: 95, isHardCoded: true },
-    
-    { id: 'gc_sc_1', category: 'General Contracting - Structural Construction', description: 'Foundation / Footings', unit: 'cu yd', defaultUnitPrice: 450, isHardCoded: true },
-    { id: 'gc_sc_2', category: 'General Contracting - Structural Construction', description: 'Structural Framing', unit: 'sq ft', defaultUnitPrice: 12, isHardCoded: true },
-    { id: 'gc_sc_3', category: 'General Contracting - Structural Construction', description: 'Load-Bearing Wall Mod', unit: 'ea', defaultUnitPrice: 2500, isHardCoded: true },
-    
-    { id: 'gc_be_1', category: 'General Contracting - Building Envelope', description: 'Exterior Sheathing', unit: 'sq ft', defaultUnitPrice: 3.5, isHardCoded: true },
-    { id: 'gc_be_2', category: 'General Contracting - Building Envelope', description: 'Insulation Installation', unit: 'sq ft', defaultUnitPrice: 1.85, isHardCoded: true },
-    { id: 'gc_be_3', category: 'General Contracting - Building Envelope', description: 'Waterproofing Membrane', unit: 'sq ft', defaultUnitPrice: 4.25, isHardCoded: true },
-    
-    { id: 'gc_ic_1', category: 'General Contracting - Interior Construction', description: 'Drywall Hanging & Taping', unit: 'sq ft', defaultUnitPrice: 3.25, isHardCoded: true },
-    { id: 'gc_ic_2', category: 'General Contracting - Interior Construction', description: 'Flooring Installation', unit: 'sq ft', defaultUnitPrice: 5.5, isHardCoded: true },
-    { id: 'gc_ic_3', category: 'General Contracting - Interior Construction', description: 'Millwork / Finish Carpentry', unit: 'hr', defaultUnitPrice: 85, isHardCoded: true },
-    
-    { id: 'gc_re_1', category: 'General Contracting - Renovation & Expansion', description: 'Kitchen Remodel Base', unit: 'flat', defaultUnitPrice: 15000, isHardCoded: true },
-    { id: 'gc_re_2', category: 'General Contracting - Renovation & Expansion', description: 'Bathroom Remodel Base', unit: 'flat', defaultUnitPrice: 8500, isHardCoded: true },
-    { id: 'gc_re_3', category: 'General Contracting - Renovation & Expansion', description: 'Tenant Improvement Allowance', unit: 'sq ft', defaultUnitPrice: 45, isHardCoded: true },
-
-    // --- ELECTRICAL ---
-    { id: 'el_pd_1', category: 'Electrical - Power Distribution', description: 'Main Service Panel Install', unit: 'ea', defaultUnitPrice: 2800, isHardCoded: true },
-    { id: 'el_pd_2', category: 'Electrical - Power Distribution', description: 'Subpanel Installation', unit: 'ea', defaultUnitPrice: 850, isHardCoded: true },
-    { id: 'el_pd_3', category: 'Electrical - Power Distribution', description: 'Transformer Mounting', unit: 'ea', defaultUnitPrice: 1200, isHardCoded: true },
-    
-    { id: 'el_wd_1', category: 'Electrical - Wiring & Devices', description: 'Rough-In Wiring (per outlet)', unit: 'ea', defaultUnitPrice: 110, isHardCoded: true },
-    { id: 'el_wd_2', category: 'Electrical - Wiring & Devices', description: 'Finish Device (Outlet/Switch)', unit: 'ea', defaultUnitPrice: 45, isHardCoded: true },
-    { id: 'el_wd_3', category: 'Electrical - Wiring & Devices', description: 'Whole House Rewire', unit: 'sq ft', defaultUnitPrice: 8.5, isHardCoded: true },
-    
-    { id: 'el_ls_1', category: 'Electrical - Lighting Systems', description: 'Interior Recessed Light', unit: 'ea', defaultUnitPrice: 165, isHardCoded: true },
-    { id: 'el_ls_2', category: 'Electrical - Lighting Systems', description: 'Exterior Flood Lighting', unit: 'ea', defaultUnitPrice: 225, isHardCoded: true },
-    { id: 'el_ls_3', category: 'Electrical - Lighting Systems', description: 'Emergency Lighting Unit', unit: 'ea', defaultUnitPrice: 185, isHardCoded: true },
-    
-    { id: 'el_lv_1', category: 'Electrical - Low Voltage Systems', description: 'Data/Cat6 Cabling Drop', unit: 'ea', defaultUnitPrice: 150, isHardCoded: true },
-    { id: 'el_lv_2', category: 'Electrical - Low Voltage Systems', description: 'Security Camera Install', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
-    { id: 'el_lv_3', category: 'Electrical - Low Voltage Systems', description: 'Fire Alarm Device Install', unit: 'ea', defaultUnitPrice: 195, isHardCoded: true },
-    
-    { id: 'el_ss_1', category: 'Electrical - Specialized Systems', description: 'Backup Generator Transfer Switch', unit: 'ea', defaultUnitPrice: 1250, isHardCoded: true },
-    { id: 'el_ss_2', category: 'Electrical - Specialized Systems', description: 'EV Charging Station Level 2', unit: 'ea', defaultUnitPrice: 950, isHardCoded: true },
-    { id: 'el_ss_3', category: 'Electrical - Specialized Systems', description: 'Solar PV Module Install', unit: 'ea', defaultUnitPrice: 450, isHardCoded: true },
-    
-    { id: 'el_ca_1', category: 'Electrical - Controls & Automation', description: 'Smart Home Hub / Controller', unit: 'ea', defaultUnitPrice: 350, isHardCoded: true },
-    { id: 'el_ca_2', category: 'Electrical - Controls & Automation', description: 'Automated Lighting Zone', unit: 'zone', defaultUnitPrice: 550, isHardCoded: true },
-    
-    { id: 'el_mt_1', category: 'Electrical - Maintenance & Testing', description: 'Electrical Troubleshooting', unit: 'hr', defaultUnitPrice: 125, isHardCoded: true },
-    { id: 'el_mt_2', category: 'Electrical - Maintenance & Testing', description: 'Full System Safety Inspection', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
-
-    // --- PLUMBING ---
-    { id: 'pl_ws_1', category: 'Plumbing - Water Supply Systems', description: 'Main Water Line Installation', unit: 'linear ft', defaultUnitPrice: 45, isHardCoded: true },
-    { id: 'pl_ws_2', category: 'Plumbing - Water Supply Systems', description: 'Whole House Repipe', unit: 'flat', defaultUnitPrice: 6500, isHardCoded: true },
-    
-    { id: 'pl_ds_1', category: 'Plumbing - Drainage Systems', description: 'DWV Stack Installation', unit: 'ea', defaultUnitPrice: 1200, isHardCoded: true },
-    { id: 'pl_ds_2', category: 'Plumbing - Drainage Systems', description: 'Sewer Line Trenching', unit: 'linear ft', defaultUnitPrice: 65, isHardCoded: true },
-    { id: 'pl_ds_3', category: 'Plumbing - Drainage Systems', description: 'Storm Drainage Basin', unit: 'ea', defaultUnitPrice: 850, isHardCoded: true },
-    
-    { id: 'pl_fa_1', category: 'Plumbing - Fixtures & Appliances', description: 'Toilet Install (New)', unit: 'ea', defaultUnitPrice: 350, isHardCoded: true },
-    { id: 'pl_fa_2', category: 'Plumbing - Fixtures & Appliances', description: 'Faucet / Sink Install', unit: 'ea', defaultUnitPrice: 225, isHardCoded: true },
-    { id: 'pl_fa_3', category: 'Plumbing - Fixtures & Appliances', description: 'Shower Valve Replacement', unit: 'ea', defaultUnitPrice: 450, isHardCoded: true },
-    
-    { id: 'pl_wh_1', category: 'Plumbing - Water Heating', description: 'Standard Tank Water Heater', unit: 'ea', defaultUnitPrice: 1600, isHardCoded: true },
-    { id: 'pl_wh_2', category: 'Plumbing - Water Heating', description: 'Tankless Water Heater', unit: 'ea', defaultUnitPrice: 3200, isHardCoded: true },
-    { id: 'pl_wh_3', category: 'Plumbing - Water Heating', description: 'Boiler System Install', unit: 'ea', defaultUnitPrice: 8500, isHardCoded: true },
-    
-    { id: 'pl_gs_1', category: 'Plumbing - Gas Systems', description: 'Gas Piping Installation', unit: 'linear ft', defaultUnitPrice: 25, isHardCoded: true },
-    { id: 'pl_gs_2', category: 'Plumbing - Gas Systems', description: 'Gas Range / Appliance Hookup', unit: 'ea', defaultUnitPrice: 175, isHardCoded: true },
-    
-    { id: 'pl_spec_1', category: 'Plumbing - Specialty Systems', description: 'Backflow Preventer Device', unit: 'ea', defaultUnitPrice: 650, isHardCoded: true },
-    { id: 'pl_spec_2', category: 'Plumbing - Specialty Systems', description: 'Water Filtration System', unit: 'ea', defaultUnitPrice: 1200, isHardCoded: true },
-    { id: 'pl_spec_3', category: 'Plumbing - Specialty Systems', description: 'Sump Pump Installation', unit: 'ea', defaultUnitPrice: 550, isHardCoded: true },
-    
-    { id: 'pl_mr_1', category: 'Plumbing - Maintenance & Repair', description: 'Leak Detection & Repair', unit: 'hr', defaultUnitPrice: 135, isHardCoded: true },
-    { id: 'pl_mr_2', category: 'Plumbing - Maintenance & Repair', description: 'Drain Cleaning (Auger)', unit: 'ea', defaultUnitPrice: 225, isHardCoded: true },
-
-    // --- HVAC ---
-    { id: 'hv_hs_1', category: 'HVAC - Heating Systems', description: 'Gas Furnace Installation', unit: 'ea', defaultUnitPrice: 4500, isHardCoded: true },
-    { id: 'hv_hs_2', category: 'HVAC - Heating Systems', description: 'Heat Pump System (Split)', unit: 'ea', defaultUnitPrice: 7500, isHardCoded: true },
-    
-    { id: 'hv_cs_1', category: 'HVAC - Cooling Systems', description: 'AC Condenser Unit Install', unit: 'ea', defaultUnitPrice: 4200, isHardCoded: true },
-    { id: 'hv_cs_2', category: 'HVAC - Cooling Systems', description: 'Chiller Plant Service', unit: 'hr', defaultUnitPrice: 185, isHardCoded: true },
-    
-    { id: 'hv_ad_1', category: 'HVAC - Air Distribution', description: 'Ductwork Fabrication / Install', unit: 'linear ft', defaultUnitPrice: 35, isHardCoded: true },
-    { id: 'hv_ad_2', category: 'HVAC - Air Distribution', description: 'VAV Box Installation', unit: 'ea', defaultUnitPrice: 950, isHardCoded: true },
-    { id: 'hv_ad_3', category: 'HVAC - Air Distribution', description: 'Ventilation Fan Install', unit: 'ea', defaultUnitPrice: 350, isHardCoded: true },
-    
-    { id: 'hv_ct_1', category: 'HVAC - Controls', description: 'Smart Thermostat Install', unit: 'ea', defaultUnitPrice: 150, isHardCoded: true },
-    { id: 'hv_ct_2', category: 'HVAC - Controls', description: 'Zoning Control System', unit: 'zone', defaultUnitPrice: 850, isHardCoded: true },
-    
-    { id: 'hv_ia_1', category: 'HVAC - Indoor Air Quality', description: 'HEPA Air Filtration System', unit: 'ea', defaultUnitPrice: 1200, isHardCoded: true },
-    { id: 'hv_ia_2', category: 'HVAC - Indoor Air Quality', description: 'Whole House Humidifier', unit: 'ea', defaultUnitPrice: 650, isHardCoded: true },
-    
-    { id: 'hv_ms_1', category: 'HVAC - Maintenance & Service', description: 'Annual System Diagnostic', unit: 'ea', defaultUnitPrice: 185, isHardCoded: true },
-    { id: 'hv_ms_2', category: 'HVAC - Maintenance & Service', description: 'Refrigerant Recharging', unit: 'lb', defaultUnitPrice: 95, isHardCoded: true },
-
-    // --- LANDSCAPING ---
-    { id: 'ls_sd_1', category: 'Landscaping - Site Development', description: 'Final Grading & Soil Prep', unit: 'sq ft', defaultUnitPrice: 1.5, isHardCoded: true },
-    { id: 'ls_sd_2', category: 'Landscaping - Site Development', description: 'French Drain Installation', unit: 'linear ft', defaultUnitPrice: 25, isHardCoded: true },
-    
-    { id: 'ls_ss_1', category: 'Landscaping - Softscape', description: 'Premium Sod Installation', unit: 'sq ft', defaultUnitPrice: 2.5, isHardCoded: true },
-    { id: 'ls_ss_2', category: 'Landscaping - Softscape', description: 'Tree Planting (Up to 15gal)', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
-    { id: 'ls_ss_3', category: 'Landscaping - Softscape', description: 'Shrub / Perennial Planting', unit: 'ea', defaultUnitPrice: 45, isHardCoded: true },
-    
-    { id: 'ls_hs_1', category: 'Landscaping - Hardscape', description: 'Paver Patio Construction', unit: 'sq ft', defaultUnitPrice: 28, isHardCoded: true },
-    { id: 'ls_hs_2', category: 'Landscaping - Hardscape', description: 'Stone Retaining Wall', unit: 'sq ft', defaultUnitPrice: 55, isHardCoded: true },
-    { id: 'ls_hs_3', category: 'Landscaping - Hardscape', description: 'Flagstone Walkway', unit: 'sq ft', defaultUnitPrice: 32, isHardCoded: true },
-    
-    { id: 'ls_ir_1', category: 'Landscaping - Irrigation', description: 'Sprinkler System Zone (New)', unit: 'zone', defaultUnitPrice: 850, isHardCoded: true },
-    { id: 'ls_ir_2', category: 'Landscaping - Irrigation', description: 'Drip Irrigation Line', unit: 'linear ft', defaultUnitPrice: 4.5, isHardCoded: true },
-    
-    { id: 'ls_of_1', category: 'Landscaping - Outdoor Features', description: 'Landscape Lighting (per fixture)', unit: 'ea', defaultUnitPrice: 185, isHardCoded: true },
-    { id: 'ls_of_2', category: 'Landscaping - Outdoor Features', description: 'Custom Fire Pit (Gas)', unit: 'ea', defaultUnitPrice: 2500, isHardCoded: true },
-    
-    { id: 'ls_mn_1', category: 'Landscaping - Maintenance', description: 'Lawn Maintenance Visit', unit: 'visit', defaultUnitPrice: 75, isHardCoded: true },
-    { id: 'ls_mn_2', category: 'Landscaping - Maintenance', description: 'Seasonal Pruning & Cleanup', unit: 'hr', defaultUnitPrice: 65, isHardCoded: true },
-
-    // --- ROOFING ---
-    { id: 'rf_rs_1', category: 'Roofing - Roof Systems', description: 'Asphalt Shingle Roof (New)', unit: 'sq', defaultUnitPrice: 650, isHardCoded: true },
-    { id: 'rf_rs_2', category: 'Roofing - Roof Systems', description: 'Standing Seam Metal Roof', unit: 'sq', defaultUnitPrice: 1200, isHardCoded: true },
-    { id: 'rf_rs_3', category: 'Roofing - Roof Systems', description: 'Flat Membrane (TPO) Roof', unit: 'sq', defaultUnitPrice: 850, isHardCoded: true },
-    
-    { id: 'rf_cp_1', category: 'Roofing - Components', description: 'Flashing Replacement', unit: 'linear ft', defaultUnitPrice: 12, isHardCoded: true },
-    { id: 'rf_cp_2', category: 'Roofing - Components', description: 'Ridge Vent Installation', unit: 'linear ft', defaultUnitPrice: 18, isHardCoded: true },
-    
-    { id: 'rf_dr_1', category: 'Roofing - Drainage', description: 'Seamless Gutter Install', unit: 'linear ft', defaultUnitPrice: 14, isHardCoded: true },
-    { id: 'rf_dr_2', category: 'Roofing - Drainage', description: 'Downspout Extension', unit: 'ea', defaultUnitPrice: 45, isHardCoded: true },
-    
-    { id: 'rf_ir_1', category: 'Roofing - Installation & Replacement', description: 'Full Roof Tear-Off Fee', unit: 'sq', defaultUnitPrice: 150, isHardCoded: true },
-    
-    { id: 'rf_rm_1', category: 'Roofing - Repair & Maintenance', description: 'Roof Leak Repair (Minor)', unit: 'ea', defaultUnitPrice: 450, isHardCoded: true },
-    { id: 'rf_rm_2', category: 'Roofing - Repair & Maintenance', description: 'Storm Damage Assessment', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
-    
-    { id: 'rf_is_1', category: 'Roofing - Inspection', description: 'Professional Roof Inspection', unit: 'ea', defaultUnitPrice: 175, isHardCoded: true },
-
-    // --- CARPENTRY ---
-    { id: 'cp_rc_1', category: 'Carpentry - Rough Carpentry', description: 'Wall Framing (Standard)', unit: 'linear ft', defaultUnitPrice: 35, isHardCoded: true },
-    { id: 'cp_rc_2', category: 'Carpentry - Rough Carpentry', description: 'Floor Joist Installation', unit: 'sq ft', defaultUnitPrice: 6.5, isHardCoded: true },
-    
-    { id: 'cp_fc_1', category: 'Carpentry - Finish Carpentry', description: 'Crown Molding Install', unit: 'linear ft', defaultUnitPrice: 12, isHardCoded: true },
-    { id: 'cp_fc_2', category: 'Carpentry - Finish Carpentry', description: 'Baseboard / Trim Install', unit: 'linear ft', defaultUnitPrice: 4.5, isHardCoded: true },
-    
-    { id: 'cp_dw_1', category: 'Carpentry - Doors & Windows', description: 'Interior Door Install', unit: 'ea', defaultUnitPrice: 250, isHardCoded: true },
-    { id: 'cp_dw_2', category: 'Carpentry - Doors & Windows', description: 'Window Installation (Standard)', unit: 'ea', defaultUnitPrice: 350, isHardCoded: true },
-    
-    { id: 'cp_cm_1', category: 'Carpentry - Cabinets & Millwork', description: 'Kitchen Cabinet Install', unit: 'cabinet', defaultUnitPrice: 225, isHardCoded: true },
-    { id: 'cp_cm_2', category: 'Carpentry - Cabinets & Millwork', description: 'Custom Built-In Unit', unit: 'flat', defaultUnitPrice: 2500, isHardCoded: true },
-    
-    { id: 'cp_fl_1', category: 'Carpentry - Flooring', description: 'Hardwood Floor Installation', unit: 'sq ft', defaultUnitPrice: 8.5, isHardCoded: true },
-    
-    { id: 'cp_ec_1', category: 'Carpentry - Exterior Carpentry', description: 'Composite Decking Install', unit: 'sq ft', defaultUnitPrice: 45, isHardCoded: true },
-    { id: 'cp_ec_2', category: 'Carpentry - Exterior Carpentry', description: 'Pergola Construction', unit: 'flat', defaultUnitPrice: 3500, isHardCoded: true },
-    
-    { id: 'cp_rp_1', category: 'Carpentry - Repair', description: 'Siding / Trim Wood Repair', unit: 'hr', defaultUnitPrice: 85, isHardCoded: true },
-
-    // --- CLEANING ---
-    { id: 'cl_gc_1', category: 'Cleaning - General Cleaning', description: 'Standard Residential Cleaning', unit: 'hr', defaultUnitPrice: 55, isHardCoded: true },
-    { id: 'cl_gc_2', category: 'Cleaning - General Cleaning', description: 'Commercial Janitorial Visit', unit: 'visit', defaultUnitPrice: 150, isHardCoded: true },
-    
-    { id: 'cl_dc_1', category: 'Cleaning - Deep Cleaning', description: 'Move-In / Move-Out Deep Clean', unit: 'sq ft', defaultUnitPrice: 0.45, isHardCoded: true },
-    { id: 'cl_dc_2', category: 'Cleaning - Deep Cleaning', description: 'Post-Construction Cleanup', unit: 'sq ft', defaultUnitPrice: 0.85, isHardCoded: true },
-    
-    { id: 'cl_fc_1', category: 'Cleaning - Floor Care', description: 'Carpet Steam Cleaning', unit: 'room', defaultUnitPrice: 85, isHardCoded: true },
-    { id: 'cl_fc_2', category: 'Cleaning - Floor Care', description: 'Tile & Grout Scrubbing', unit: 'sq ft', defaultUnitPrice: 1.25, isHardCoded: true },
-    
-    { id: 'cl_sc_1', category: 'Cleaning - Surface Cleaning', description: 'Professional Window Cleaning', unit: 'window', defaultUnitPrice: 15, isHardCoded: true },
-    { id: 'cl_sc_2', category: 'Cleaning - Surface Cleaning', description: 'Upholstery Steam Clean', unit: 'ea', defaultUnitPrice: 125, isHardCoded: true },
-    
-    { id: 'cl_ec_1', category: 'Cleaning - Exterior Cleaning', description: 'Power Washing (Siding)', unit: 'sq ft', defaultUnitPrice: 0.45, isHardCoded: true },
-    
-    { id: 'cl_sn_1', category: 'Cleaning - Sanitation', description: 'Professional Disinfection', unit: 'sq ft', defaultUnitPrice: 0.25, isHardCoded: true },
-    
-    { id: 'cl_ws_1', category: 'Cleaning - Waste Services', description: 'Debris Removal & Disposal', unit: 'load', defaultUnitPrice: 350, isHardCoded: true },
-
-    // --- PAINTING ---
-    { id: 'ip1', category: 'Painting - Interior Painting', description: 'Interior Wall Painting', unit: 'sq ft', defaultUnitPrice: 2.5, isHardCoded: true },
-    { id: 'ip2', category: 'Painting - Interior Painting', description: 'Ceiling Painting', unit: 'sq ft', defaultUnitPrice: 2.0, isHardCoded: true },
-    { id: 'ip3', category: 'Painting - Interior Painting', description: 'Accent Wall Painting', unit: 'wall', defaultUnitPrice: 350, isHardCoded: true },
-    { id: 'ip4', category: 'Painting - Interior Painting', description: 'Trim Painting', unit: 'linear ft', defaultUnitPrice: 1.5, isHardCoded: true },
-    { id: 'ip5', category: 'Painting - Interior Painting', description: 'Baseboard Painting', unit: 'linear ft', defaultUnitPrice: 1.25, isHardCoded: true },
-    { id: 'ip6', category: 'Painting - Interior Painting', description: 'Crown Molding Painting', unit: 'linear ft', defaultUnitPrice: 1.75, isHardCoded: true },
-    { id: 'ip7', category: 'Painting - Interior Painting', description: 'Door Painting (Interior)', unit: 'door', defaultUnitPrice: 125, isHardCoded: true },
-    { id: 'ip8', category: 'Painting - Interior Painting', description: 'Door Frame Painting', unit: 'frame', defaultUnitPrice: 75, isHardCoded: true },
-    { id: 'ip9', category: 'Painting - Interior Painting', description: 'Window Frame Painting', unit: 'window', defaultUnitPrice: 85, isHardCoded: true },
-    { id: 'ip10', category: 'Painting - Interior Painting', description: 'Closet Painting', unit: 'closet', defaultUnitPrice: 150, isHardCoded: true },
-    { id: 'ip11', category: 'Painting - Interior Painting', description: 'Staircase / Railing Painting', unit: 'set', defaultUnitPrice: 450, isHardCoded: true },
-
-    { id: 'ep1', category: 'Painting - Exterior Painting', description: 'Exterior Wall Painting', unit: 'sq ft', defaultUnitPrice: 3.5, isHardCoded: true },
-    { id: 'ep2', category: 'Painting - Exterior Painting', description: 'Stucco Painting', unit: 'sq ft', defaultUnitPrice: 3.75, isHardCoded: true },
-    { id: 'ep3', category: 'Painting - Exterior Painting', description: 'Brick Painting', unit: 'sq ft', defaultUnitPrice: 4.25, isHardCoded: true },
-    { id: 'ep4', category: 'Painting - Exterior Painting', description: 'Trim / Fascia Painting', unit: 'linear ft', defaultUnitPrice: 2.5, isHardCoded: true },
-    { id: 'ep5', category: 'Painting - Exterior Painting', description: 'Garage Door Painting', unit: 'door', defaultUnitPrice: 450, isHardCoded: true },
-    { id: 'ep6', category: 'Painting - Exterior Painting', description: 'Front Door Painting', unit: 'door', defaultUnitPrice: 250, isHardCoded: true },
-    { id: 'ep7', category: 'Painting - Exterior Painting', description: 'Window Frame Painting (Exterior)', unit: 'window', defaultUnitPrice: 95, isHardCoded: true },
-    { id: 'ep8', category: 'Painting - Exterior Painting', description: 'Shutter Painting', unit: 'shutter', defaultUnitPrice: 85, isHardCoded: true },
-    { id: 'ep9', category: 'Painting - Exterior Painting', description: 'Deck Painting', unit: 'sq ft', defaultUnitPrice: 4.5, isHardCoded: true },
-    { id: 'ep10', category: 'Painting - Exterior Painting', description: 'Fence Painting', unit: 'linear ft', defaultUnitPrice: 5.5, isHardCoded: true },
-
-    { id: 'sp1', category: 'Painting - Surface Preparation', description: 'Pressure Washing', unit: 'sq ft', defaultUnitPrice: 0.35, isHardCoded: true },
-    { id: 'sp2', category: 'Painting - Surface Preparation', description: 'Paint Scraping', unit: 'sq ft', defaultUnitPrice: 1.5, isHardCoded: true },
-    { id: 'sp3', category: 'Painting - Surface Preparation', description: 'Sanding', unit: 'sq ft', defaultUnitPrice: 0.85, isHardCoded: true },
-    { id: 'sp4', category: 'Painting - Surface Preparation', description: 'Caulking / Sealing', unit: 'linear ft', defaultUnitPrice: 0.85, isHardCoded: true },
-    { id: 'sp5', category: 'Painting - Surface Preparation', description: 'Crack / Hole Patching', unit: 'patch', defaultUnitPrice: 75, isHardCoded: true },
-    { id: 'sp6', category: 'Painting - Surface Preparation', description: 'Drywall Repair', unit: 'repair', defaultUnitPrice: 150, isHardCoded: true },
-    { id: 'sp7', category: 'Painting - Surface Preparation', description: 'Priming Surfaces', unit: 'sq ft', defaultUnitPrice: 0.5, isHardCoded: true },
-
-    { id: 'sps1', category: 'Painting - Specialty Painting Services', description: 'Cabinet Painting', unit: 'cabinet', defaultUnitPrice: 250, isHardCoded: true },
-    { id: 'sps2', category: 'Painting - Specialty Painting Services', description: 'Cabinet Refinishing', unit: 'cabinet', defaultUnitPrice: 350, isHardCoded: true },
-    { id: 'sps3', category: 'Painting - Specialty Painting Services', description: 'Wood Staining', unit: 'sq ft', defaultUnitPrice: 4.5, isHardCoded: true },
-    { id: 'sps4', category: 'Painting - Specialty Painting Services', description: 'Deck Staining', unit: 'sq ft', defaultUnitPrice: 5.5, isHardCoded: true },
-    { id: 'sps5', category: 'Painting - Specialty Painting Services', description: 'Fence Staining', unit: 'sq ft', defaultUnitPrice: 5.0, isHardCoded: true },
-    { id: 'sps6', category: 'Painting - Specialty Painting Services', description: 'Varnish / Polyurethane Finish', unit: 'sq ft', defaultUnitPrice: 2.5, isHardCoded: true },
-    { id: 'sps7', category: 'Painting - Specialty Painting Services', description: 'Epoxy Garage Floor Coating', unit: 'sq ft', defaultUnitPrice: 7.5, isHardCoded: true },
-    { id: 'sps8', category: 'Painting - Specialty Painting Services', description: 'Waterproof Coating', unit: 'sq ft', defaultUnitPrice: 3.5, isHardCoded: true },
-
-    { id: 'as1', category: 'Painting - Additional Services', description: 'Wallpaper Removal', unit: 'sq ft', defaultUnitPrice: 2.5, isHardCoded: true },
-    { id: 'as2', category: 'Painting - Additional Services', description: 'Popcorn Ceiling Removal', unit: 'sq ft', defaultUnitPrice: 3.5, isHardCoded: true },
-    { id: 'as3', category: 'Painting - Additional Services', description: 'Texture Application', unit: 'sq ft', defaultUnitPrice: 1.5, isHardCoded: true },
-    { id: 'as4', category: 'Painting - Additional Services', description: 'Touch-Up Painting', unit: 'hr', defaultUnitPrice: 85, isHardCoded: true },
-
-    // --- OTHER ---
-    { id: 'ot1', category: 'Other', description: 'General Handyman Labor', unit: 'hr', defaultUnitPrice: 75, isHardCoded: true },
-    { id: 'ot2', category: 'Other', description: 'Furniture Assembly', unit: 'hr', defaultUnitPrice: 65, isHardCoded: true }
-  ];
-
-  const stored = localStorage.getItem(COMMON_ITEMS_KEY);
-  if (!stored) return hardCodedItems;
-  
-  const storedItems: CommonItem[] = JSON.parse(stored);
-  const hardCodedIds = new Set(hardCodedItems.map(i => i.id));
-  const userAddedItems = storedItems.filter(i => !hardCodedIds.has(i.id));
-  
-  const finalHardcoded = hardCodedItems.map(hc => {
-    const match = storedItems.find(s => s.id === hc.id);
-    if (match) {
-      return { ...hc, defaultUnitPrice: match.defaultUnitPrice, unit: match.unit };
-    }
-    return hc;
-  });
-
-  return [...finalHardcoded, ...userAddedItems];
-};
-
-export const saveCommonItems = (items: CommonItem[]) => {
-  const userOnly = items.filter(i => !i.isHardCoded);
-  localStorage.setItem(COMMON_ITEMS_KEY, JSON.stringify(userOnly));
-};
+export const getHardcodedTemplates = (): QuoteTemplate[] => [
+  {
+    id: 't-paint-1',
+    name: 'Living Room Refresh',
+    serviceCategory: 'Painting',
+    isHardCoded: true,
+    items: [
+      { description: 'Interior Wall Painting', unit: 'sq ft', quantity: 450, unitPrice: 2.5, total: 1125 },
+      { description: 'Ceiling Painting', unit: 'sq ft', quantity: 200, unitPrice: 2.0, total: 400 },
+      { description: 'Baseboard Painting', unit: 'linear ft', quantity: 60, unitPrice: 1.5, total: 90 },
+      { description: 'Drywall Repair', unit: 'hr', quantity: 2, unitPrice: 85, total: 170 }
+    ],
+    scopeDescription: 'Full preparation and painting of living room walls and ceiling.'
+  },
+  {
+    id: 't-gc-1',
+    name: 'Kitchen Remodel Base',
+    serviceCategory: 'General Contracting',
+    isHardCoded: true,
+    items: [
+      { description: 'Project Management', unit: 'hr', quantity: 20, unitPrice: 125, total: 2500 },
+      { description: 'Light Demolition', unit: 'hr', quantity: 16, unitPrice: 85, total: 1360 },
+      { description: 'Drywall Hanging & Taping', unit: 'sq ft', quantity: 300, unitPrice: 3.25, total: 975 },
+      { description: 'Flooring Installation', unit: 'sq ft', quantity: 150, unitPrice: 5.5, total: 825 }
+    ],
+    scopeDescription: 'Baseline scope for a residential kitchen remodel including demolition, drywall, and flooring.'
+  },
+  {
+    id: 't-elec-1',
+    name: '200A Service Upgrade',
+    serviceCategory: 'Electrical',
+    isHardCoded: true,
+    items: [
+      { description: 'Main Service Panel Installation', unit: 'ea', quantity: 1, unitPrice: 2800, total: 2800 },
+      { description: 'Full System Safety Inspection', unit: 'ea', quantity: 1, unitPrice: 250, total: 250 },
+      { description: 'Electrical Troubleshooting', unit: 'hr', quantity: 2, unitPrice: 110, total: 220 }
+    ],
+    scopeDescription: 'Upgrade of existing residential electrical service to 200 Amps with new panel and safety inspection.'
+  },
+  {
+    id: 't-plum-1',
+    name: 'Whole House Repipe',
+    serviceCategory: 'Plumbing',
+    isHardCoded: true,
+    items: [
+      { description: 'Whole House Repipe', unit: 'ea', quantity: 1, unitPrice: 8500, total: 8500 },
+      { description: 'Main Water Line Installation', unit: 'ea', quantity: 1, unitPrice: 2500, total: 2500 },
+      { description: 'Leak Detection & Repair', unit: 'hr', quantity: 2, unitPrice: 125, total: 250 }
+    ],
+    scopeDescription: 'Full replacement of existing water supply piping throughout the residence.'
+  },
+  {
+    id: 't-hvac-1',
+    name: 'Full HVAC System Replacement',
+    serviceCategory: 'HVAC',
+    isHardCoded: true,
+    items: [
+      { description: 'AC Condenser Unit Installation', unit: 'ea', quantity: 1, unitPrice: 4200, total: 4200 },
+      { description: 'Gas Furnace Installation', unit: 'ea', quantity: 1, unitPrice: 4500, total: 4500 },
+      { description: 'Smart Thermostat Installation', unit: 'ea', quantity: 1, unitPrice: 150, total: 150 },
+      { description: 'Annual System Diagnostic', unit: 'ea', quantity: 1, unitPrice: 185, total: 185 }
+    ],
+    scopeDescription: 'Replacement of split-system AC condenser and furnace, including controls.'
+  },
+  {
+    id: 't-land-1',
+    name: 'Standard Paver Patio',
+    serviceCategory: 'Landscaping',
+    isHardCoded: true,
+    items: [
+      { description: 'Paver Patio Construction', unit: 'sq ft', quantity: 200, unitPrice: 25, total: 5000 },
+      { description: 'Final Grading & Soil Preparation', unit: 'sq ft', quantity: 300, unitPrice: 1.5, total: 450 },
+      { description: 'Landscape Lighting (per fixture)', unit: 'ea', quantity: 4, unitPrice: 150, total: 600 }
+    ],
+    scopeDescription: 'Excavation, grading, and installation of 200 sq ft paver patio with accent lighting.'
+  },
+  {
+    id: 't-roof-1',
+    name: 'Asphalt Shingle Roof',
+    serviceCategory: 'Roofing',
+    isHardCoded: true,
+    items: [
+      { description: 'Asphalt Shingle Roof (New)', unit: 'sq', quantity: 25, unitPrice: 475, total: 11875 },
+      { description: 'Full Roof Tear-Off Fee', unit: 'sq', quantity: 25, unitPrice: 150, total: 3750 },
+      { description: 'Ridge Vent Installation', unit: 'linear ft', quantity: 40, unitPrice: 18, total: 720 }
+    ],
+    scopeDescription: 'Complete roof replacement including removal of existing shingles and installation of new architectural shingles.'
+  },
+  {
+    id: 't-carp-1',
+    name: 'Custom Built-in Unit',
+    serviceCategory: 'Carpentry',
+    isHardCoded: true,
+    items: [
+      { description: 'Custom Built-In Unit', unit: 'ea', quantity: 1, unitPrice: 1200, total: 1200 },
+      { description: 'Finish Carpentry', unit: 'hr', quantity: 8, unitPrice: 85, total: 680 },
+      { description: 'Crown Molding Installation', unit: 'linear ft', quantity: 20, unitPrice: 12.5, total: 250 }
+    ],
+    scopeDescription: 'Design and construction of custom built-in cabinetry with finish trim.'
+  },
+  {
+    id: 't-clean-1',
+    name: 'Deep Clean / Move-Out',
+    serviceCategory: 'Cleaning',
+    isHardCoded: true,
+    items: [
+      { description: 'Move-In / Move-Out Deep Clean', unit: 'sq ft', quantity: 2000, unitPrice: 0.45, total: 900 },
+      { description: 'Carpet Steam Cleaning', unit: 'room', quantity: 3, unitPrice: 75, total: 225 },
+      { description: 'Professional Window Cleaning', unit: 'pane', quantity: 10, unitPrice: 15, total: 150 }
+    ],
+    scopeDescription: 'Top-to-bottom deep sanitation service for a vacant residence.'
+  },
+  {
+    id: 't-other-1',
+    name: 'Handyman Service Call',
+    serviceCategory: 'Other',
+    isHardCoded: true,
+    items: [
+      { description: 'General Handyman Labor', unit: 'hr', quantity: 4, unitPrice: 75, total: 300 },
+      { description: 'Furniture Assembly', unit: 'hr', quantity: 2, unitPrice: 65, total: 130 }
+    ],
+    scopeDescription: 'Half-day handyman visit for miscellaneous household repairs and assembly.'
+  }
+];
 
 export type QuoteDraft = {
   clientId: string;
   serviceCategory: string;
   items: QuoteItem[];
-  laborHours: number;
-  laborRate: number;
-  materialCosts: number;
-  taxRate: number;
+  laborHours: number | string;
+  laborRate: number | string;
+  materialCosts: number | string;
+  taxRate: number | string;
   notes: string;
   scopeDescription: string;
 };

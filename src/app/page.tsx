@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ export default function LandingPage() {
             <span className="font-bold text-xl tracking-tight text-primary">ServiceQuotePro</span>
           </div>
           <div className="flex gap-4">
-            <Link href="/dashboard">
+            <Link href="/login">
               <Button variant="outline">Log In</Button>
             </Link>
           </div>
@@ -38,7 +37,7 @@ export default function LandingPage() {
             The all-in-one tool for service contractors to generate professional client quotes, manage business profiles, and win more jobs across any industry.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/dashboard">
+            <Link href="/login">
               <Button size="lg" className="h-14 px-8 text-lg gap-2 shadow-xl">
                 Get Started Now <ArrowRight className="w-5 h-5" />
               </Button>
@@ -98,7 +97,7 @@ export default function LandingPage() {
             <span className="font-bold text-lg text-primary">ServiceQuotePro</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            © 2024 ServiceQuotePro. All rights reserved.
+            © 2026 ServiceQuotePro. All rights reserved.
           </div>
           <div className="flex gap-6 text-sm font-medium text-muted-foreground">
             <Link href="#" className="hover:text-primary">Terms</Link>

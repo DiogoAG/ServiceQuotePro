@@ -1,13 +1,12 @@
-
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import * as React from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Client, Quote } from "@/lib/types";
-import { getClients, getQuotes, saveClients } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChevronLeft, Plus, FileText, Phone, Mail, MapPin, ExternalLink, History, Edit2 } from "lucide-react";
+import { ChevronLeft, Plus, FileText, Phone, Mail, MapPin, ExternalLink, History, Edit2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,60 +14,75 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
+import { collection, doc, query, where, serverTimestamp } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function ClientDetailsPage() {
-  const { id } = useParams();
   const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
+  const { user } = useUser();
+  const db = useFirestore();
   const { toast } = useToast();
-  const [client, setClient] = useState<Client | null>(null);
-  const [clientQuotes, setClientQuotes] = useState<Quote[]>([]);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Form State
+  const clientRef = useMemoFirebase(() => {
+    if (!user || !id) return null;
+    return doc(db, "contractorProfiles", user.uid, "clients", id);
+  }, [db, user, id]);
+
+  const quotesRef = useMemoFirebase(() => {
+    if (!user || !id) return null;
+    return query(
+      collection(db, "contractorProfiles", user.uid, "quotes"),
+      where("clientId", "==", id)
+    );
+  }, [db, user, id]);
+
+  const { data: client, isLoading: clientLoading } = useDoc<Client>(clientRef);
+  const { data: clientQuotes, isLoading: quotesLoading } = useCollection<Quote>(quotesRef);
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formAddress, setFormAddress] = useState("");
 
-  const loadData = () => {
-    const allClients = getClients();
-    const found = allClients.find(c => c.id === id);
-    if (!found) {
-      router.push('/clients');
-      return;
-    }
-    setClient(found);
-    setFormName(found.name);
-    setFormEmail(found.email);
-    setFormPhone(found.phone || "");
-    setFormAddress(found.address || "");
-
-    const allQuotes = getQuotes();
-    setClientQuotes(allQuotes.filter(q => q.clientId === id));
-  };
-
   useEffect(() => {
-    loadData();
-  }, [id, router]);
+    if (client) {
+      setFormName(client.name);
+      setFormEmail(client.email);
+      setFormPhone(client.phone || "");
+      setFormAddress(client.address || "");
+    }
+  }, [client]);
 
   const handleUpdateClient = () => {
-    if (!formName || !formEmail) {
+    if (!formName || !formEmail || !user || !id) {
       toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
       return;
     }
 
-    const allClients = getClients();
-    const updatedClients = allClients.map(c => 
-      c.id === id ? { ...c, name: formName, email: formEmail, phone: formPhone, address: formAddress } : c
-    );
+    const docRef = doc(db, "contractorProfiles", user.uid, "clients", id);
+    setDocumentNonBlocking(docRef, {
+      name: formName,
+      email: formEmail,
+      phone: formPhone,
+      address: formAddress,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
 
-    saveClients(updatedClients);
-    loadData();
     setIsEditDialogOpen(false);
-    toast({ title: "Client Updated", description: "Information has been saved successfully." });
+    toast({ title: "Client Updated" });
   };
 
-  if (!client) return null;
+  if (clientLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin" /></div>;
+  if (!client) return (
+    <div className="text-center py-20 space-y-4">
+      <p className="text-muted-foreground">Client not found.</p>
+      <Button onClick={() => router.push('/clients')}>Back to Directory</Button>
+    </div>
+  );
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -86,7 +100,6 @@ export default function ClientDetailsPage() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-3">
-        {/* Client Sidebar */}
         <div className="space-y-4">
           <Card className="h-fit">
             <CardHeader className="text-center pb-2">
@@ -120,25 +133,23 @@ export default function ClientDetailsPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit Client Information</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Edit Client Information</DialogTitle></DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="space-y-2">
-                        <Label htmlFor="edit-name">Full Name</Label>
-                        <Input id="edit-name" value={formName} onChange={(e) => setFormName(e.target.value)} />
+                        <Label>Full Name</Label>
+                        <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="edit-email">Email</Label>
-                        <Input id="edit-email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} />
+                        <Label>Email</Label>
+                        <Input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="edit-phone">Phone Number</Label>
-                        <Input id="edit-phone" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} />
+                        <Label>Phone Number</Label>
+                        <Input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="edit-address">Address</Label>
-                        <Input id="edit-address" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} />
+                        <Label>Address</Label>
+                        <Input value={formAddress} onChange={(e) => setFormAddress(e.target.value)} />
                       </div>
                     </div>
                     <DialogFooter>
@@ -152,7 +163,6 @@ export default function ClientDetailsPage() {
           </Card>
         </div>
 
-        {/* History Area */}
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -160,7 +170,7 @@ export default function ClientDetailsPage() {
                 <History className="w-5 h-5 text-primary" />
                 <CardTitle>Quote History</CardTitle>
               </div>
-              <Badge variant="outline">{clientQuotes.length} Total</Badge>
+              <Badge variant="outline">{clientQuotes?.length || 0} Total</Badge>
             </CardHeader>
             <CardContent>
               <Table>
@@ -174,7 +184,7 @@ export default function ClientDetailsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clientQuotes.length > 0 ? (
+                  {clientQuotes && clientQuotes.length > 0 ? (
                     clientQuotes.map((quote) => (
                       <TableRow key={quote.id}>
                         <TableCell className="text-xs">
@@ -184,7 +194,7 @@ export default function ClientDetailsPage() {
                           {quote.serviceCategory}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                          <Badge variant={quote.status === 'approved' ? 'default' : quote.status === 'rejected' ? 'destructive' : 'secondary'} className="text-[10px]">
                             {quote.status}
                           </Badge>
                         </TableCell>

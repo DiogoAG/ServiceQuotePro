@@ -12,6 +12,8 @@ export const SERVICE_CATEGORIES = [
   "Other"
 ];
 
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'invoiced' | 'paid' | 'rejected';
+
 export type Client = {
   id: string;
   name: string;
@@ -23,6 +25,9 @@ export type Client = {
 export type BusinessProfile = {
   businessName: string;
   licenseNumber: string;
+  email?: string;
+  address?: string;
+  phone?: string;
   logoUrl?: string;
   defaultTaxRate: number;
   defaultLaborRate: number;
@@ -60,11 +65,32 @@ export type QuoteTemplate = {
   isHardCoded?: boolean;
 };
 
+export type Invoice = {
+  id: string;
+  quoteId: string;
+  contractorId: string;
+  clientId: string;
+  date: string;
+  status: 'unpaid' | 'paid';
+  items: QuoteItem[];
+  subtotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  paidAt?: string;
+};
+
 export type Quote = {
   id: string;
   clientId: string;
+  contractorId?: string;
+  clientSnapshot?: {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+  };
   date: string;
-  status: 'draft' | 'sent' | 'approved' | 'rejected';
+  status: QuoteStatus;
   serviceCategory: string;
   items: QuoteItem[];
   scopeDescription: string;
@@ -76,4 +102,6 @@ export type Quote = {
   subtotal: number;
   grandTotal: number;
   notes: string;
+  createdAt?: any;
+  updatedAt?: any;
 };

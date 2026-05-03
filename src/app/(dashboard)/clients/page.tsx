@@ -2,22 +2,33 @@
 
 import { useEffect, useState } from "react";
 import { Client } from "@/lib/types";
-import { getClients, saveClients } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Edit2, Search, Eye, Undo2, Phone, Mail, MapPin } from "lucide-react";
+import { Plus, Trash2, Edit2, Search, Eye, Mail, Phone, MapPin, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function ClientsPage() {
   const { toast } = useToast();
-  const [clients, setClients] = useState<Client[]>([]);
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const clientsRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(db, "contractorProfiles", user.uid, "clients");
+  }, [db, user]);
+
+  const { data: clients, isLoading: clientsLoading } = useCollection<Client>(clientsRef);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -28,33 +39,27 @@ export default function ClientsPage() {
   const [formPhone, setFormPhone] = useState("");
   const [formAddress, setFormAddress] = useState("");
 
-  useEffect(() => {
-    setClients(getClients());
-  }, []);
-
   const handleSaveClient = () => {
-    if (!formName || !formEmail) {
+    if (!formName || !formEmail || !user) {
       toast({ title: "Required Fields", description: "Name and Email are required.", variant: "destructive" });
       return;
     }
 
-    const newClient: Client = {
-      id: editingClient?.id || uuidv4(),
+    const clientId = editingClient?.id || uuidv4();
+    const docRef = doc(db, "contractorProfiles", user.uid, "clients", clientId);
+    
+    const clientData = {
+      id: clientId,
+      contractorId: user.uid,
       name: formName,
       email: formEmail,
       phone: formPhone,
-      address: formAddress
+      address: formAddress,
+      updatedAt: serverTimestamp(),
+      ...(editingClient ? {} : { createdAt: serverTimestamp() })
     };
 
-    let updatedClients;
-    if (editingClient) {
-      updatedClients = clients.map(c => c.id === editingClient.id ? newClient : c);
-    } else {
-      updatedClients = [...clients, newClient];
-    }
-
-    setClients(updatedClients);
-    saveClients(updatedClients);
+    setDocumentNonBlocking(docRef, clientData, { merge: true });
     setIsDialogOpen(false);
     resetForm();
     toast({ title: editingClient ? "Client Updated" : "Client Added" });
@@ -69,44 +74,22 @@ export default function ClientsPage() {
   };
 
   const handleDelete = (id: string) => {
-    const clientToDelete = clients.find(c => c.id === id);
-    if (!clientToDelete) return;
-
-    const updated = clients.filter(c => c.id !== id);
-    setClients(updated);
-    saveClients(updated);
-
-    toast({ 
-      title: "Client Removed", 
-      description: `${clientToDelete.name} has been deleted.`,
-      action: (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => {
-            const currentClients = getClients();
-            const restored = [...currentClients, clientToDelete];
-            setClients(restored);
-            saveClients(restored);
-            toast({ title: "Restored", description: `${clientToDelete.name} has been restored.` });
-          }}
-        >
-          <Undo2 className="w-4 h-4 mr-2" /> Undo
-        </Button>
-      )
-    });
+    if (!user) return;
+    const docRef = doc(db, "contractorProfiles", user.uid, "clients", id);
+    deleteDocumentNonBlocking(docRef);
+    toast({ title: "Client Removed" });
   };
 
   const handleEdit = (client: Client) => {
     setEditingClient(client);
     setFormName(client.name);
     setFormEmail(client.email);
-    setFormPhone(client.phone);
-    setFormAddress(client.address);
+    setFormPhone(client.phone || "");
+    setFormAddress(client.address || "");
     setIsDialogOpen(true);
   };
 
-  const filteredClients = clients.filter(c => {
+  const filteredClients = clients?.filter(c => {
     const term = searchTerm.toLowerCase();
     return (
       c.name.toLowerCase().includes(term) || 
@@ -114,7 +97,15 @@ export default function ClientsPage() {
       (c.phone && c.phone.toLowerCase().includes(term)) ||
       (c.address && c.address.toLowerCase().includes(term))
     );
-  });
+  }) || [];
+
+  if (clientsLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -141,7 +132,7 @@ export default function ClientsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="e.g. john@example.com" />
+                <Input id="email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="email@company.com" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
@@ -173,7 +164,6 @@ export default function ClientsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          {/* Mobile Client Cards */}
           <div className="grid gap-4 md:hidden">
             {filteredClients.length > 0 ? (
               filteredClients.map((client) => (
@@ -232,7 +222,6 @@ export default function ClientsPage() {
             )}
           </div>
 
-          {/* Desktop Table View */}
           <div className="hidden md:block">
             <Table>
               <TableHeader>
@@ -280,7 +269,7 @@ export default function ClientsPage() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will remove <strong>{client.name}</strong> from your directory. You can undo this action immediately after.
+                                This will remove <strong>{client.name}</strong> from your directory.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
